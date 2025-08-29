@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+.svelte-kit/
+
+# Generated files
+*.min.js
+*.min.css
+
+# Package manager files
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Cache directories
+.turbo/
+.eslintcache
+
+# Logs
+*.log
+
+# Other
+.DS_Store

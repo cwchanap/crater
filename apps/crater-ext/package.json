@@ -32,7 +32,9 @@
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
     "test": "vscode-test",
     "clean": "rm -rf dist out"
   },

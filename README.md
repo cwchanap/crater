@@ -57,6 +57,24 @@ pnpm type-check
 pnpm lint
 ```
 
+### Fix linting issues
+
+```bash
+pnpm lint:fix
+```
+
+### Format code
+
+```bash
+pnpm format
+```
+
+### Check formatting
+
+```bash
+pnpm format:check
+```
+
 ### Run tests
 
 ```bash
@@ -98,6 +116,36 @@ crater/
 ├── turbo.json              # Turborepo configuration
 └── README.md               # This file
 ```
+
+## Code Quality
+
+This project enforces code quality through:
+
+### ESLint (Flat Config)
+
+- **Configuration**: `eslint.config.js` (ESLint 9+ flat config format)
+- **TypeScript Support**: Full TypeScript linting with `typescript-eslint`
+- **Environment-specific rules**: Different rules for Node.js config files, React components, VS Code extensions, and test files
+- **Prettier Integration**: ESLint and Prettier work together seamlessly
+
+### Prettier
+
+- **Configuration**: `.prettierrc.json`
+- **Consistent Formatting**: Enforces consistent code style across all files
+- **Automatic Formatting**: Formats code on save and pre-commit
+
+### Husky & lint-staged
+
+- **Pre-commit Hooks**: Automatically runs linting and formatting before commits
+- **Staged Files Only**: Only processes files that are staged for commit
+- **Fast**: Only runs on changed files for quick feedback
+
+### Setup Details
+
+- **ESLint**: Configured with flat config format for modern ESLint 9+
+- **TypeScript**: Full TypeScript support with project references
+- **Multiple Environments**: Handles Node.js, React, VS Code extension environments
+- **Git Hooks**: Husky manages git hooks, lint-staged runs tools on staged files
 
 ## Technologies Used
 
