@@ -1,0 +1,183 @@
+{
+	"folders": [
+		{
+			"name": "Crater (Root)",
+			"path": "."
+		},
+		{
+			"name": "Extension",
+			"path": "./apps/crater-ext"
+		},
+		{
+			"name": "Web App",
+			"path": "./apps/crater-web"
+		},
+		{
+			"name": "UI Components",
+			"path": "./packages/ui-components"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/node_modules": true,
+			"**/dist": false,
+			"**/out": false
+		},
+		"search.exclude": {
+			"**/node_modules": true,
+			"**/dist": true,
+			"**/out": true
+		},
+		"typescript.preferences.includePackageJsonAutoImports": "auto",
+		"typescript.tsc.autoDetect": "off",
+		"npm.autoDetect": "off"
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.vscode-typescript-next",
+			"esbenp.prettier-vscode",
+			"dbaeumer.vscode-eslint"
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Run Extension",
+				"type": "extensionHost",
+				"request": "launch",
+				"args": ["--extensionDevelopmentPath=${workspaceFolder:Extension}"],
+				"outFiles": ["${workspaceFolder:Extension}/dist/**/*.js"],
+				"preLaunchTask": "Extension: Build"
+			},
+			{
+				"name": "Run Extension (Development)",
+				"type": "extensionHost",
+				"request": "launch",
+				"args": [
+					"--extensionDevelopmentPath=${workspaceFolder:Extension}",
+					"--disable-extensions"
+				],
+				"outFiles": ["${workspaceFolder:Extension}/dist/**/*.js"],
+				"preLaunchTask": "Extension: Build"
+			},
+			{
+				"name": "Extension Tests",
+				"type": "extensionHost",
+				"request": "launch",
+				"args": [
+					"--extensionDevelopmentPath=${workspaceFolder:Extension}",
+					"--extensionTestsPath=${workspaceFolder:Extension}/out/test/suite/index"
+				],
+				"outFiles": ["${workspaceFolder:Extension}/out/test/**/*.js"],
+				"preLaunchTask": "Extension: Compile Tests"
+			}
+		]
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				"label": "Extension: Build",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["run", "compile"],
+				"options": {
+					"cwd": "${workspaceFolder:Extension}"
+				},
+				"group": {
+					"kind": "build",
+					"isDefault": true
+				},
+				"presentation": {
+					"echo": true,
+					"reveal": "silent",
+					"panel": "shared"
+				},
+				"problemMatcher": "$tsc"
+			},
+			{
+				"label": "Extension: Watch",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["run", "watch"],
+				"options": {
+					"cwd": "${workspaceFolder:Extension}"
+				},
+				"group": "build",
+				"isBackground": true,
+				"presentation": {
+					"echo": true,
+					"reveal": "never",
+					"panel": "shared"
+				},
+				"problemMatcher": "$tsc-watch"
+			},
+			{
+				"label": "Extension: Compile Tests",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["run", "compile-tests"],
+				"options": {
+					"cwd": "${workspaceFolder:Extension}"
+				},
+				"group": "build",
+				"presentation": {
+					"echo": true,
+					"reveal": "silent",
+					"panel": "shared"
+				},
+				"problemMatcher": "$tsc"
+			},
+			{
+				"label": "Web: Dev",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["run", "dev"],
+				"options": {
+					"cwd": "${workspaceFolder:Web App}"
+				},
+				"group": "build",
+				"isBackground": true,
+				"presentation": {
+					"echo": true,
+					"reveal": "always",
+					"panel": "new"
+				},
+				"problemMatcher": []
+			},
+			{
+				"label": "Root: Install Dependencies",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["install"],
+				"options": {
+					"cwd": "${workspaceFolder:Crater (Root)}"
+				},
+				"group": "build",
+				"presentation": {
+					"echo": true,
+					"reveal": "always",
+					"panel": "shared"
+				},
+				"problemMatcher": []
+			},
+			{
+				"label": "Root: Build All",
+				"type": "shell",
+				"command": "pnpm",
+				"args": ["run", "build"],
+				"options": {
+					"cwd": "${workspaceFolder:Crater (Root)}"
+				},
+				"group": "build",
+				"presentation": {
+					"echo": true,
+					"reveal": "always",
+					"panel": "shared"
+				},
+				"problemMatcher": []
+			}
+		]
+	}
+}

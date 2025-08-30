@@ -1,71 +1,95 @@
-# crater-ext README
+# Crater - Game Asset Generator
 
-This is the README for your extension "crater-ext". After writing up a brief description, we recommend including the following sections.
+A VS Code extension featuring an AI-powered chatbot assistant for brainstorming and planning game assets.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+🎮 **Game Asset Assistant Chatbot**
 
-For example if there is an image subfolder under your extension project workspace:
+- Interactive chatbot interface in the Explorer panel
+- Helps brainstorm ideas for various game assets:
+  - Character sprites and animations
+  - Background environments and textures
+  - UI elements and interfaces
+  - Sound effect concepts
+  - Game mechanics ideas
 
-\!\[feature X\]\(images/feature-x.png\)
+## Usage
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+### Opening the Chatbot
+
+1. **Via Command Palette**:
+   - Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
+   - Type "Open Game Asset Chatbot" and select the command
+
+2. **Via Explorer Panel**:
+   - The "Game Asset Assistant" panel will appear in the Explorer sidebar
+   - Click on it to start chatting
+
+### Using the Chatbot
+
+- Type your questions or requests about game assets
+- The assistant can help with:
+  - Character design ideas
+  - Environment and background concepts
+  - Texture and material suggestions
+  - UI/UX element planning
+  - Game mechanics brainstorming
+
+### Example Questions
+
+- "I need ideas for a fantasy warrior character sprite"
+- "What textures would work well for a sci-fi spaceship interior?"
+- "Help me design UI elements for a retro platformer game"
+- "I'm creating a forest background, what elements should I include?"
+
+## Development
+
+### Building the Extension
+
+```bash
+cd apps/crater-ext
+pnpm install
+pnpm run build
+```
+
+### Running in Development Mode
+
+```bash
+pnpm run dev
+```
+
+This will start esbuild in watch mode for development.
+
+### Testing the Extension
+
+1. Open VS Code
+2. Press `F5` to open a new Extension Development Host window
+3. The extension will be loaded and ready to test
+
+## Technical Details
+
+The extension uses:
+
+- **WebView API** for the chatbot interface
+- **Custom CSS** styled to match VS Code themes
+- **Message passing** between the webview and extension
+- **Rule-based responses** (can be extended with real AI integration)
+
+## Future Enhancements
+
+- Integration with real AI services (OpenAI, Claude, etc.)
+- Asset generation capabilities
+- Export functionality for generated ideas
+- Integration with popular game development tools
+- Custom asset templates and libraries
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- VS Code 1.103.0 or higher
 
-## Extension Settings
+## Release Notes5
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### 0.0.1
 
-For example:
-
-This extension contributes the following settings:
-
-- `myExtension.enable`: Enable/disable this extension.
-- `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-- [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-- Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-- Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-- Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-- [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-- [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Initial release with basic chatbot functionality for game asset brainstorming.

@@ -1,26 +1,47 @@
 {
   "name": "crater-ext",
-  "displayName": "crater-ext",
-  "description": "",
+  "displayName": "Crater - Game Asset Generator",
+  "description": "AI-powered chatbot for generating game assets",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Machine Learning",
+    "Snippets"
   ],
   "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "crater-ext.helloWorld",
-        "title": "Hello World"
+        "command": "crater-ext.openChatbot",
+        "title": "Open Game Asset Chatbot",
+        "category": "Crater"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "crater-chatbot",
+          "name": "Game Asset Assistant",
+          "icon": "$(comment-discussion)",
+          "when": "true"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "crater-ext.openChatbot"
+        }
+      ]
+    }
   },
   "scripts": {
-    "build": "pnpm run type-check && pnpm run lint && node esbuild.js --production",
+    "build": "pnpm run lint && node esbuild.js --production",
     "dev": "node esbuild.js --watch",
     "vscode:prepublish": "pnpm run build",
     "compile": "pnpm run type-check && pnpm run lint && node esbuild.js",
