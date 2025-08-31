@@ -17,6 +17,9 @@
     "format": "prettier --write .",
     "clean": "rm -rf .svelte-kit build"
   },
+  "dependencies": {
+    "@crater/core": "workspace:*"
+  },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.0.0",
     "@sveltejs/kit": "^2.22.0",
