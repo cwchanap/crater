@@ -13,24 +13,27 @@ export function activate(context: vscode.ExtensionContext) {
     // Register the chatbot webview provider
     const chatbotProvider = new ChatbotProvider(context.extensionUri)
 
-    // Register the webview view provider
-    context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider(
-            ChatbotProvider.viewType,
-            chatbotProvider
-        )
-    )
-
     // Register the command to open the chatbot
     const openChatbotCommand = vscode.commands.registerCommand(
         'crater-ext.openChatbot',
         () => {
-            // Focus on the explorer view first, then our webview should be visible
-            vscode.commands.executeCommand('workbench.view.explorer')
+            console.log('crater-ext.openChatbot command triggered!')
+            chatbotProvider.createOrShowPanel()
         }
     )
 
     context.subscriptions.push(openChatbotCommand)
+
+    // Register a debug command that directly tries to show the webview
+    const showChatbotCommand = vscode.commands.registerCommand(
+        'crater-ext.showChatbot',
+        () => {
+            console.log('crater-ext.showChatbot (debug) command triggered!')
+            chatbotProvider.createOrShowPanel()
+        }
+    )
+
+    context.subscriptions.push(showChatbotCommand)
 }
 
 // This method is called when your extension is deactivated

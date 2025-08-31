@@ -19,23 +19,20 @@
         "command": "crater-ext.openChatbot",
         "title": "Open Game Asset Chatbot",
         "category": "Crater"
+      },
+      {
+        "command": "crater-ext.showChatbot",
+        "title": "Show Game Asset Chatbot (Debug)",
+        "category": "Crater"
       }
     ],
-    "views": {
-      "explorer": [
-        {
-          "type": "webview",
-          "id": "crater-chatbot",
-          "name": "Game Asset Assistant",
-          "icon": "$(comment-discussion)",
-          "when": "true"
-        }
-      ]
-    },
     "menus": {
       "commandPalette": [
         {
           "command": "crater-ext.openChatbot"
+        },
+        {
+          "command": "crater-ext.showChatbot"
         }
       ]
     }
