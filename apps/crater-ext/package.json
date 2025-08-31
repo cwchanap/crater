@@ -35,6 +35,36 @@
           "command": "crater-ext.showChatbot"
         }
       ]
+    },
+    "configuration": {
+      "title": "Crater Game Asset Assistant",
+      "properties": {
+        "crater-ext.aiProvider": {
+          "type": "string",
+          "default": "mock",
+          "enum": [
+            "mock",
+            "gemini",
+            "openai"
+          ],
+          "enumDescriptions": [
+            "Mock provider with hardcoded responses (no API key needed)",
+            "Google Gemini AI provider (requires API key)",
+            "OpenAI GPT-4 Vision provider (requires API key)"
+          ],
+          "description": "AI provider to use for generating responses"
+        },
+        "crater-ext.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Google Gemini API key (required when using Gemini provider)"
+        },
+        "crater-ext.openaiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key (required when using OpenAI provider)"
+        }
+      }
     }
   },
   "scripts": {

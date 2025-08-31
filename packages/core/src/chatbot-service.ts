@@ -1,4 +1,10 @@
-import { ChatMessage, ChatBotConfig, AssetSuggestion } from './types'
+import {
+    ChatMessage,
+    ChatBotConfig,
+    AssetSuggestion,
+    BaseImageModelProvider,
+    AIGenerationRequest,
+} from './types'
 
 /**
  * Core ChatBot service for generating AI responses and managing chat logic
@@ -7,20 +13,99 @@ import { ChatMessage, ChatBotConfig, AssetSuggestion } from './types'
 export class ChatBotService {
     private config: ChatBotConfig
     private messages: ChatMessage[] = []
+    private aiProvider?: BaseImageModelProvider
 
-    constructor(config: ChatBotConfig = {}) {
+    constructor(
+        config: ChatBotConfig = {},
+        aiProvider?: BaseImageModelProvider
+    ) {
         this.config = {
             systemPrompt: 'You are a helpful game asset assistant.',
             thinkingTime: 1000,
             maxMessageLength: 500,
             ...config,
         }
+        this.aiProvider = aiProvider
+    }
+
+    /**
+     * Set or update the AI provider
+     */
+    setAIProvider(provider: BaseImageModelProvider | undefined): void {
+        this.aiProvider = provider
+    }
+
+    /**
+     * Get the current AI provider
+     */
+    getAIProvider(): BaseImageModelProvider | undefined {
+        return this.aiProvider
     }
 
     /**
      * Generate an AI response based on user input
      */
-    async generateResponse(userMessage: string): Promise<string> {
+    async generateResponse(
+        userMessage: string,
+        images?: string[]
+    ): Promise<string> {
+        // Try AI provider first if available and configured
+        if (this.aiProvider && this.aiProvider.isConfigured()) {
+            try {
+                const request: AIGenerationRequest = {
+                    prompt: this.buildAIPrompt(userMessage),
+                    images: images,
+                    systemPrompt: this.config.systemPrompt,
+                    temperature: 0.7,
+                    maxTokens: 1000,
+                }
+
+                const response = await this.aiProvider.generateResponse(request)
+                return response.text
+            } catch {
+                // AI provider failed, fall back to hardcoded responses
+                // Fall through to hardcoded responses
+            }
+        }
+
+        // Fallback to hardcoded responses
+        return this.generateHardcodedResponse(userMessage)
+    }
+
+    /**
+     * Build a comprehensive prompt for AI generation
+     */
+    private buildAIPrompt(userMessage: string): string {
+        const context = `You are an expert game development assistant specializing in game assets, art direction, and creative brainstorming. 
+
+Your expertise includes:
+- 2D and 3D art creation and optimization
+- Character design and animation
+- Environment and background design
+- UI/UX design for games
+- Audio design and implementation
+- Visual effects and shaders
+- Game asset optimization and technical constraints
+
+Provide practical, actionable advice that considers:
+- Different art styles (pixel art, hand-drawn, 3D, etc.)
+- Technical constraints (file sizes, performance)
+- Platform considerations (mobile, desktop, console)
+- Industry best practices and trends
+
+User's request: ${userMessage}
+
+Please provide helpful, specific suggestions and feel free to ask clarifying questions to better assist the user.`
+
+        return context
+    }
+
+    /**
+     * Generate hardcoded response (fallback when AI provider is not available)
+     */
+    private async generateHardcodedResponse(
+        userMessage: string
+    ): Promise<string> {
         // Simulate thinking time
         if (this.config.thinkingTime && this.config.thinkingTime > 0) {
             await new Promise((resolve) =>

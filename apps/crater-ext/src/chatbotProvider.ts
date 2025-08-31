@@ -1,23 +1,94 @@
 import * as vscode from 'vscode'
-import { ChatBotService } from '@crater/core'
+import {
+    ChatBotService,
+    MockImageProvider,
+    GeminiImageProvider,
+    OpenAIImageProvider,
+    BaseImageModelProvider,
+} from '@crater/core'
 
 export class ChatbotProvider {
     private static currentPanel: vscode.WebviewPanel | undefined
     private chatbotService: ChatBotService
+    private aiProvider: BaseImageModelProvider
 
     constructor(private readonly _extensionUri: vscode.Uri) {
         console.log('ChatbotProvider constructor called')
 
+        // Initialize with MockImageProvider by default for better demo experience
+        this.aiProvider = new MockImageProvider()
+
         // Initialize the chatbot service with game asset-specific configuration
-        this.chatbotService = new ChatBotService({
-            systemPrompt:
-                'You are a helpful game asset assistant specializing in sprites, backgrounds, textures, UI elements, and other game development assets.',
-            thinkingTime: 1000,
-            maxMessageLength: 500,
-        })
+        this.chatbotService = new ChatBotService(
+            {
+                systemPrompt:
+                    'You are a helpful game asset assistant specializing in sprites, backgrounds, textures, UI elements, and other game development assets.',
+                thinkingTime: 1000,
+                maxMessageLength: 500,
+            },
+            this.aiProvider
+        )
+    }
+
+    /**
+     * Configure AI provider based on user settings
+     */
+    public configureAIProvider(): void {
+        const config = vscode.workspace.getConfiguration('crater-ext')
+        const providerType = config.get<string>('aiProvider', 'mock')
+
+        try {
+            switch (providerType) {
+                case 'gemini': {
+                    const geminiApiKey = config.get<string>('geminiApiKey')
+                    if (geminiApiKey) {
+                        this.aiProvider = new GeminiImageProvider({
+                            apiKey: geminiApiKey,
+                        })
+                    } else {
+                        console.log(
+                            'Gemini API key not configured, using mock provider'
+                        )
+                        this.aiProvider = new MockImageProvider()
+                    }
+                    break
+                }
+
+                case 'openai': {
+                    const openaiApiKey = config.get<string>('openaiApiKey')
+                    if (openaiApiKey) {
+                        this.aiProvider = new OpenAIImageProvider({
+                            apiKey: openaiApiKey,
+                        })
+                    } else {
+                        console.log(
+                            'OpenAI API key not configured, using mock provider'
+                        )
+                        this.aiProvider = new MockImageProvider()
+                    }
+                    break
+                }
+
+                case 'mock':
+                default:
+                    this.aiProvider = new MockImageProvider()
+                    break
+            }
+
+            this.chatbotService.setAIProvider(this.aiProvider)
+            console.log(`AI provider configured: ${providerType}`)
+        } catch (error) {
+            console.error('Error configuring AI provider:', error)
+            // Fallback to mock provider
+            this.aiProvider = new MockImageProvider()
+            this.chatbotService.setAIProvider(this.aiProvider)
+        }
     }
 
     public createOrShowPanel() {
+        // Configure AI provider when creating panel
+        this.configureAIProvider()
+
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
             : undefined
