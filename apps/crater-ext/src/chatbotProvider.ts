@@ -1,10 +1,20 @@
 import * as vscode from 'vscode'
+import { ChatBotService } from '@crater/core'
 
 export class ChatbotProvider {
     private static currentPanel: vscode.WebviewPanel | undefined
+    private chatbotService: ChatBotService
 
     constructor(private readonly _extensionUri: vscode.Uri) {
         console.log('ChatbotProvider constructor called')
+
+        // Initialize the chatbot service with game asset-specific configuration
+        this.chatbotService = new ChatBotService({
+            systemPrompt:
+                'You are a helpful game asset assistant specializing in sprites, backgrounds, textures, UI elements, and other game development assets.',
+            thinkingTime: 1000,
+            maxMessageLength: 500,
+        })
     }
 
     public createOrShowPanel() {
@@ -59,97 +69,40 @@ export class ChatbotProvider {
         console.log('WebView panel created successfully')
     }
 
-    private async _handleUserMessage(userMessage: string) {
-        // Add user message to chat
-        this._addMessageToChat(userMessage, 'user')
-
-        // Simulate AI response (in a real implementation, you'd call an AI service)
-        const aiResponse = await this._generateAIResponse(userMessage)
-        this._addMessageToChat(aiResponse, 'assistant')
+    /**
+     * Get the chat history from the service (useful for debugging)
+     */
+    public getChatHistory(): string {
+        return this.chatbotService.getChatHistory()
     }
 
-    private async _generateAIResponse(userMessage: string): Promise<string> {
-        // Simulate thinking time
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+    /**
+     * Get all messages from the service
+     */
+    public getMessages() {
+        return this.chatbotService.getMessages()
+    }
 
-        // Simple rule-based responses for demo
-        const lowercaseMessage = userMessage.toLowerCase()
+    private async _handleUserMessage(userMessage: string) {
+        // Add user message to both the chat and the service
+        this._addMessageToChat(userMessage, 'user')
+        this.chatbotService.addMessage(userMessage, 'user')
 
-        if (
-            lowercaseMessage.includes('sprite') ||
-            lowercaseMessage.includes('character')
-        ) {
-            return `I can help you generate character sprites! Here are some suggestions:
+        try {
+            // Generate AI response using the service
+            const aiResponse =
+                await this.chatbotService.generateResponse(userMessage)
 
-**Character Sprite Ideas:**
-- 2D pixel art characters (8-bit, 16-bit style)
-- Modern high-resolution sprites
-- Animated character frames
-- Different poses and animations
-
-What type of character are you looking for? (e.g., warrior, mage, robot, etc.)`
+            // Add AI response to both the chat and the service
+            this._addMessageToChat(aiResponse, 'assistant')
+            this.chatbotService.addMessage(aiResponse, 'assistant')
+        } catch (error) {
+            console.error('Error generating AI response:', error)
+            const errorMessage =
+                'Sorry, I encountered an error while processing your message. Please try again.'
+            this._addMessageToChat(errorMessage, 'assistant')
+            this.chatbotService.addMessage(errorMessage, 'assistant')
         }
-
-        if (
-            lowercaseMessage.includes('background') ||
-            lowercaseMessage.includes('environment')
-        ) {
-            return `Great! I can help with background assets:
-
-**Background Types:**
-- Parallax scrolling backgrounds
-- Tiled environments
-- Sky boxes and landscapes
-- Interior scenes
-- Sci-fi or fantasy environments
-
-What setting are you creating? (e.g., forest, city, space, dungeon)`
-        }
-
-        if (
-            lowercaseMessage.includes('texture') ||
-            lowercaseMessage.includes('material')
-        ) {
-            return `Textures are essential for great-looking games! I can suggest:
-
-**Texture Categories:**
-- Stone and brick textures
-- Metal and rust patterns
-- Fabric and cloth materials
-- Natural textures (wood, grass, water)
-- Sci-fi materials
-
-What surface are you trying to texture?`
-        }
-
-        if (
-            lowercaseMessage.includes('ui') ||
-            lowercaseMessage.includes('interface')
-        ) {
-            return `UI assets can make or break the user experience! Consider:
-
-**UI Elements:**
-- Buttons and menus
-- Health bars and progress indicators
-- Inventory panels
-- Dialog boxes
-- Icons and symbols
-
-What type of UI element do you need help with?`
-        }
-
-        // Default response
-        return `Hello! I'm your game asset assistant. I can help you brainstorm and plan:
-
-🎮 **Game Assets I Can Help With:**
-- Character sprites and animations
-- Background environments
-- Textures and materials
-- UI elements and interfaces
-- Sound effect concepts
-- Game mechanics ideas
-
-What type of game asset are you working on today?`
     }
 
     private _addMessageToChat(message: string, sender: 'user' | 'assistant') {
@@ -163,6 +116,10 @@ What type of game asset are you working on today?`
     }
 
     private _clearChat() {
+        // Clear the service's message history
+        this.chatbotService.clearMessages()
+
+        // Clear the WebView chat display
         if (ChatbotProvider.currentPanel) {
             ChatbotProvider.currentPanel.webview.postMessage({
                 type: 'clearChat',
