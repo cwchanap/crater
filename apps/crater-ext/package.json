@@ -26,6 +26,24 @@
         "category": "Crater"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "crater-ext-container",
+          "title": "Crater Game Assets",
+          "icon": "$(game)"
+        }
+      ]
+    },
+    "views": {
+      "crater-ext-container": [
+        {
+          "id": "crater-ext.chatbotView",
+          "name": "Game Asset Assistant",
+          "when": "true"
+        }
+      ]
+    },
     "menus": {
       "commandPalette": [
         {
@@ -75,7 +93,7 @@
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "pnpm run build",
+    "package": "pnpm run build && vsce package",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
@@ -90,16 +108,17 @@
     "@crater/core": "workspace:*"
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "eslint": "^9.32.0",
-    "esbuild": "^0.25.8",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.9.2",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.32.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.2"
   }
 }
