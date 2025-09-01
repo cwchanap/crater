@@ -4,7 +4,7 @@ import {
     AIGenerationRequest,
     AIGenerationResponse,
     AIProviderError,
-} from '../types'
+} from '../base-provider'
 
 // Gemini API types
 interface GeminiPart {

@@ -4,7 +4,7 @@ import {
     AIGenerationRequest,
     AIGenerationResponse,
     AIProviderError,
-} from '../types'
+} from '../base-provider'
 
 // OpenAI API types
 interface OpenAIMessage {

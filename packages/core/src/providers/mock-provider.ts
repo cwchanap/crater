@@ -3,7 +3,7 @@ import {
     AIProviderConfig,
     AIGenerationRequest,
     AIGenerationResponse,
-} from '../types'
+} from '../base-provider'
 
 /**
  * Mock AI Provider for testing and offline usage
