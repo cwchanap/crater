@@ -24,6 +24,11 @@
         "command": "crater-ext.showChatbot",
         "title": "Show Game Asset Chatbot (Debug)",
         "category": "Crater"
+      },
+      {
+        "command": "crater-ext.testViewRegistration",
+        "title": "Test View Registration",
+        "category": "Crater"
       }
     ],
     "viewsContainers": {
@@ -40,7 +45,16 @@
         {
           "id": "crater-ext.chatbotView",
           "name": "Game Asset Assistant",
-          "when": "true"
+          "when": "true",
+          "type": "webview"
+        }
+      ],
+      "explorer": [
+        {
+          "id": "crater-ext.chatbotViewDebug",
+          "name": "Game Asset Assistant (Debug)",
+          "when": "true",
+          "type": "webview"
         }
       ]
     },
@@ -51,6 +65,9 @@
         },
         {
           "command": "crater-ext.showChatbot"
+        },
+        {
+          "command": "crater-ext.testViewRegistration"
         }
       ]
     },
