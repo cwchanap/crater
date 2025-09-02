@@ -252,6 +252,43 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     type: 'chat-cleared',
                 })
                 break
+            case 'get-settings': {
+                const config = vscode.workspace.getConfiguration('crater-ext')
+                const aiProvider = config.get<string>('aiProvider', 'mock')
+                const geminiApiKey = config.get<string>('geminiApiKey', '')
+                const openaiApiKey = config.get<string>('openaiApiKey', '')
+                this._view.webview.postMessage({
+                    type: 'settings',
+                    aiProvider,
+                    geminiApiKey,
+                    openaiApiKey,
+                })
+                break
+            }
+            case 'save-settings': {
+                const config = vscode.workspace.getConfiguration('crater-ext')
+                const target = vscode.ConfigurationTarget.Global
+
+                const aiProvider = String(message['aiProvider'] || 'mock')
+                const apiKey = String(message['apiKey'] || '')
+
+                await config.update('aiProvider', aiProvider, target)
+
+                if (aiProvider === 'gemini') {
+                    await config.update('geminiApiKey', apiKey, target)
+                } else if (aiProvider === 'openai') {
+                    await config.update('openaiApiKey', apiKey, target)
+                }
+
+                // Prompt ChatbotProvider to refresh its provider
+                await vscode.commands.executeCommand(
+                    'crater-ext.updateAIProvider'
+                )
+
+                this._view.webview.postMessage({ type: 'settings-saved' })
+                vscode.window.showInformationMessage('[Crater] Settings saved')
+                break
+            }
             default:
                 console.warn(
                     '[Crater ChatbotProvider] Unknown message type:',
@@ -346,7 +383,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         .header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 20px;
             padding: 12px;
             background-color: var(--vscode-badge-background);
@@ -359,10 +398,52 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             font-size: 16px;
         }
 
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .back-btn:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .settings-btn {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .settings-btn:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+
         .provider-info {
             font-size: 12px;
             color: var(--vscode-descriptionForeground);
             margin-top: 4px;
+        }
+
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
         }
 
         .chat-container {
@@ -470,28 +551,96 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             font-style: italic;
             margin: 20px 0;
         }
+
+
+        .section { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; }
+        select, input[type="text"], input[type="password"] {
+            width: 100%; box-sizing: border-box; padding: 6px 8px;
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+        }
+        .row { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
+        .btn {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none; border-radius: 4px; padding: 8px 16px; cursor: pointer;
+        }
+        .btn:hover { background: var(--vscode-button-hoverBackground); }
+        .btn.secondary {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        .btn.secondary:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+        .note { color: var(--vscode-descriptionForeground); font-size: 12px; }
+        .validation-message {
+            font-size: 12px; margin-top: 4px; min-height: 16px;
+        }
+        .validation-message.error { color: var(--vscode-errorForeground); }
+        .validation-message.success { color: var(--vscode-charts-green); }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2>🎮 Game Asset Assistant</h2>
-        <div class="provider-info" id="provider-info">AI Provider: Loading...</div>
-    </div>
-
-    <div class="chat-container">
-        <div class="messages" id="messages">
-            <div class="welcome-message">
-                👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
+    <div class="header" id="header">
+        <div class="header-left">
+            <button class="back-btn" id="backBtn" style="display: none;">← Back</button>
+            <div>
+                <h2 id="pageTitle">🎮 Game Asset Assistant</h2>
+                <div class="provider-info" id="provider-info" style="display: block;">AI Provider: Loading...</div>
             </div>
         </div>
+        <button class="settings-btn" id="settingsBtn">⚙️ Settings</button>
+    </div>
 
-        <div class="controls">
-            <button class="clear-button" id="clear-button">Clear Chat</button>
+    <!-- Chat Page -->
+    <div class="page-content active" id="chatPage">
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="welcome-message">
+                    👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="clear-button" id="clear-button">Clear Chat</button>
+            </div>
+
+            <div class="input-container">
+                <input type="text" class="message-input" id="message-input" placeholder="Ask about game assets..." />
+                <button class="send-button" id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page-content" id="settingsPage">
+        <div class="welcome-message">
+            Configure your AI provider and API keys below.
         </div>
 
-        <div class="input-container">
-            <input type="text" class="message-input" id="message-input" placeholder="Ask about game assets..." />
-            <button class="send-button" id="send-button">Send</button>
+        <div class="section">
+            <label for="provider">Model Provider</label>
+            <select id="provider">
+                <option value="mock">Mock (Demo) - No API key needed</option>
+                <option value="gemini">Google Gemini - Requires API key</option>
+                <option value="openai">OpenAI GPT - Requires API key</option>
+            </select>
+            <div class="note">Choose your preferred AI provider for generating game assets</div>
+        </div>
+
+        <div class="section" id="apiKeySection">
+            <label id="apiKeyLabel" for="apiKey">API Key</label>
+            <input id="apiKey" type="password" placeholder="Enter API key" />
+            <div class="note">Stored securely in your VS Code settings (User scope).</div>
+            <div class="validation-message" id="validationMessage"></div>
+        </div>
+
+        <div class="row">
+            <button class="btn" id="saveBtn">Save Settings</button>
         </div>
     </div>
 
@@ -505,13 +654,34 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         const sendButton = document.getElementById('send-button');
         const clearButton = document.getElementById('clear-button');
         const providerInfo = document.getElementById('provider-info');
+
+        // Navigation elements
+        const backBtn = document.getElementById('backBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const pageTitle = document.getElementById('pageTitle');
+        const navProviderInfo = document.getElementById('provider-info');
+
+        // Page containers
+        const chatPage = document.getElementById('chatPage');
+        const settingsPage = document.getElementById('settingsPage');
+
+        // Settings form elements
+        const providerEl = document.getElementById('provider');
+        const apiKeyEl = document.getElementById('apiKey');
+        const apiKeyLabelEl = document.getElementById('apiKeyLabel');
+        const saveBtn = document.getElementById('saveBtn');
+        const validationMessageEl = document.getElementById('validationMessage');
+
+        // Navigation state
+        let currentPage = 'chat';
         
         console.log('[Crater WebView] DOM elements found:', {
             messagesContainer: !!messagesContainer,
             messageInput: !!messageInput,
             sendButton: !!sendButton,
             clearButton: !!clearButton,
-            providerInfo: !!providerInfo
+            providerInfo: !!providerInfo,
+            navProviderInfo: !!navProviderInfo
         });
 
         function addMessage(text, sender, timestamp) {
@@ -572,14 +742,92 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             providerInfo.textContent = \`AI Provider: \${providerNames[provider] || provider}\`;
         }
 
+        // Navigation functions
+        function navigateToPage(page) {
+            currentPage = page;
+
+            // Update page visibility
+            chatPage.classList.toggle('active', page === 'chat');
+            settingsPage.classList.toggle('active', page === 'settings');
+
+            // Update header
+            if (page === 'chat') {
+                pageTitle.textContent = '🎮 Game Asset Assistant';
+                backBtn.style.display = 'none';
+                settingsBtn.style.display = 'block';
+                navProviderInfo.style.display = 'block';
+            } else if (page === 'settings') {
+                pageTitle.textContent = '⚙️ Settings';
+                backBtn.style.display = 'block';
+                settingsBtn.style.display = 'none';
+                navProviderInfo.style.display = 'none';
+                // Request current settings when navigating to settings
+                vscode.postMessage({ type: 'get-settings' });
+            }
+        }
+
+        function validateApiKey(apiKey, provider) {
+            if (provider === 'mock') return { valid: true };
+
+            if (!apiKey || apiKey.trim().length === 0) {
+                return { valid: false, message: 'API key is required' };
+            }
+
+            // Basic validation for common API key formats
+            if (provider === 'gemini' && !apiKey.startsWith('AIza')) {
+                return { valid: false, message: 'Gemini API keys typically start with "AIza"' };
+            }
+
+            if (provider === 'openai' && !apiKey.startsWith('sk-')) {
+                return { valid: false, message: 'OpenAI API keys typically start with "sk-"' };
+            }
+
+            if (apiKey.length < 20) {
+                return { valid: false, message: 'API key seems too short' };
+            }
+
+            return { valid: true, message: 'API key format looks valid' };
+        }
+
+        function updateValidation() {
+            const provider = providerEl.value;
+            const apiKey = apiKeyEl.value;
+
+            if (provider === 'mock') {
+                validationMessageEl.textContent = '';
+                validationMessageEl.className = 'validation-message';
+                return;
+            }
+
+            const validation = validateApiKey(apiKey, provider);
+            validationMessageEl.textContent = validation.message;
+            validationMessageEl.className = 'validation-message ' + (validation.valid ? 'success' : 'error');
+        }
+
+        function updateApiKeyLabel() {
+            const map = { gemini: 'Gemini API Key', openai: 'OpenAI API Key', mock: 'API Key (unused for Mock)' };
+            apiKeyLabelEl.textContent = map[providerEl.value] || 'API Key';
+            const section = document.getElementById('apiKeySection');
+            section.style.display = providerEl.value === 'mock' ? 'none' : 'block';
+            updateValidation();
+        }
+
         sendButton.addEventListener('click', sendMessage);
         clearButton.addEventListener('click', clearChat);
-        
+
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
+
+        // Navigation event listeners
+        settingsBtn.addEventListener('click', () => navigateToPage('settings'));
+        backBtn.addEventListener('click', () => navigateToPage('chat'));
+
+        // Form event listeners
+        providerEl.addEventListener('change', updateApiKeyLabel);
+        apiKeyEl.addEventListener('input', updateValidation);
 
         // Handle messages from the extension
         window.addEventListener('message', event => {
@@ -614,7 +862,29 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 case 'provider-updated':
                     updateProviderInfo(message.provider);
                     break;
+                case 'settings':
+                    providerEl.value = message.aiProvider || 'mock';
+                    if (message.aiProvider === 'gemini') apiKeyEl.value = message.geminiApiKey || '';
+                    else if (message.aiProvider === 'openai') apiKeyEl.value = message.openaiApiKey || '';
+                    else apiKeyEl.value = '';
+                    updateApiKeyLabel();
+                    break;
+                case 'settings-saved':
+                    navigateToPage('chat');
+                    break;
+                case 'settings-error':
+                    console.error('[Crater Settings] Error:', message.message);
+                    break;
             }
+        });
+
+        // Settings save button
+        saveBtn.addEventListener('click', () => {
+            vscode.postMessage({
+                type: 'save-settings',
+                aiProvider: providerEl.value,
+                apiKey: apiKeyEl.value
+            });
         });
 
         // Request chat history on load
