@@ -1,7 +1,6 @@
 import * as vscode from 'vscode'
 import {
     ChatBotService,
-    MockImageProvider,
     GeminiImageProvider,
     OpenAIImageProvider,
 } from '@crater/core'
@@ -17,10 +16,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'crater-ext.chatbotView'
     private _view?: vscode.WebviewView
     private chatBotService: ChatBotService
-    private currentProvider:
-        | MockImageProvider
-        | GeminiImageProvider
-        | OpenAIImageProvider
+    private currentProvider: GeminiImageProvider | OpenAIImageProvider | null
     private _isInitialized = false
 
     constructor(private readonly _extensionUri: vscode.Uri) {
@@ -30,16 +26,12 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             _extensionUri.toString()
         )
 
-        // Initialize with Mock provider by default, will be updated based on configuration
-        const mockProvider = new MockImageProvider()
-        this.chatBotService = new ChatBotService(
-            {
-                systemPrompt:
-                    'You are a helpful game asset assistant for creating creative game content.',
-            },
-            mockProvider
-        )
-        this.currentProvider = mockProvider
+        // Initialize without provider - will be set during initializeAIProvider
+        this.chatBotService = new ChatBotService({
+            systemPrompt:
+                'You are a helpful game asset assistant for creating creative game content.',
+        })
+        this.currentProvider = null
 
         console.log('[Crater] ChatBotService initialized successfully')
 
@@ -60,14 +52,37 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             })
     }
 
+    private isValidApiKey(apiKey: string, provider: string): boolean {
+        if (!apiKey || apiKey.trim().length === 0) {
+            return false
+        }
+
+        // Basic validation for common API key formats
+        if (provider === 'gemini' && !apiKey.startsWith('AIza')) {
+            return false
+        }
+
+        if (provider === 'openai' && !apiKey.startsWith('sk-')) {
+            return false
+        }
+
+        if (apiKey.length < 20) {
+            return false
+        }
+
+        return true
+    }
+
     private async initializeAIProvider(): Promise<void> {
         try {
             console.log('[Crater] Initializing AI provider...')
             const config = vscode.workspace.getConfiguration('crater-ext')
-            const aiProvider = config.get<string>('aiProvider', 'mock')
+            const aiProvider = config.get<string>('aiProvider', 'gemini') // Default to gemini
             console.log('[Crater] Selected AI provider:', aiProvider)
 
-            let provider
+            let provider: GeminiImageProvider | OpenAIImageProvider | null =
+                null
+
             switch (aiProvider) {
                 case 'gemini': {
                     const geminiApiKey = config.get<string>('geminiApiKey')
@@ -75,16 +90,18 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         '[Crater] Gemini API key provided:',
                         !!geminiApiKey
                     )
-                    if (geminiApiKey) {
+                    if (
+                        geminiApiKey &&
+                        this.isValidApiKey(geminiApiKey, 'gemini')
+                    ) {
                         provider = new GeminiImageProvider({
                             apiKey: geminiApiKey,
                         })
                         console.log('[Crater] Initialized Gemini AI provider')
                     } else {
                         console.warn(
-                            '[Crater] Gemini API key not configured, falling back to Mock provider'
+                            '[Crater] Gemini API key not configured or invalid'
                         )
-                        provider = new MockImageProvider()
                     }
                     break
                 }
@@ -94,46 +111,69 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         '[Crater] OpenAI API key provided:',
                         !!openaiApiKey
                     )
-                    if (openaiApiKey) {
+                    if (
+                        openaiApiKey &&
+                        this.isValidApiKey(openaiApiKey, 'openai')
+                    ) {
                         provider = new OpenAIImageProvider({
                             apiKey: openaiApiKey,
                         })
                         console.log('[Crater] Initialized OpenAI provider')
                     } else {
                         console.warn(
-                            '[Crater] OpenAI API key not configured, falling back to Mock provider'
+                            '[Crater] OpenAI API key not configured or invalid'
                         )
-                        provider = new MockImageProvider()
                     }
                     break
                 }
                 default: {
-                    provider = new MockImageProvider()
-                    console.log('[Crater] Using Mock AI provider')
+                    console.log(
+                        '[Crater] Unknown provider, checking for any valid configuration'
+                    )
+                    // Check if any provider has a valid API key
+                    const geminiApiKey = config.get<string>('geminiApiKey')
+                    const openaiApiKey = config.get<string>('openaiApiKey')
+
+                    if (
+                        geminiApiKey &&
+                        this.isValidApiKey(geminiApiKey, 'gemini')
+                    ) {
+                        provider = new GeminiImageProvider({
+                            apiKey: geminiApiKey,
+                        })
+                        console.log('[Crater] Auto-selected Gemini provider')
+                    } else if (
+                        openaiApiKey &&
+                        this.isValidApiKey(openaiApiKey, 'openai')
+                    ) {
+                        provider = new OpenAIImageProvider({
+                            apiKey: openaiApiKey,
+                        })
+                        console.log('[Crater] Auto-selected OpenAI provider')
+                    }
                     break
                 }
             }
 
             this.currentProvider = provider
-            console.log(
-                '[Crater] Current provider set:',
-                provider.constructor.name
-            )
-            if (this.chatBotService) {
-                this.chatBotService.setAIProvider(provider)
+            if (provider) {
                 console.log(
-                    '[Crater] AI provider set on ChatBotService successfully'
+                    '[Crater] Current provider set:',
+                    provider.constructor.name
                 )
+                if (this.chatBotService) {
+                    this.chatBotService.setAIProvider(provider)
+                    console.log(
+                        '[Crater] AI provider set on ChatBotService successfully'
+                    )
+                }
+            } else {
+                console.log('[Crater] No valid AI provider configured')
             }
         } catch (error) {
             console.error('[Crater] Failed to initialize AI provider:', error)
-            // Fallback to mock provider
-            this.currentProvider = new MockImageProvider()
-            console.log('[Crater] Fallback to Mock provider due to error')
-            if (this.chatBotService) {
-                this.chatBotService.setAIProvider(this.currentProvider)
-                console.log('[Crater] Fallback provider set on ChatBotService')
-            }
+            this.currentProvider = null
+            console.log('[Crater] No provider available due to error')
         }
     }
 
@@ -145,7 +185,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         if (this._view) {
             this._view.webview.postMessage({
                 type: 'provider-updated',
-                provider: this.currentProvider?.type || 'mock',
+                provider: this.currentProvider?.type || null,
+                configured: !!this.currentProvider,
             })
         }
     }
@@ -208,6 +249,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         switch (message.type) {
             case 'chat-message':
+                if (!this.currentProvider) {
+                    this._view.webview.postMessage({
+                        type: 'chat-response',
+                        response:
+                            'Please configure your API key in settings first.',
+                    })
+                    break
+                }
                 if (message.text && this.chatBotService) {
                     try {
                         console.log(
@@ -244,7 +293,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             case 'get-provider-info':
                 this._view.webview.postMessage({
                     type: 'provider-info',
-                    provider: this.currentProvider?.type || 'mock',
+                    provider: this.currentProvider?.type || null,
+                    configured: !!this.currentProvider,
                 })
                 break
             case 'clear-chat':
@@ -254,7 +304,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 break
             case 'get-settings': {
                 const config = vscode.workspace.getConfiguration('crater-ext')
-                const aiProvider = config.get<string>('aiProvider', 'mock')
+                const aiProvider = config.get<string>('aiProvider', 'gemini')
                 const geminiApiKey = config.get<string>('geminiApiKey', '')
                 const openaiApiKey = config.get<string>('openaiApiKey', '')
                 this._view.webview.postMessage({
@@ -269,7 +319,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const config = vscode.workspace.getConfiguration('crater-ext')
                 const target = vscode.ConfigurationTarget.Global
 
-                const aiProvider = String(message['aiProvider'] || 'mock')
+                const aiProvider = String(message['aiProvider'] || 'gemini')
                 const apiKey = String(message['apiKey'] || '')
 
                 await config.update('aiProvider', aiProvider, target)
@@ -616,6 +666,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         </div>
     </div>
 
+    <!-- Configuration Required Page -->
+    <div class="page-content" id="configPage">
+        <div class="welcome-message">
+            ⚙️ Configuration Required
+        </div>
+        <div style="text-align: center; padding: 20px;">
+            <p style="margin-bottom: 20px; color: var(--vscode-descriptionForeground);">
+                To use the Game Asset Assistant, you need to configure an AI provider with a valid API key.
+            </p>
+            <button class="btn" id="goToSettingsBtn" style="background: var(--vscode-button-background); color: var(--vscode-button-foreground);">
+                Go to Settings
+            </button>
+        </div>
+    </div>
+
     <!-- Settings Page -->
     <div class="page-content" id="settingsPage">
         <div class="welcome-message">
@@ -625,7 +690,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         <div class="section">
             <label for="provider">Model Provider</label>
             <select id="provider">
-                <option value="mock">Mock (Demo) - No API key needed</option>
                 <option value="gemini">Google Gemini - Requires API key</option>
                 <option value="openai">OpenAI GPT - Requires API key</option>
             </select>
@@ -662,6 +726,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         const navProviderInfo = document.getElementById('provider-info');
 
         // Page containers
+        const configPage = document.getElementById('configPage');
         const chatPage = document.getElementById('chatPage');
         const settingsPage = document.getElementById('settingsPage');
 
@@ -674,6 +739,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         // Navigation state
         let currentPage = 'chat';
+        let isConfigured = false;
         
         console.log('[Crater WebView] DOM elements found:', {
             messagesContainer: !!messagesContainer,
@@ -734,12 +800,25 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         function updateProviderInfo(provider) {
-            const providerNames = {
-                'mock': 'Mock (Demo)',
-                'gemini': 'Google Gemini',
-                'openai': 'OpenAI GPT'
-            };
-            providerInfo.textContent = \`AI Provider: \${providerNames[provider] || provider}\`;
+            if (!provider) {
+                providerInfo.textContent = 'AI Provider: Not configured';
+                isConfigured = false;
+                // Show config page if not configured
+                if (currentPage === 'chat') {
+                    navigateToPage('config');
+                }
+            } else {
+                const providerNames = {
+                    'gemini': 'Google Gemini',
+                    'openai': 'OpenAI GPT'
+                };
+                providerInfo.textContent = \`AI Provider: \${providerNames[provider] || provider}\`;
+                isConfigured = true;
+                // Show chat page if configured and currently on config page
+                if (currentPage === 'config') {
+                    navigateToPage('chat');
+                }
+            }
         }
 
         // Navigation functions
@@ -747,11 +826,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             currentPage = page;
 
             // Update page visibility
+            configPage.classList.toggle('active', page === 'config');
             chatPage.classList.toggle('active', page === 'chat');
             settingsPage.classList.toggle('active', page === 'settings');
 
             // Update header
-            if (page === 'chat') {
+            if (page === 'config') {
+                pageTitle.textContent = '🎮 Game Asset Assistant';
+                backBtn.style.display = 'none';
+                settingsBtn.style.display = 'block';
+                navProviderInfo.style.display = 'none';
+            } else if (page === 'chat') {
                 pageTitle.textContent = '🎮 Game Asset Assistant';
                 backBtn.style.display = 'none';
                 settingsBtn.style.display = 'block';
@@ -767,8 +852,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         function validateApiKey(apiKey, provider) {
-            if (provider === 'mock') return { valid: true };
-
             if (!apiKey || apiKey.trim().length === 0) {
                 return { valid: false, message: 'API key is required' };
             }
@@ -793,22 +876,16 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             const provider = providerEl.value;
             const apiKey = apiKeyEl.value;
 
-            if (provider === 'mock') {
-                validationMessageEl.textContent = '';
-                validationMessageEl.className = 'validation-message';
-                return;
-            }
-
             const validation = validateApiKey(apiKey, provider);
             validationMessageEl.textContent = validation.message;
             validationMessageEl.className = 'validation-message ' + (validation.valid ? 'success' : 'error');
         }
 
         function updateApiKeyLabel() {
-            const map = { gemini: 'Gemini API Key', openai: 'OpenAI API Key', mock: 'API Key (unused for Mock)' };
+            const map = { gemini: 'Gemini API Key', openai: 'OpenAI API Key' };
             apiKeyLabelEl.textContent = map[providerEl.value] || 'API Key';
             const section = document.getElementById('apiKeySection');
-            section.style.display = providerEl.value === 'mock' ? 'none' : 'block';
+            section.style.display = 'block';
             updateValidation();
         }
 
@@ -824,6 +901,12 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         // Navigation event listeners
         settingsBtn.addEventListener('click', () => navigateToPage('settings'));
         backBtn.addEventListener('click', () => navigateToPage('chat'));
+
+        // Config page event listener
+        const goToSettingsBtn = document.getElementById('goToSettingsBtn');
+        if (goToSettingsBtn) {
+            goToSettingsBtn.addEventListener('click', () => navigateToPage('settings'));
+        }
 
         // Form event listeners
         providerEl.addEventListener('change', updateApiKeyLabel);
@@ -861,9 +944,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 case 'provider-info':
                 case 'provider-updated':
                     updateProviderInfo(message.provider);
+                    isConfigured = message.configured || false;
                     break;
                 case 'settings':
-                    providerEl.value = message.aiProvider || 'mock';
+                    providerEl.value = message.aiProvider || 'gemini';
                     if (message.aiProvider === 'gemini') apiKeyEl.value = message.geminiApiKey || '';
                     else if (message.aiProvider === 'openai') apiKeyEl.value = message.openaiApiKey || '';
                     else apiKeyEl.value = '';

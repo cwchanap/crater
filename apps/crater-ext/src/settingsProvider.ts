@@ -34,7 +34,7 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
                                 vscode.workspace.getConfiguration('crater-ext')
                             const aiProvider = config.get<string>(
                                 'aiProvider',
-                                'mock'
+                                'gemini'
                             )
                             const geminiApiKey = config.get<string>(
                                 'geminiApiKey',
@@ -58,7 +58,7 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
                             const target = vscode.ConfigurationTarget.Global
 
                             const aiProvider = String(
-                                msg['aiProvider'] || 'mock'
+                                msg['aiProvider'] || 'gemini'
                             )
                             const apiKey = String(msg['apiKey'] || '')
 
@@ -275,7 +275,6 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
        <div class="section">
          <label for="provider">Model Provider</label>
          <select id="provider">
-           <option value="mock">Mock (Demo) - No API key needed</option>
            <option value="gemini">Google Gemini - Requires API key</option>
            <option value="openai">OpenAI GPT - Requires API key</option>
          </select>
@@ -310,8 +309,6 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
     const validationMessageEl = document.getElementById('validationMessage')
 
     function validateApiKey(apiKey, provider) {
-      if (provider === 'mock') return { valid: true }
-
       if (!apiKey || apiKey.trim().length === 0) {
         return { valid: false, message: 'API key is required' }
       }
@@ -346,22 +343,16 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
       const provider = providerEl.value
       const apiKey = apiKeyEl.value
 
-      if (provider === 'mock') {
-        validationMessageEl.textContent = ''
-        validationMessageEl.className = 'validation-message'
-        return
-      }
-
       const validation = validateApiKey(apiKey, provider)
       validationMessageEl.textContent = validation.message
       validationMessageEl.className = 'validation-message ' + (validation.valid ? 'success' : 'error')
     }
 
     function updateApiKeyLabel() {
-      const map = { gemini: 'Gemini API Key', openai: 'OpenAI API Key', mock: 'API Key (unused for Mock)' }
+      const map = { gemini: 'Gemini API Key', openai: 'OpenAI API Key' }
       apiKeyLabelEl.textContent = map[providerEl.value] || 'API Key'
       const section = document.getElementById('apiKeySection')
-      section.style.display = providerEl.value === 'mock' ? 'none' : 'block'
+      section.style.display = 'block'
       updateValidation()
     }
 
@@ -392,7 +383,7 @@ export class SettingsProvider implements vscode.WebviewViewProvider {
       const msg = event.data
       switch (msg.type) {
         case 'settings':
-          providerEl.value = msg.aiProvider || 'mock'
+          providerEl.value = msg.aiProvider || 'gemini'
           if (msg.aiProvider === 'gemini') apiKeyEl.value = msg.geminiApiKey || ''
           else if (msg.aiProvider === 'openai') apiKeyEl.value = msg.openaiApiKey || ''
           else apiKeyEl.value = ''
