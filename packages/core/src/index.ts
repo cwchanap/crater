@@ -6,6 +6,5 @@ export * from './chatbot-service'
 export * from './web-chatbot-service'
 
 // Export AI providers
-export * from './providers/mock-provider'
 export * from './providers/gemini-provider'
 export * from './providers/openai-provider'

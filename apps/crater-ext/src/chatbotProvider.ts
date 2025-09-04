@@ -249,6 +249,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         switch (message.type) {
             case 'chat-message':
+            case 'send-message': {
                 if (!this.currentProvider) {
                     this._view.webview.postMessage({
                         type: 'chat-response',
@@ -257,15 +258,16 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     })
                     break
                 }
-                if (message.text && this.chatBotService) {
+                const messageText = (message.text || message.message) as string
+                if (messageText && this.chatBotService) {
                     try {
                         console.log(
                             '[Crater ChatbotProvider] Processing chat message:',
-                            message.text
+                            messageText
                         )
                         const response =
                             await this.chatBotService.generateResponse(
-                                message.text
+                                messageText
                             )
                         this._view.webview.postMessage({
                             type: 'chat-response',
@@ -283,6 +285,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     }
                 }
                 break
+            }
             case 'get-chat-history':
                 // For now, just send empty history
                 this._view.webview.postMessage({
