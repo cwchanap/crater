@@ -37,14 +37,24 @@ interface ExtendedChatMessage {
     }
 }
 
+interface ChatSession {
+    id: string
+    title: string
+    messages: ExtendedChatMessage[]
+    createdAt: string
+    lastActivity: string
+}
+
 export class ChatbotProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'crater-ext.chatbotView'
     private _view?: vscode.WebviewView
     private chatBotService: ChatBotService
     private currentProvider: GeminiImageProvider | OpenAIImageProvider | null
-    private _isInitialized = false
+    // private _isInitialized = false // Unused for now
     private _extensionContext?: vscode.ExtensionContext
     private _extendedChatHistory: ExtendedChatMessage[] = []
+    private _chatSessions: ChatSession[] = []
+    private _currentSessionId: string | null = null
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -76,7 +86,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         // Initialize AI provider based on configuration
         this.initializeAIProvider()
             .then(() => {
-                this._isInitialized = true
+                // this._isInitialized = true
                 console.log('[Crater] ChatbotProvider: Initialization complete')
             })
             .catch((error) => {
@@ -99,40 +109,96 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         try {
-            const storedData = this._extensionContext.globalState.get<
-                (
-                    | ExtendedChatMessage
-                    | {
-                          id: string
-                          text: string
-                          sender: 'user' | 'assistant'
-                          timestamp: string
-                      }
-                )[]
-            >('crater.chatHistory', [])
+            // Load chat sessions
+            const storedSessions = this._extensionContext.globalState.get<
+                ChatSession[]
+            >('crater.chatSessions', [])
+            this._chatSessions = storedSessions
 
-            // Handle migration from old format to new format
-            const storedMessages: ExtendedChatMessage[] = storedData.map(
-                (msg) => {
-                    if (!('messageType' in msg) || !msg.messageType) {
-                        // Old format - always convert to text since we don't have image data
-                        return {
-                            id: msg.id || this.generateMessageId(),
-                            text: msg.text,
-                            sender: msg.sender,
-                            timestamp: msg.timestamp,
-                            messageType: 'text' as const,
-                            // Note: old image messages won't have imageData, so they'll show as text only
-                        }
-                    }
-                    return msg as ExtendedChatMessage
+            // Load current session ID
+            this._currentSessionId = this._extensionContext.globalState.get<
+                string | null
+            >('crater.currentSessionId', null)
+
+            // If we have a current session, load its messages
+            if (this._currentSessionId) {
+                const currentSession = this._chatSessions.find(
+                    (s) => s.id === this._currentSessionId
+                )
+                if (currentSession) {
+                    this._extendedChatHistory = currentSession.messages
+                    console.log(
+                        `[Crater] Loaded ${currentSession.messages.length} messages from current session`
+                    )
+                } else {
+                    // Current session doesn't exist, clear it
+                    this._currentSessionId = null
+                    this._extendedChatHistory = []
                 }
-            )
+            } else {
+                // No current session, check for legacy chat history to migrate
+                const legacyData = this._extensionContext.globalState.get<
+                    (
+                        | ExtendedChatMessage
+                        | {
+                              id: string
+                              text: string
+                              sender: 'user' | 'assistant'
+                              timestamp: string
+                          }
+                    )[]
+                >('crater.chatHistory', [])
 
-            this._extendedChatHistory = storedMessages
+                if (legacyData.length > 0) {
+                    // Migrate legacy data to new session format
+                    const migratedMessages: ExtendedChatMessage[] =
+                        legacyData.map((msg) => {
+                            if (!('messageType' in msg) || !msg.messageType) {
+                                return {
+                                    id: msg.id ?? this.generateMessageId(),
+                                    text: msg.text,
+                                    sender: msg.sender,
+                                    timestamp: msg.timestamp,
+                                    messageType: 'text' as const,
+                                }
+                            }
+                            return msg as ExtendedChatMessage
+                        })
+
+                    // Create a new session with migrated data
+                    const migratedSession: ChatSession = {
+                        id: this.generateSessionId(),
+                        title: this.generateSessionTitle(migratedMessages),
+                        messages: migratedMessages,
+                        createdAt:
+                            migratedMessages[0]?.timestamp ||
+                            new Date().toISOString(),
+                        lastActivity:
+                            migratedMessages[migratedMessages.length - 1]
+                                ?.timestamp || new Date().toISOString(),
+                    }
+
+                    this._chatSessions = [migratedSession]
+                    this._currentSessionId = migratedSession.id
+                    this._extendedChatHistory = migratedMessages
+
+                    // Save migrated data and clean up legacy storage
+                    await this.saveChatSessions()
+                    await this._extensionContext.globalState.update(
+                        'crater.chatHistory',
+                        undefined
+                    )
+
+                    console.log(
+                        `[Crater] Migrated ${migratedMessages.length} messages to new session format`
+                    )
+                } else {
+                    this._extendedChatHistory = []
+                }
+            }
 
             console.log(
-                `[Crater] Loaded ${storedMessages.length} messages from chat history`
+                `[Crater] Loaded ${this._chatSessions.length} chat sessions`
             )
         } catch (error) {
             console.error('[Crater] Error loading chat history:', error)
@@ -148,35 +214,132 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         try {
-            await this._extensionContext.globalState.update(
-                'crater.chatHistory',
-                this._extendedChatHistory
-            )
+            // Update current session with latest messages
+            if (this._currentSessionId) {
+                const sessionIndex = this._chatSessions.findIndex(
+                    (s) => s.id === this._currentSessionId
+                )
+                if (sessionIndex >= 0) {
+                    this._chatSessions[sessionIndex].messages = [
+                        ...this._extendedChatHistory,
+                    ]
+                    this._chatSessions[sessionIndex].lastActivity =
+                        new Date().toISOString()
+
+                    // Update title if it's a generic title and we have messages
+                    if (
+                        this._chatSessions[sessionIndex].title.startsWith(
+                            'Chat '
+                        ) &&
+                        this._extendedChatHistory.length > 0
+                    ) {
+                        this._chatSessions[sessionIndex].title =
+                            this.generateSessionTitle(this._extendedChatHistory)
+                    }
+                }
+            }
+
+            await this.saveChatSessions()
             console.log(
-                `[Crater] Saved ${this._extendedChatHistory.length} messages to chat history`
+                `[Crater] Saved ${this._extendedChatHistory.length} messages to current session`
             )
         } catch (error) {
             console.error('[Crater] Error saving chat history:', error)
         }
     }
 
-    private async clearChatHistory(): Promise<void> {
-        if (!this._extensionContext) {
-            console.log(
-                '[Crater] No extension context available for clearing chat history'
-            )
-            return
-        }
+    private async saveChatSessions(): Promise<void> {
+        if (!this._extensionContext) return
 
         try {
-            this._extendedChatHistory = []
             await this._extensionContext.globalState.update(
-                'crater.chatHistory',
-                []
+                'crater.chatSessions',
+                this._chatSessions
             )
-            console.log('[Crater] Chat history cleared from storage')
+            await this._extensionContext.globalState.update(
+                'crater.currentSessionId',
+                this._currentSessionId
+            )
+            console.log(
+                `[Crater] Saved ${this._chatSessions.length} chat sessions`
+            )
         } catch (error) {
-            console.error('[Crater] Error clearing chat history:', error)
+            console.error('[Crater] Error saving chat sessions:', error)
+        }
+    }
+
+    private generateSessionId(): string {
+        return (
+            'session_' +
+            Date.now().toString() +
+            Math.random().toString(36).substring(2, 11)
+        )
+    }
+
+    private generateSessionTitle(messages: ExtendedChatMessage[]): string {
+        if (messages.length === 0) {
+            return `Chat ${new Date().toLocaleDateString()}`
+        }
+
+        // Find first user message to use as title base
+        const firstUserMessage = messages.find((m) => m.sender === 'user')
+        if (firstUserMessage) {
+            // Take first 30 characters and clean up
+            const titleBase = firstUserMessage.text
+                .substring(0, 30)
+                .replace(/\n/g, ' ')
+                .trim()
+            return titleBase.length < firstUserMessage.text.length
+                ? titleBase + '...'
+                : titleBase
+        }
+
+        return `Chat ${new Date().toLocaleDateString()}`
+    }
+
+    private async createNewChat(): Promise<void> {
+        // Save current chat if it has messages
+        if (this._extendedChatHistory.length > 0) {
+            await this.saveChatHistory()
+        }
+
+        // Create new session
+        const newSession: ChatSession = {
+            id: this.generateSessionId(),
+            title: `Chat ${new Date().toLocaleDateString()}`,
+            messages: [],
+            createdAt: new Date().toISOString(),
+            lastActivity: new Date().toISOString(),
+        }
+
+        this._chatSessions.unshift(newSession) // Add to beginning
+        this._currentSessionId = newSession.id
+        this._extendedChatHistory = []
+
+        await this.saveChatSessions()
+        console.log('[Crater] Created new chat session:', newSession.id)
+    }
+
+    private async loadChatSession(sessionId: string): Promise<void> {
+        // Save current chat if it has unsaved changes
+        if (this._extendedChatHistory.length > 0 && this._currentSessionId) {
+            await this.saveChatHistory()
+        }
+
+        const session = this._chatSessions.find((s) => s.id === sessionId)
+        if (session) {
+            this._currentSessionId = sessionId
+            this._extendedChatHistory = [...session.messages]
+
+            // Update last activity
+            session.lastActivity = new Date().toISOString()
+            await this.saveChatSessions()
+
+            console.log(
+                `[Crater] Loaded chat session: ${sessionId} with ${session.messages.length} messages`
+            )
+        } else {
+            console.error(`[Crater] Chat session not found: ${sessionId}`)
         }
     }
 
@@ -687,14 +850,51 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     configured: !!this.currentProvider,
                 })
                 break
-            case 'clear-chat':
-                // Clear extended chat history and storage
-                await this.clearChatHistory()
-
+            case 'new-chat':
+                await this.createNewChat()
                 this._view.webview.postMessage({
                     type: 'chat-cleared',
                 })
                 break
+            case 'get-chat-sessions': {
+                // Sort sessions by last activity (most recent first)
+                const sortedSessions = [...this._chatSessions].sort(
+                    (a, b) =>
+                        new Date(b.lastActivity).getTime() -
+                        new Date(a.lastActivity).getTime()
+                )
+                this._view.webview.postMessage({
+                    type: 'chat-sessions',
+                    sessions: sortedSessions.map((s) => ({
+                        id: s.id,
+                        title: s.title,
+                        createdAt: s.createdAt,
+                        lastActivity: s.lastActivity,
+                        messageCount: s.messages.length,
+                    })),
+                    currentSessionId: this._currentSessionId,
+                })
+                break
+            }
+            case 'load-chat-session': {
+                const sessionId = message.sessionId as string
+                if (sessionId) {
+                    await this.loadChatSession(sessionId)
+                    // Send updated chat history to webview
+                    const messages = this._extendedChatHistory.map((msg) => ({
+                        text: msg.text,
+                        sender: msg.sender,
+                        timestamp: new Date(msg.timestamp),
+                        messageType: msg.messageType,
+                        imageData: msg.imageData,
+                    }))
+                    this._view.webview.postMessage({
+                        type: 'chat-history',
+                        messages: messages,
+                    })
+                }
+                break
+            }
             case 'get-settings': {
                 const config = vscode.workspace.getConfiguration('crater-ext')
                 const aiProvider = config.get<string>('aiProvider', 'gemini')
@@ -963,6 +1163,33 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             margin-bottom: 12px;
         }
 
+        .new-chat-btn, .chat-history-btn {
+            padding: 6px 8px;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .new-chat-btn:hover, .chat-history-btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .new-chat-btn {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+
+        .new-chat-btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
         .timestamp {
             font-size: 10px;
             color: var(--vscode-descriptionForeground);
@@ -1006,6 +1233,95 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
         .validation-message.error { color: var(--vscode-errorForeground); }
         .validation-message.success { color: var(--vscode-charts-green); }
+
+        /* Chat History Modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--vscode-widget-border);
+            padding-bottom: 8px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--vscode-foreground);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--vscode-foreground);
+            padding: 0;
+        }
+
+        .chat-session-item {
+            padding: 12px;
+            border: 1px solid var(--vscode-widget-border);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .chat-session-item:hover {
+            background-color: var(--vscode-list-hoverBackground);
+        }
+
+        .chat-session-item.active {
+            background-color: var(--vscode-list-activeSelectionBackground);
+            border-color: var(--vscode-focusBorder);
+        }
+
+        .session-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: var(--vscode-foreground);
+        }
+
+        .session-info {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .no-sessions {
+            text-align: center;
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -1030,7 +1346,12 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             </div>
 
             <div class="controls">
-                <button class="clear-button" id="clear-button">Clear Chat</button>
+                <button class="new-chat-btn" id="new-chat-btn">
+                    ✨ New Chat
+                </button>
+                <button class="chat-history-btn" id="chat-history-btn">
+                    📂 History
+                </button>
             </div>
 
             <div class="input-container">
@@ -1052,6 +1373,19 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             <button class="btn" id="goToSettingsBtn" style="background: var(--vscode-button-background); color: var(--vscode-button-foreground);">
                 Go to Settings
             </button>
+        </div>
+    </div>
+
+    <!-- Chat History Modal -->
+    <div class="modal" id="chatHistoryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Chat History</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div id="chatSessionsList">
+                <div class="no-sessions">No previous chats found</div>
+            </div>
         </div>
     </div>
 
@@ -1123,7 +1457,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         const messagesContainer = document.getElementById('messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const clearButton = document.getElementById('clear-button');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const chatHistoryBtn = document.getElementById('chat-history-btn');
         const providerInfo = document.getElementById('provider-info');
 
         // Navigation elements
@@ -1131,6 +1466,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         const settingsBtn = document.getElementById('settingsBtn');
         const pageTitle = document.getElementById('pageTitle');
         const navProviderInfo = document.getElementById('provider-info');
+
+        // Modal elements
+        const chatHistoryModal = document.getElementById('chatHistoryModal');
+        const modalClose = document.getElementById('modalClose');
+        const chatSessionsList = document.getElementById('chatSessionsList');
 
         // Page containers
         const configPage = document.getElementById('configPage');
@@ -1169,7 +1509,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             messagesContainer: !!messagesContainer,
             messageInput: !!messageInput,
             sendButton: !!sendButton,
-            clearButton: !!clearButton,
+            newChatBtn: !!newChatBtn,
+            chatHistoryBtn: !!chatHistoryBtn,
             providerInfo: !!providerInfo,
             navProviderInfo: !!navProviderInfo
         });
@@ -1266,9 +1607,68 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             }
         }
 
-        function clearChat() {
-            console.log('[Crater WebView] clearChat called');
-            vscode.postMessage({ type: 'clear-chat' });
+        function newChat() {
+            console.log('[Crater WebView] newChat called');
+            vscode.postMessage({ type: 'new-chat' });
+        }
+
+        function showChatHistory() {
+            console.log('[Crater WebView] showChatHistory called');
+            chatHistoryModal.classList.add('show');
+            vscode.postMessage({ type: 'get-chat-sessions' });
+        }
+
+        function hideModal() {
+            chatHistoryModal.classList.remove('show');
+        }
+
+        function loadChatSession(sessionId) {
+            console.log('[Crater WebView] Loading chat session:', sessionId);
+            vscode.postMessage({ type: 'load-chat-session', sessionId });
+            hideModal();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            
+            if (isToday) {
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            } else {
+                return date.toLocaleDateString();
+            }
+        }
+
+        function renderChatSessions(sessions, currentSessionId) {
+            if (!sessions || sessions.length === 0) {
+                chatSessionsList.innerHTML = '<div class="no-sessions">No previous chats found</div>';
+                return;
+            }
+
+            const sessionsHtml = sessions.map(session => {
+                const isActive = session.id === currentSessionId;
+                return \`
+                    <div class="chat-session-item \${isActive ? 'active' : ''}" data-session-id="\${session.id}">
+                        <div class="session-title">\${session.title}</div>
+                        <div class="session-info">
+                            \${session.messageCount} messages • Last active: \${formatDate(session.lastActivity)}
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+
+            chatSessionsList.innerHTML = sessionsHtml;
+
+            // Add click listeners to session items
+            chatSessionsList.querySelectorAll('.chat-session-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const sessionId = item.dataset.sessionId;
+                    if (sessionId && sessionId !== currentSessionId) {
+                        loadChatSession(sessionId);
+                    }
+                });
+            });
         }
 
         function updateProviderInfo(provider) {
@@ -1475,7 +1875,16 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
 
         sendButton.addEventListener('click', sendMessage);
-        clearButton.addEventListener('click', clearChat);
+        newChatBtn.addEventListener('click', newChat);
+        chatHistoryBtn.addEventListener('click', showChatHistory);
+
+        // Modal event listeners
+        modalClose.addEventListener('click', hideModal);
+        chatHistoryModal.addEventListener('click', (e) => {
+            if (e.target === chatHistoryModal) {
+                hideModal();
+            }
+        });
 
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -1612,6 +2021,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     // Clear all messages except welcome
                     const allMessages = messagesContainer.querySelectorAll('.message:not(.welcome-message)');
                     allMessages.forEach(msg => msg.remove());
+                    break;
+                case 'chat-sessions':
+                    console.log('[Crater WebView] Received chat sessions:', message.sessions);
+                    renderChatSessions(message.sessions, message.currentSessionId);
                     break;
                 case 'provider-info':
                 case 'provider-updated':
