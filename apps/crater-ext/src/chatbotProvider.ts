@@ -736,8 +736,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             if (img.url) {
                                 imageUrls.push(img.url)
                             } else if (img.base64) {
-                                // img.base64 already contains the full data URL
-                                imageUrls.push(img.base64)
+                                // OpenAI provider returns raw base64 data, need to convert to data URL
+                                const dataUrl = img.base64.startsWith('data:')
+                                    ? img.base64
+                                    : `data:image/png;base64,${img.base64}`
+                                imageUrls.push(dataUrl)
 
                                 // Extract just the base64 data for saving to file
                                 const base64Data = img.base64.includes(
