@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run:*)",
+      "Read(//Users/chanwaichan/workspace/crater/packages/core/**)",
+      "Bash(find:*)",
+      "Read(//Users/chanwaichan/workspace/crater/**)",
+      "mcp__Context7__resolve-library-id",
+      "mcp__Context7__get-library-docs"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

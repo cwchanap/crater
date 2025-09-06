@@ -40,6 +40,30 @@ export interface AIGenerationResponse {
     metadata?: Record<string, unknown>
 }
 
+export interface ImageGenerationRequest {
+    /** Text prompt for image generation */
+    prompt: string
+    /** Image size (e.g., "1024x1024", "512x512") */
+    size?: string
+    /** Quality setting */
+    quality?: 'standard' | 'hd' | 'low' | 'medium' | 'high' | 'auto'
+    /** Style setting */
+    style?: 'vivid' | 'natural'
+    /** Number of images to generate */
+    n?: number
+}
+
+export interface ImageGenerationResponse {
+    /** Generated images as base64 or URLs */
+    images: Array<{
+        url?: string
+        base64?: string
+        revisedPrompt?: string
+    }>
+    /** Provider-specific metadata */
+    metadata?: Record<string, unknown>
+}
+
 export interface AIProviderError {
     /** Error code from the provider */
     code: string
@@ -76,6 +100,13 @@ export abstract class BaseImageModelProvider {
     abstract generateResponse(
         request: AIGenerationRequest
     ): Promise<AIGenerationResponse>
+
+    /**
+     * Generate an image based on the request (optional for providers that support it)
+     */
+    generateImage?(
+        request: ImageGenerationRequest
+    ): Promise<ImageGenerationResponse>
 
     /**
      * Check if the provider is properly configured

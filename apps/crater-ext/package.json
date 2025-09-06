@@ -76,14 +76,12 @@
       "properties": {
         "crater-ext.aiProvider": {
           "type": "string",
-          "default": "mock",
+          "default": "gemini",
           "enum": [
-            "mock",
             "gemini",
             "openai"
           ],
           "enumDescriptions": [
-            "Mock provider with hardcoded responses (no API key needed)",
             "Google Gemini AI provider (requires API key)",
             "OpenAI GPT-4 Vision provider (requires API key)"
           ],
@@ -98,6 +96,21 @@
           "type": "string",
           "default": "",
           "description": "OpenAI API key (required when using OpenAI provider)"
+        },
+        "crater-ext.aiModel": {
+          "type": "string",
+          "default": "gemini-2.0-flash-exp",
+          "description": "AI model to use for generating responses"
+        },
+        "crater-ext.imageSaveDirectory": {
+          "type": "string",
+          "default": "${workspaceFolder}/images",
+          "description": "Directory where generated images will be saved. Supports VS Code variables like ${workspaceFolder}"
+        },
+        "crater-ext.autoSaveImages": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save generated images to the configured directory"
         }
       }
     }

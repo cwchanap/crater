@@ -3,6 +3,8 @@ import {
     AIProviderConfig,
     AIGenerationRequest,
     AIGenerationResponse,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
     AIProviderError,
 } from '../base-provider'
 
@@ -81,6 +83,20 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         } catch (error) {
             throw this.handleGeminiError(error)
         }
+    }
+
+    /**
+     * Generate an image using Gemini (currently not supported)
+     * Note: Google does not currently provide a public image generation API
+     */
+    async generateImage(
+        _request: ImageGenerationRequest
+    ): Promise<ImageGenerationResponse> {
+        throw new Error(
+            'Image generation is not currently supported by Google Gemini. ' +
+                'Google does not provide a public image generation API like DALL-E. ' +
+                'Please use the OpenAI provider for image generation capabilities.'
+        )
     }
 
     /**

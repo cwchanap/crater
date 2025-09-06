@@ -4,6 +4,8 @@ import {
     AssetSuggestion,
     BaseImageModelProvider,
     AIGenerationRequest,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
 } from './types'
 
 /**
@@ -70,6 +72,51 @@ export class ChatBotService {
 
         // Fallback to hardcoded responses
         return this.generateHardcodedResponse(userMessage)
+    }
+
+    /**
+     * Generate an image based on user input
+     */
+    async generateImage(
+        prompt: string,
+        options: Partial<ImageGenerationRequest> = {}
+    ): Promise<ImageGenerationResponse> {
+        if (!this.aiProvider) {
+            throw new Error('No AI provider configured for image generation')
+        }
+
+        if (!this.aiProvider.isConfigured()) {
+            throw new Error(
+                'AI provider is not configured. Please provide an API key.'
+            )
+        }
+
+        if (!this.aiProvider.generateImage) {
+            throw new Error(
+                `Image generation is not supported by the current provider (${this.aiProvider.type}). ` +
+                    'Please use the OpenAI provider for image generation capabilities.'
+            )
+        }
+
+        const request: ImageGenerationRequest = {
+            prompt: this.buildImagePrompt(prompt),
+            size: options.size ?? '1024x1024',
+            quality: options.quality ?? 'auto',
+            style: options.style ?? 'vivid',
+            n: options.n ?? 1,
+            ...options,
+        }
+
+        return await this.aiProvider.generateImage(request)
+    }
+
+    /**
+     * Build a comprehensive prompt for image generation specifically for game assets
+     */
+    private buildImagePrompt(userPrompt: string): string {
+        return `Create a high-quality game asset: ${userPrompt}. 
+Style: Professional game art, clean design, suitable for video games. 
+Requirements: Clear details, good contrast, game-ready aesthetic.`
     }
 
     /**

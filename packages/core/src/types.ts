@@ -31,4 +31,3 @@ export * from './base-provider'
 // Re-export provider implementations
 export { GeminiImageProvider } from './providers/gemini-provider'
 export { OpenAIImageProvider } from './providers/openai-provider'
-export { MockImageProvider } from './providers/mock-provider'

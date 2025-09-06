@@ -1,4 +1,6 @@
 import * as vscode from 'vscode'
+import * as fs from 'fs'
+import * as path from 'path'
 import {
     ChatBotService,
     GeminiImageProvider,
@@ -191,6 +193,68 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private async saveImageToFile(
+        base64Data: string,
+        prompt: string
+    ): Promise<string | null> {
+        try {
+            const config = vscode.workspace.getConfiguration('crater-ext')
+            const autoSave = config.get<boolean>('autoSaveImages', true)
+
+            if (!autoSave) {
+                return null
+            }
+
+            let saveDirectory = config.get<string>(
+                'imageSaveDirectory',
+                '${workspaceFolder}/images'
+            )
+
+            // Resolve VS Code variables
+            if (
+                vscode.workspace.workspaceFolders &&
+                vscode.workspace.workspaceFolders.length > 0
+            ) {
+                const workspaceFolder =
+                    vscode.workspace.workspaceFolders[0].uri.fsPath
+                saveDirectory = saveDirectory.replace(
+                    '${workspaceFolder}',
+                    workspaceFolder
+                )
+            } else {
+                // No workspace, use extension directory
+                saveDirectory = path.join(this._extensionUri.fsPath, 'images')
+            }
+
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(saveDirectory)) {
+                fs.mkdirSync(saveDirectory, { recursive: true })
+            }
+
+            // Generate filename from prompt and timestamp
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+            const sanitizedPrompt = prompt
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 50)
+
+            const filename = `${sanitizedPrompt}_${timestamp}.png`
+            const filePath = path.join(saveDirectory, filename)
+
+            // Convert base64 to buffer and save
+            const imageBuffer = Buffer.from(base64Data, 'base64')
+            fs.writeFileSync(filePath, imageBuffer)
+
+            console.log(`[Crater] Image saved to: ${filePath}`)
+            return filePath
+        } catch (error) {
+            console.error('[Crater] Error saving image:', error)
+            vscode.window.showErrorMessage(`Failed to save image: ${error}`)
+            return null
+        }
+    }
+
     // This method is called by VS Code when the view needs to be shown
     resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -265,22 +329,102 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             '[Crater ChatbotProvider] Processing chat message:',
                             messageText
                         )
-                        const response =
-                            await this.chatBotService.generateResponse(
-                                messageText
+
+                        // Generate image directly without fallback
+                        const imageResponse =
+                            await this.chatBotService.generateImage(messageText)
+                        console.log(
+                            '[Crater ChatbotProvider] Image generated successfully'
+                        )
+                        console.log(
+                            '[Crater ChatbotProvider] Raw image response:',
+                            JSON.stringify(imageResponse, null, 2)
+                        )
+
+                        // Process images and save them if enabled
+                        const imageUrls: string[] = []
+                        const savedPaths: string[] = []
+
+                        for (const img of imageResponse.images) {
+                            if (img.url) {
+                                imageUrls.push(img.url)
+                            } else if (img.base64) {
+                                // Convert base64 to data URL for display
+                                imageUrls.push(
+                                    `data:image/png;base64,${img.base64}`
+                                )
+
+                                // Save image to file
+                                const savedPath = await this.saveImageToFile(
+                                    img.base64,
+                                    messageText
+                                )
+                                if (savedPath) {
+                                    savedPaths.push(savedPath)
+                                }
+                            }
+                        }
+
+                        console.log(
+                            '[Crater ChatbotProvider] Extracted URLs/Data URLs:',
+                            imageUrls
+                        )
+                        console.log(
+                            '[Crater ChatbotProvider] Saved image paths:',
+                            savedPaths
+                        )
+
+                        if (imageUrls.length > 0) {
+                            this._view.webview.postMessage({
+                                type: 'image-response',
+                                images: imageUrls,
+                                prompt: messageText,
+                                savedPaths: savedPaths,
+                            })
+
+                            // Show success message if images were saved
+                            if (savedPaths.length > 0) {
+                                vscode.window.showInformationMessage(
+                                    `Generated ${savedPaths.length} image(s) and saved to ${path.dirname(savedPaths[0])}`
+                                )
+                            }
+                        } else {
+                            throw new Error(
+                                `No image URLs or base64 data received from provider. Response structure: ${JSON.stringify(imageResponse, null, 2)}`
                             )
-                        this._view.webview.postMessage({
-                            type: 'chat-response',
-                            response: response,
-                        })
+                        }
                     } catch (error) {
                         console.error(
                             '[Crater ChatbotProvider] Error generating response:',
                             error
                         )
+
+                        let errorMessage = 'Unknown error occurred'
+
+                        if (error instanceof Error) {
+                            errorMessage = error.message
+                        } else if (error && typeof error === 'object') {
+                            // Handle custom error objects like AIProviderError
+                            if (
+                                'message' in error &&
+                                typeof error.message === 'string'
+                            ) {
+                                errorMessage = error.message
+                            } else if (
+                                'originalError' in error &&
+                                error.originalError instanceof Error
+                            ) {
+                                errorMessage = error.originalError.message
+                            } else {
+                                errorMessage = JSON.stringify(error, null, 2)
+                            }
+                        } else {
+                            errorMessage = String(error)
+                        }
+
                         this._view.webview.postMessage({
                             type: 'chat-response',
-                            response: `Error: ${error instanceof Error ? error.message : String(error)}`,
+                            response: `❌ **Error**: ${errorMessage}`,
                         })
                     }
                 }
@@ -308,13 +452,30 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             case 'get-settings': {
                 const config = vscode.workspace.getConfiguration('crater-ext')
                 const aiProvider = config.get<string>('aiProvider', 'gemini')
+                const aiModel = config.get<string>(
+                    'aiModel',
+                    aiProvider === 'gemini'
+                        ? 'gemini-2.5-flash-image-preview'
+                        : 'gpt-image-1'
+                )
                 const geminiApiKey = config.get<string>('geminiApiKey', '')
                 const openaiApiKey = config.get<string>('openaiApiKey', '')
+                const imageSaveDirectory = config.get<string>(
+                    'imageSaveDirectory',
+                    '${workspaceFolder}/images'
+                )
+                const autoSaveImages = config.get<boolean>(
+                    'autoSaveImages',
+                    true
+                )
                 this._view.webview.postMessage({
                     type: 'settings',
                     aiProvider,
+                    aiModel,
                     geminiApiKey,
                     openaiApiKey,
+                    imageSaveDirectory,
+                    autoSaveImages,
                 })
                 break
             }
@@ -323,9 +484,28 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const target = vscode.ConfigurationTarget.Global
 
                 const aiProvider = String(message['aiProvider'] || 'gemini')
+                const aiModel = String(
+                    message['aiModel'] ||
+                        (aiProvider === 'gemini'
+                            ? 'gemini-2.5-flash-image-preview'
+                            : 'gpt-image-1')
+                )
                 const apiKey = String(message['apiKey'] || '')
+                const imageSaveDirectory = String(
+                    message['imageSaveDirectory'] || '${workspaceFolder}/images'
+                )
+                const autoSaveImages = Boolean(
+                    message['autoSaveImages'] ?? true
+                )
 
                 await config.update('aiProvider', aiProvider, target)
+                await config.update('aiModel', aiModel, target)
+                await config.update(
+                    'imageSaveDirectory',
+                    imageSaveDirectory,
+                    target
+                )
+                await config.update('autoSaveImages', autoSaveImages, target)
 
                 if (aiProvider === 'gemini') {
                     await config.update('geminiApiKey', apiKey, target)
@@ -348,69 +528,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     message.type
                 )
         }
-    }
-
-    private _getErrorHtmlForWebview(error: Error | string): string {
-        console.log('[Crater] Generating error HTML for WebView')
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crater - Error</title>
-    <style>
-        body {
-            font-family: var(--vscode-font-family);
-            color: var(--vscode-foreground);
-            background-color: var(--vscode-editor-background);
-            margin: 20px;
-            text-align: center;
-        }
-        .error-container {
-            border: 1px solid var(--vscode-errorBorder);
-            background-color: var(--vscode-inputValidation-errorBackground);
-            border-radius: 4px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        .error-title {
-            color: var(--vscode-errorForeground);
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .error-message {
-            color: var(--vscode-foreground);
-            margin-bottom: 15px;
-        }
-        .retry-button {
-            background-color: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .retry-button:hover {
-            background-color: var(--vscode-button-hoverBackground);
-        }
-    </style>
-</head>
-<body>
-    <div class="error-container">
-        <div class="error-title">🔧 Crater Initialization Error</div>
-        <div class="error-message">
-            Failed to initialize the Game Asset Assistant.<br>
-            <small>Error: ${error instanceof Error ? error.message : String(error)}</small>
-        </div>
-        <button class="retry-button" onclick="location.reload()">Retry</button>
-    </div>
-    <script>
-        console.log('[Crater WebView] Error page loaded');
-    </script>
-</body>
-</html>`
     }
 
     private _getHtmlForWebview(_webview: vscode.Webview) {
@@ -699,6 +816,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             <div class="note">Choose your preferred AI provider for generating game assets</div>
         </div>
 
+        <div class="section" id="modelSection">
+            <label for="model">Model</label>
+            <select id="model">
+                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.0-pro-vision">Gemini 1.0 Pro Vision</option>
+            </select>
+            <div class="note">Select the specific model to use for AI generation</div>
+        </div>
+
         <div class="section" id="apiKeySection">
             <label id="apiKeyLabel" for="apiKey">API Key</label>
             <input id="apiKey" type="password" placeholder="Enter API key" />
@@ -735,6 +863,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         // Settings form elements
         const providerEl = document.getElementById('provider');
+        const modelEl = document.getElementById('model');
         const apiKeyEl = document.getElementById('apiKey');
         const apiKeyLabelEl = document.getElementById('apiKeyLabel');
         const saveBtn = document.getElementById('saveBtn');
@@ -743,6 +872,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         // Navigation state
         let currentPage = 'chat';
         let isConfigured = false;
+        let isLoadingSettings = false;
+        
+        // Store API keys temporarily while user is switching providers
+        let tempApiKeys = {
+            gemini: '',
+            openai: ''
+        };
+        let currentProvider = 'gemini';
         
         console.log('[Crater WebView] DOM elements found:', {
             messagesContainer: !!messagesContainer,
@@ -772,6 +909,54 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
+        function addImageMessage(imageUrls, prompt, timestamp) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            
+            // Add prompt text
+            const promptText = document.createElement('div');
+            promptText.textContent = \`Generated image for: "\${prompt}"\`;
+            promptText.style.marginBottom = '8px';
+            promptText.style.fontStyle = 'italic';
+            messageDiv.appendChild(promptText);
+            
+            // Add images
+            imageUrls.forEach(imageUrl => {
+                const imageEl = document.createElement('img');
+                imageEl.src = imageUrl;
+                imageEl.style.maxWidth = '100%';
+                imageEl.style.height = 'auto';
+                imageEl.style.borderRadius = '4px';
+                imageEl.style.marginBottom = '4px';
+                imageEl.alt = \`Generated game asset: \${prompt}\`;
+                
+                // Add loading and error handling
+                imageEl.onload = () => {
+                    console.log('[Crater WebView] Image loaded successfully');
+                };
+                imageEl.onerror = () => {
+                    console.error('[Crater WebView] Failed to load image:', imageUrl);
+                    imageEl.style.display = 'none';
+                    const errorText = document.createElement('div');
+                    errorText.textContent = '❌ Failed to load image';
+                    errorText.style.color = 'var(--vscode-errorForeground)';
+                    messageDiv.appendChild(errorText);
+                };
+                
+                messageDiv.appendChild(imageEl);
+            });
+            
+            if (timestamp) {
+                const timestampDiv = document.createElement('div');
+                timestampDiv.className = 'timestamp';
+                timestampDiv.textContent = new Date(timestamp).toLocaleTimeString();
+                messageDiv.appendChild(timestampDiv);
+            }
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
         function sendMessage() {
             console.log('[Crater WebView] sendMessage called');
             const message = messageInput.value.trim();
@@ -782,7 +967,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 // Show loading message
                 const loadingDiv = document.createElement('div');
                 loadingDiv.className = 'message assistant loading';
-                loadingDiv.textContent = '🤔 Thinking...';
+                loadingDiv.textContent = '🎨 Generating your game asset...';
                 loadingDiv.id = 'loading-message';
                 messagesContainer.appendChild(loadingDiv);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -851,6 +1036,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 navProviderInfo.style.display = 'none';
                 // Request current settings when navigating to settings
                 vscode.postMessage({ type: 'get-settings' });
+                // Update model options after settings are loaded
+                setTimeout(() => updateModelOptions(), 100);
             }
         }
 
@@ -892,6 +1079,35 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             updateValidation();
         }
 
+        function updateModelOptions() {
+            const provider = providerEl.value;
+            const modelSection = document.getElementById('modelSection');
+
+            // Clear existing options
+            modelEl.innerHTML = '';
+
+            const models = {
+                gemini: [
+                    { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image Preview' }
+                ],
+                openai: [
+                    { value: 'gpt-image-1', label: 'GPT-Image-1 (Latest)' }
+                ]
+            };
+
+            const providerModels = models[provider] || [];
+            providerModels.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.value;
+                option.textContent = model.label;
+                modelEl.appendChild(option);
+            });
+
+            // Show model section
+            modelSection.style.display = 'block';
+        }
+
+
         sendButton.addEventListener('click', sendMessage);
         clearButton.addEventListener('click', clearChat);
 
@@ -912,8 +1128,44 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         // Form event listeners
-        providerEl.addEventListener('change', updateApiKeyLabel);
-        apiKeyEl.addEventListener('input', updateValidation);
+        providerEl.addEventListener('change', () => {
+            // Ignore changes during settings loading to prevent overriding user selections
+            if (isLoadingSettings) return;
+            
+            // Save current API key before switching
+            if (currentProvider === 'gemini') {
+                tempApiKeys.gemini = apiKeyEl.value;
+            } else if (currentProvider === 'openai') {
+                tempApiKeys.openai = apiKeyEl.value;
+            }
+            
+            // Update current provider tracking
+            currentProvider = providerEl.value;
+            
+            // Update UI elements for new provider
+            updateApiKeyLabel();
+            updateModelOptions();
+            
+            // Restore API key for the selected provider
+            if (currentProvider === 'gemini') {
+                apiKeyEl.value = tempApiKeys.gemini;
+            } else if (currentProvider === 'openai') {
+                apiKeyEl.value = tempApiKeys.openai;
+            } else {
+                apiKeyEl.value = '';
+            }
+            
+            updateValidation();
+        });
+        apiKeyEl.addEventListener('input', () => {
+            // Update temporary storage when user types
+            if (currentProvider === 'gemini') {
+                tempApiKeys.gemini = apiKeyEl.value;
+            } else if (currentProvider === 'openai') {
+                tempApiKeys.openai = apiKeyEl.value;
+            }
+            updateValidation();
+        });
 
         // Handle messages from the extension
         window.addEventListener('message', event => {
@@ -928,6 +1180,15 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         loadingMessage.remove();
                     }
                     addMessage(message.response, 'assistant', new Date());
+                    break;
+                case 'image-response':
+                    console.log('[Crater WebView] Processing image response');
+                    // Remove loading message
+                    const imageLoadingMessage = document.getElementById('loading-message');
+                    if (imageLoadingMessage) {
+                        imageLoadingMessage.remove();
+                    }
+                    addImageMessage(message.images, message.prompt, new Date());
                     break;
                 case 'chat-history':
                     // Clear existing messages except welcome
@@ -950,11 +1211,29 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     isConfigured = message.configured || false;
                     break;
                 case 'settings':
+                    isLoadingSettings = true;
+                    
+                    // Store API keys in temporary storage
+                    tempApiKeys.gemini = message.geminiApiKey || '';
+                    tempApiKeys.openai = message.openaiApiKey || '';
+                    
+                    // Update provider dropdown and track current provider
                     providerEl.value = message.aiProvider || 'gemini';
-                    if (message.aiProvider === 'gemini') apiKeyEl.value = message.geminiApiKey || '';
-                    else if (message.aiProvider === 'openai') apiKeyEl.value = message.openaiApiKey || '';
-                    else apiKeyEl.value = '';
+                    currentProvider = message.aiProvider || 'gemini';
+                    
+                    // Update API key based on the provider from settings
+                    if (message.aiProvider === 'gemini') {
+                        apiKeyEl.value = tempApiKeys.gemini;
+                    } else if (message.aiProvider === 'openai') {
+                        apiKeyEl.value = tempApiKeys.openai;
+                    } else {
+                        apiKeyEl.value = '';
+                    }
                     updateApiKeyLabel();
+                    updateModelOptions();
+                    if (message.aiModel) modelEl.value = message.aiModel;
+                    
+                    isLoadingSettings = false;
                     break;
                 case 'settings-saved':
                     navigateToPage('chat');
@@ -970,6 +1249,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             vscode.postMessage({
                 type: 'save-settings',
                 aiProvider: providerEl.value,
+                aiModel: modelEl.value,
                 apiKey: apiKeyEl.value
             });
         });
