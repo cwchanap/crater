@@ -1573,7 +1573,13 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             // Add images
             imageUrls.forEach(imageUrl => {
                 const imageEl = document.createElement('img');
-                imageEl.src = imageUrl;
+                
+                // Handle legacy raw base64 data by converting to proper data URL
+                const processedImageUrl = imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
+                    ? imageUrl 
+                    : \`data:image/png;base64,\${imageUrl}\`;
+                
+                imageEl.src = processedImageUrl;
                 imageEl.style.maxWidth = '100%';
                 imageEl.style.height = 'auto';
                 imageEl.style.borderRadius = '4px';
@@ -1585,7 +1591,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     console.log('[Crater WebView] Image loaded successfully');
                 };
                 imageEl.onerror = () => {
-                    console.error('[Crater WebView] Failed to load image:', imageUrl);
+                    console.error('[Crater WebView] Failed to load image:', processedImageUrl);
                     imageEl.style.display = 'none';
                     const errorText = document.createElement('div');
                     errorText.textContent = '❌ Failed to load image';
