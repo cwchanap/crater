@@ -10,8 +10,31 @@ import {
 interface WebviewMessage {
     type: string
     text?: string
-    messages?: Array<{ text: string; sender: string; timestamp: Date }>
+    messages?: Array<{
+        text: string
+        sender: string
+        timestamp: Date
+        messageType?: 'text' | 'image'
+        imageData?: {
+            images: string[]
+            prompt: string
+            savedPaths?: string[]
+        }
+    }>
     [key: string]: unknown
+}
+
+interface ExtendedChatMessage {
+    id: string
+    text: string
+    sender: 'user' | 'assistant'
+    timestamp: string
+    messageType?: 'text' | 'image'
+    imageData?: {
+        images: string[]
+        prompt: string
+        savedPaths?: string[]
+    }
 }
 
 export class ChatbotProvider implements vscode.WebviewViewProvider {
@@ -20,13 +43,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     private chatBotService: ChatBotService
     private currentProvider: GeminiImageProvider | OpenAIImageProvider | null
     private _isInitialized = false
+    private _extensionContext?: vscode.ExtensionContext
+    private _extendedChatHistory: ExtendedChatMessage[] = []
 
-    constructor(private readonly _extensionUri: vscode.Uri) {
+    constructor(
+        private readonly _extensionUri: vscode.Uri,
+        extensionContext?: vscode.ExtensionContext
+    ) {
         console.log('[Crater] ChatbotProvider constructor called')
         console.log(
             '[Crater] Extension URI in constructor:',
             _extensionUri.toString()
         )
+
+        // Store extension context for persistent storage
+        this._extensionContext = extensionContext
 
         // Initialize without provider - will be set during initializeAIProvider
         this.chatBotService = new ChatBotService({
@@ -36,6 +67,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         this.currentProvider = null
 
         console.log('[Crater] ChatBotService initialized successfully')
+
+        // Load chat history from storage
+        this.loadChatHistory().catch((error) => {
+            console.error('[Crater] Failed to load chat history:', error)
+        })
 
         // Initialize AI provider based on configuration
         this.initializeAIProvider()
@@ -52,6 +88,119 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     `[Crater] Failed to initialize chatbot: ${error instanceof Error ? error.message : String(error)}`
                 )
             })
+    }
+
+    private async loadChatHistory(): Promise<void> {
+        if (!this._extensionContext) {
+            console.log(
+                '[Crater] No extension context available for loading chat history'
+            )
+            return
+        }
+
+        try {
+            const storedData = this._extensionContext.globalState.get<
+                (
+                    | ExtendedChatMessage
+                    | {
+                          id: string
+                          text: string
+                          sender: 'user' | 'assistant'
+                          timestamp: string
+                      }
+                )[]
+            >('crater.chatHistory', [])
+
+            // Handle migration from old format to new format
+            const storedMessages: ExtendedChatMessage[] = storedData.map(
+                (msg) => {
+                    if (!('messageType' in msg) || !msg.messageType) {
+                        // Old format - always convert to text since we don't have image data
+                        return {
+                            id: msg.id || this.generateMessageId(),
+                            text: msg.text,
+                            sender: msg.sender,
+                            timestamp: msg.timestamp,
+                            messageType: 'text' as const,
+                            // Note: old image messages won't have imageData, so they'll show as text only
+                        }
+                    }
+                    return msg as ExtendedChatMessage
+                }
+            )
+
+            this._extendedChatHistory = storedMessages
+
+            console.log(
+                `[Crater] Loaded ${storedMessages.length} messages from chat history`
+            )
+        } catch (error) {
+            console.error('[Crater] Error loading chat history:', error)
+        }
+    }
+
+    private async saveChatHistory(): Promise<void> {
+        if (!this._extensionContext) {
+            console.log(
+                '[Crater] No extension context available for saving chat history'
+            )
+            return
+        }
+
+        try {
+            await this._extensionContext.globalState.update(
+                'crater.chatHistory',
+                this._extendedChatHistory
+            )
+            console.log(
+                `[Crater] Saved ${this._extendedChatHistory.length} messages to chat history`
+            )
+        } catch (error) {
+            console.error('[Crater] Error saving chat history:', error)
+        }
+    }
+
+    private async clearChatHistory(): Promise<void> {
+        if (!this._extensionContext) {
+            console.log(
+                '[Crater] No extension context available for clearing chat history'
+            )
+            return
+        }
+
+        try {
+            this._extendedChatHistory = []
+            await this._extensionContext.globalState.update(
+                'crater.chatHistory',
+                []
+            )
+            console.log('[Crater] Chat history cleared from storage')
+        } catch (error) {
+            console.error('[Crater] Error clearing chat history:', error)
+        }
+    }
+
+    private generateMessageId(): string {
+        return (
+            Date.now().toString() + Math.random().toString(36).substring(2, 11)
+        )
+    }
+
+    private addMessageToHistory(
+        text: string,
+        sender: 'user' | 'assistant',
+        messageType: 'text' | 'image' = 'text',
+        imageData?: { images: string[]; prompt: string; savedPaths?: string[] }
+    ): void {
+        const message: ExtendedChatMessage = {
+            id: this.generateMessageId(),
+            text,
+            sender,
+            timestamp: new Date().toISOString(),
+            messageType,
+            imageData,
+        }
+        this._extendedChatHistory.push(message)
     }
 
     private isValidApiKey(apiKey: string, provider: string): boolean {
@@ -322,6 +471,36 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         console.log(
             '[Crater ChatbotProvider] resolveWebviewView completed successfully'
         )
+
+        // Proactively send chat history to the webview after a short delay
+        // This helps with cases where the webview loads before the initial request is made
+        setTimeout(() => {
+            this.loadChatHistory()
+                .then(() => {
+                    const messages = this._extendedChatHistory.map((msg) => ({
+                        text: msg.text,
+                        sender: msg.sender,
+                        timestamp: new Date(msg.timestamp),
+                        messageType: msg.messageType,
+                        imageData: msg.imageData,
+                    }))
+                    if (messages.length > 0 && this._view) {
+                        console.log(
+                            `[Crater ChatbotProvider] Proactively sending ${messages.length} messages to newly created webview`
+                        )
+                        this._view.webview.postMessage({
+                            type: 'chat-history',
+                            messages: messages,
+                        })
+                    }
+                })
+                .catch((error) => {
+                    console.error(
+                        '[Crater] Error proactively loading chat history:',
+                        error
+                    )
+                })
+        }, 200)
     }
 
     private async _handleMessage(message: WebviewMessage): Promise<void> {
@@ -352,6 +531,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             '[Crater ChatbotProvider] Processing chat message:',
                             messageText
                         )
+
+                        // Add user message to extended chat history
+                        this.addMessageToHistory(messageText, 'user', 'text')
 
                         // Generate image directly without fallback
                         const imageResponse =
@@ -398,6 +580,22 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         )
 
                         if (imageUrls.length > 0) {
+                            // Add assistant response to extended chat history with image data
+                            const responseText = `Generated ${imageUrls.length} image(s) for: "${messageText}"`
+                            this.addMessageToHistory(
+                                responseText,
+                                'assistant',
+                                'image',
+                                {
+                                    images: imageUrls,
+                                    prompt: messageText,
+                                    savedPaths: savedPaths,
+                                }
+                            )
+
+                            // Save chat history after adding both user and assistant messages
+                            await this.saveChatHistory()
+
                             this._view.webview.postMessage({
                                 type: 'image-response',
                                 images: imageUrls,
@@ -445,6 +643,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             errorMessage = String(error)
                         }
 
+                        // Add error message to extended chat history
+                        this.addMessageToHistory(
+                            `❌ Error: ${errorMessage}`,
+                            'assistant',
+                            'text'
+                        )
+                        await this.saveChatHistory()
+
                         this._view.webview.postMessage({
                             type: 'chat-response',
                             response: `❌ **Error**: ${errorMessage}`,
@@ -453,13 +659,27 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
                 break
             }
-            case 'get-chat-history':
-                // For now, just send empty history
+            case 'get-chat-history': {
+                // Reload chat history from storage in case webview was recreated
+                await this.loadChatHistory()
+
+                // Send extended messages with image data
+                const messages = this._extendedChatHistory.map((msg) => ({
+                    text: msg.text,
+                    sender: msg.sender,
+                    timestamp: new Date(msg.timestamp),
+                    messageType: msg.messageType,
+                    imageData: msg.imageData,
+                }))
+                console.log(
+                    `[Crater ChatbotProvider] Sending ${messages.length} chat history messages to webview`
+                )
                 this._view.webview.postMessage({
                     type: 'chat-history',
-                    messages: [],
+                    messages: messages,
                 })
                 break
+            }
             case 'get-provider-info':
                 this._view.webview.postMessage({
                     type: 'provider-info',
@@ -468,6 +688,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 })
                 break
             case 'clear-chat':
+                // Clear extended chat history and storage
+                await this.clearChatHistory()
+
                 this._view.webview.postMessage({
                     type: 'chat-cleared',
                 })
@@ -1376,7 +1599,13 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     
                     // Add historical messages
                     message.messages.forEach(msg => {
-                        addMessage(msg.text, msg.sender, msg.timestamp);
+                        if (msg.messageType === 'image' && msg.imageData) {
+                            // Restore image message
+                            addImageMessage(msg.imageData.images, msg.imageData.prompt, msg.timestamp);
+                        } else {
+                            // Regular text message
+                            addMessage(msg.text, msg.sender, msg.timestamp);
+                        }
                     });
                     break;
                 case 'chat-cleared':
@@ -1497,10 +1726,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             });
         });
 
-        // Request chat history on load
-        console.log('[Crater WebView] Page loaded, requesting initial data');
-        vscode.postMessage({ type: 'get-chat-history' });
-        vscode.postMessage({ type: 'get-provider-info' });
+        // Request chat history on load with a small delay to ensure everything is ready
+        setTimeout(() => {
+            vscode.postMessage({ type: 'get-chat-history' });
+            vscode.postMessage({ type: 'get-provider-info' });
+        }, 100);
     </script>
 </body>
 </html>`

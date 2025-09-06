@@ -15,7 +15,10 @@ export async function activate(context: vscode.ExtensionContext) {
         console.log('[Crater] Extension URI:', context.extensionUri.toString())
 
         // Register the chatbot webview view provider
-        const chatbotProvider = new ChatbotProvider(context.extensionUri)
+        const chatbotProvider = new ChatbotProvider(
+            context.extensionUri,
+            context
+        )
         console.log('[Crater] ChatbotProvider instance created successfully')
 
         // Register the webview view provider for the sidebar (main)
