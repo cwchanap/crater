@@ -49,6 +49,7 @@ async function main() {
             esbuildProblemMatcherPlugin,
         ],
     })
+
     if (watch) {
         await ctx.watch()
     } else {

@@ -22,7 +22,8 @@
     "**/*.config.js",
     "**/*.config.ts",
     "**/eslint.config.js",
-    "**/esbuild.js"
+    "**/esbuild.js",
+    "src/webview.ts"
   ],
   "ts-node": {
     "esm": true
