@@ -111,6 +111,40 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically save generated images to the configured directory"
+        },
+        "crater-ext.imageSize": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "1024x1024",
+            "1024x1536",
+            "1536x1024"
+          ],
+          "enumDescriptions": [
+            "Auto - AI selects optimal size based on prompt",
+            "Square 1024x1024 - Standard square format",
+            "Portrait 1024x1536 - Tall format for portraits",
+            "Landscape 1536x1024 - Wide format for landscapes"
+          ],
+          "description": "Image size for generated images (applies to OpenAI gpt-image-1 provider)"
+        },
+        "crater-ext.imageQuality": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "low",
+            "medium",
+            "high"
+          ],
+          "enumDescriptions": [
+            "Auto - AI selects optimal quality for the prompt",
+            "Low - Fast generation, lower cost, basic quality",
+            "Medium - Balanced quality and speed",
+            "High - Best quality, slower generation, higher cost"
+          ],
+          "description": "Image quality for generated images (applies to OpenAI gpt-image-1 provider)"
         }
       }
     }

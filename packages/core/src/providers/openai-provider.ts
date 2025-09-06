@@ -53,16 +53,8 @@ interface OpenAIImageRequest {
     model: 'gpt-image-1' | 'dall-e-2' | 'dall-e-3'
     prompt: string
     n?: number
-    size?:
-        | '256x256'
-        | '512x512'
-        | '1024x1024'
-        | '1792x1024'
-        | '1024x1792'
-        | '1536x1024'
-        | '1024x1536'
-        | 'auto'
-    quality?: 'standard' | 'hd' | 'low' | 'medium' | 'high' | 'auto'
+    size?: '1024x1024' | '1024x1536' | '1536x1024' | 'auto'
+    quality?: 'low' | 'medium' | 'high' | 'auto'
     style?: 'vivid' | 'natural'
     // Note: response_format is not supported by gpt-image-1
 }
@@ -218,9 +210,15 @@ export class OpenAIImageProvider extends BaseImageModelProvider {
             model: 'gpt-image-1', // Use the latest image model
             prompt: request.prompt,
             n: request.n ?? 1,
-            size: (request.size as OpenAIImageRequest['size']) ?? 'auto',
+            size:
+                (request.size as OpenAIImageRequest['size']) ??
+                (this.config.defaultImageSize as OpenAIImageRequest['size']) ??
+                'auto',
             quality:
-                (request.quality as OpenAIImageRequest['quality']) ?? 'auto',
+                (request.quality as OpenAIImageRequest['quality']) ??
+                (this.config
+                    .defaultImageQuality as OpenAIImageRequest['quality']) ??
+                'auto',
         }
 
         const response = await fetch(url, {

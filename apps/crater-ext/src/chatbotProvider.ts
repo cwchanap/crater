@@ -109,9 +109,20 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
                 case 'openai': {
                     const openaiApiKey = config.get<string>('openaiApiKey')
+                    const imageSize = config.get<string>('imageSize', 'auto')
+                    const imageQuality = config.get<string>(
+                        'imageQuality',
+                        'auto'
+                    )
                     console.log(
                         '[Crater] OpenAI API key provided:',
                         !!openaiApiKey
+                    )
+                    console.log(
+                        '[Crater] OpenAI image settings - Size:',
+                        imageSize,
+                        'Quality:',
+                        imageQuality
                     )
                     if (
                         openaiApiKey &&
@@ -119,6 +130,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     ) {
                         provider = new OpenAIImageProvider({
                             apiKey: openaiApiKey,
+                            defaultImageSize: imageSize,
+                            defaultImageQuality: imageQuality,
                         })
                         console.log('[Crater] Initialized OpenAI provider')
                     } else {
@@ -148,8 +161,18 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         openaiApiKey &&
                         this.isValidApiKey(openaiApiKey, 'openai')
                     ) {
+                        const imageSize = config.get<string>(
+                            'imageSize',
+                            'auto'
+                        )
+                        const imageQuality = config.get<string>(
+                            'imageQuality',
+                            'auto'
+                        )
                         provider = new OpenAIImageProvider({
                             apiKey: openaiApiKey,
+                            defaultImageSize: imageSize,
+                            defaultImageQuality: imageQuality,
                         })
                         console.log('[Crater] Auto-selected OpenAI provider')
                     }
@@ -468,6 +491,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     'autoSaveImages',
                     true
                 )
+                const imageSize = config.get<string>('imageSize', 'auto')
+                const imageQuality = config.get<string>('imageQuality', 'auto')
                 this._view.webview.postMessage({
                     type: 'settings',
                     aiProvider,
@@ -476,6 +501,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     openaiApiKey,
                     imageSaveDirectory,
                     autoSaveImages,
+                    imageSize,
+                    imageQuality,
                 })
                 break
             }
@@ -497,6 +524,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const autoSaveImages = Boolean(
                     message['autoSaveImages'] ?? true
                 )
+                const imageSize = String(message['imageSize'] || 'auto')
+                const imageQuality = String(message['imageQuality'] || 'auto')
 
                 await config.update('aiProvider', aiProvider, target)
                 await config.update('aiModel', aiModel, target)
@@ -506,6 +535,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     target
                 )
                 await config.update('autoSaveImages', autoSaveImages, target)
+                await config.update('imageSize', imageSize, target)
+                await config.update('imageQuality', imageQuality, target)
 
                 if (aiProvider === 'gemini') {
                     await config.update('geminiApiKey', apiKey, target)
@@ -834,6 +865,28 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             <div class="validation-message" id="validationMessage"></div>
         </div>
 
+        <div class="section" id="imageSizeSection" style="display: none;">
+            <label for="imageSize">Image Size (OpenAI gpt-image-1 only)</label>
+            <select id="imageSize">
+                <option value="auto">Auto - AI selects optimal size based on prompt</option>
+                <option value="1024x1024">1024x1024 - Standard square format</option>
+                <option value="1024x1536">1024x1536 - Portrait format (tall)</option>
+                <option value="1536x1024">1536x1024 - Landscape format (wide)</option>
+            </select>
+            <div class="note">Size of generated images. Auto selection optimizes based on your prompt content.</div>
+        </div>
+
+        <div class="section" id="imageQualitySection" style="display: none;">
+            <label for="imageQuality">Image Quality (OpenAI gpt-image-1 only)</label>
+            <select id="imageQuality">
+                <option value="auto">Auto - AI selects optimal quality for the prompt</option>
+                <option value="low">Low - Fast generation, lower cost, basic quality</option>
+                <option value="medium">Medium - Balanced quality and speed</option>
+                <option value="high">High - Best quality, slower generation, higher cost</option>
+            </select>
+            <div class="note">Quality setting affects generation time and cost. Auto adjusts based on your prompt.</div>
+        </div>
+
         <div class="row">
             <button class="btn" id="saveBtn">Save Settings</button>
         </div>
@@ -866,6 +919,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         const modelEl = document.getElementById('model');
         const apiKeyEl = document.getElementById('apiKey');
         const apiKeyLabelEl = document.getElementById('apiKeyLabel');
+        const imageSizeEl = document.getElementById('imageSize');
+        const imageQualityEl = document.getElementById('imageQuality');
+        const imageSizeSection = document.getElementById('imageSizeSection');
+        const imageQualitySection = document.getElementById('imageQualitySection');
         const saveBtn = document.getElementById('saveBtn');
         const validationMessageEl = document.getElementById('validationMessage');
 
@@ -880,6 +937,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             openai: ''
         };
         let currentProvider = 'gemini';
+        
+        // Store image settings
+        let lastImageSize = 'auto';
+        let lastImageQuality = 'auto';
         
         console.log('[Crater WebView] DOM elements found:', {
             messagesContainer: !!messagesContainer,
@@ -1069,6 +1130,28 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             const validation = validateApiKey(apiKey, provider);
             validationMessageEl.textContent = validation.message;
             validationMessageEl.className = 'validation-message ' + (validation.valid ? 'success' : 'error');
+            
+            // If this is OpenAI and we have stored image settings, restore them after validation
+            if (provider === 'openai' && (lastImageSize || lastImageQuality)) {
+                console.log('[Crater WebView] Validation updated, checking if image settings need restoration');
+                setTimeout(() => {
+                    // Check if dropdowns have been reset
+                    const sizeNeedsRestore = imageSizeEl && imageSizeEl.value !== lastImageSize;
+                    const qualityNeedsRestore = imageQualityEl && imageQualityEl.value !== lastImageQuality;
+                    
+                    if (sizeNeedsRestore || qualityNeedsRestore) {
+                        console.log('[Crater WebView] Restoring image settings after validation:', { 
+                            sizeNeedsRestore, 
+                            qualityNeedsRestore,
+                            currentSize: imageSizeEl?.value,
+                            currentQuality: imageQualityEl?.value,
+                            expectedSize: lastImageSize,
+                            expectedQuality: lastImageQuality
+                        });
+                        setImageSettings(lastImageSize, lastImageQuality);
+                    }
+                }, 10);
+            }
         }
 
         function updateApiKeyLabel() {
@@ -1105,6 +1188,66 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             // Show model section
             modelSection.style.display = 'block';
+            
+            // Show/hide image settings based on provider
+            if (provider === 'openai') {
+                imageSizeSection.style.display = 'block';
+                imageQualitySection.style.display = 'block';
+                console.log('[Crater WebView] Image sections made visible for OpenAI provider');
+            } else {
+                imageSizeSection.style.display = 'none';
+                imageQualitySection.style.display = 'none';
+                console.log('[Crater WebView] Image sections hidden for non-OpenAI provider');
+            }
+        }
+        
+        function setImageSettings(imageSize, imageQuality) {
+            console.log('[Crater WebView] setImageSettings called with:', { imageSize, imageQuality });
+            console.log('[Crater WebView] isLoadingSettings:', isLoadingSettings);
+            console.log('[Crater WebView] Current provider:', currentProvider);
+            console.log('[Crater WebView] Provider dropdown value:', providerEl.value);
+            
+            // Store the values globally
+            if (imageSize) lastImageSize = imageSize;
+            if (imageQuality) lastImageQuality = imageQuality;
+            
+            if (imageSizeEl && imageSize) {
+                console.log('[Crater WebView] Setting imageSize to:', imageSize);
+                console.log('[Crater WebView] ImageSize section visible:', imageSizeSection.style.display !== 'none');
+                console.log('[Crater WebView] Available size options:', Array.from(imageSizeEl.options).map(opt => opt.value));
+                imageSizeEl.value = imageSize;
+                console.log('[Crater WebView] ImageSize dropdown value after setting:', imageSizeEl.value);
+                if (imageSizeEl.value !== imageSize) {
+                    console.warn('[Crater WebView] Failed to set imageSize - trying selectedIndex method');
+                    // Try to find a matching option
+                    for (let i = 0; i < imageSizeEl.options.length; i++) {
+                        if (imageSizeEl.options[i].value === imageSize) {
+                            imageSizeEl.selectedIndex = i;
+                            console.log('[Crater WebView] Set imageSize using selectedIndex:', i);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (imageQualityEl && imageQuality) {
+                console.log('[Crater WebView] Setting imageQuality to:', imageQuality);
+                console.log('[Crater WebView] ImageQuality section visible:', imageQualitySection.style.display !== 'none');
+                console.log('[Crater WebView] Available quality options:', Array.from(imageQualityEl.options).map(opt => opt.value));
+                imageQualityEl.value = imageQuality;
+                console.log('[Crater WebView] ImageQuality dropdown value after setting:', imageQualityEl.value);
+                if (imageQualityEl.value !== imageQuality) {
+                    console.warn('[Crater WebView] Failed to set imageQuality - trying selectedIndex method');
+                    // Try to find a matching option
+                    for (let i = 0; i < imageQualityEl.options.length; i++) {
+                        if (imageQualityEl.options[i].value === imageQuality) {
+                            imageQualityEl.selectedIndex = i;
+                            console.log('[Crater WebView] Set imageQuality using selectedIndex:', i);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
 
@@ -1151,6 +1294,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 apiKeyEl.value = tempApiKeys.gemini;
             } else if (currentProvider === 'openai') {
                 apiKeyEl.value = tempApiKeys.openai;
+                
+                // Restore image settings for OpenAI provider after UI update
+                setTimeout(() => {
+                    setImageSettings(lastImageSize, lastImageQuality);
+                }, 100);
             } else {
                 apiKeyEl.value = '';
             }
@@ -1165,6 +1313,37 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 tempApiKeys.openai = apiKeyEl.value;
             }
             updateValidation();
+            
+            // If this is OpenAI and we have stored image settings, restore them
+            if (currentProvider === 'openai' && (lastImageSize || lastImageQuality)) {
+                console.log('[Crater WebView] API key changed, restoring image settings:', { lastImageSize, lastImageQuality });
+                setTimeout(() => {
+                    setImageSettings(lastImageSize, lastImageQuality);
+                }, 50);
+            }
+        });
+        
+        // Watch for programmatic changes to API key field (not just user input)
+        const apiKeyObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                    console.log('[Crater WebView] API key field value changed programmatically');
+                    if (currentProvider === 'openai' && (lastImageSize || lastImageQuality)) {
+                        console.log('[Crater WebView] Restoring image settings after programmatic API key change');
+                        setTimeout(() => {
+                            setImageSettings(lastImageSize, lastImageQuality);
+                        }, 50);
+                    }
+                }
+            });
+        });
+        
+        // Observe changes to the API key input field
+        apiKeyObserver.observe(apiKeyEl, { 
+            attributes: true, 
+            attributeFilter: ['value'],
+            childList: false,
+            subtree: false 
         });
 
         // Handle messages from the extension
@@ -1211,6 +1390,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     isConfigured = message.configured || false;
                     break;
                 case 'settings':
+                    console.log('[Crater WebView] Received settings message:', message);
                     isLoadingSettings = true;
                     
                     // Store API keys in temporary storage
@@ -1231,8 +1411,69 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     }
                     updateApiKeyLabel();
                     updateModelOptions();
-                    if (message.aiModel) modelEl.value = message.aiModel;
                     
+                    // Set model value
+                    if (message.aiModel && modelEl) {
+                        modelEl.value = message.aiModel;
+                    }
+                    
+                    // Set image settings values with multiple attempts to ensure they stick
+                    const sizeValue = message.imageSize || 'auto';
+                    const qualityValue = message.imageQuality || 'auto';
+                    
+                    // Multiple attempts with different delays to ensure values are set
+                    const attemptImageSettings = (attempt = 1) => {
+                        console.log('[Crater WebView] Image settings attempt', attempt, 'with values:', { sizeValue, qualityValue });
+                        setImageSettings(sizeValue, qualityValue);
+                        
+                        // Check if values were actually set after a short delay
+                        setTimeout(() => {
+                            const sizeSet = !imageSizeEl || imageSizeEl.value === sizeValue;
+                            const qualitySet = !imageQualityEl || imageQualityEl.value === qualityValue;
+                            
+                            console.log('[Crater WebView] Attempt', attempt, 'results:', { 
+                                sizeSet, 
+                                qualitySet,
+                                actualSizeValue: imageSizeEl?.value,
+                                actualQualityValue: imageQualityEl?.value
+                            });
+                            
+                            // If not set correctly and we haven't tried too many times, try again
+                            if ((!sizeSet || !qualitySet) && attempt < 5) {
+                                setTimeout(() => attemptImageSettings(attempt + 1), 200);
+                            }
+                        }, 100);
+                    };
+                    
+                    // Start attempts after initial UI setup
+                    setTimeout(() => attemptImageSettings(1), 200);
+                    setTimeout(() => attemptImageSettings(2), 600);
+                    
+                    // Set up periodic monitoring for the first 5 seconds to catch any resets
+                    const monitoringInterval = setInterval(() => {
+                        if (currentProvider === 'openai' && (lastImageSize || lastImageQuality)) {
+                            const sizeOk = !imageSizeEl || imageSizeEl.value === lastImageSize;
+                            const qualityOk = !imageQualityEl || imageQualityEl.value === lastImageQuality;
+                            
+                            if (!sizeOk || !qualityOk) {
+                                console.log('[Crater WebView] Periodic check found reset dropdowns, restoring:', {
+                                    currentSize: imageSizeEl?.value,
+                                    expectedSize: lastImageSize,
+                                    currentQuality: imageQualityEl?.value,
+                                    expectedQuality: lastImageQuality
+                                });
+                                setImageSettings(lastImageSize, lastImageQuality);
+                            }
+                        }
+                    }, 500);
+                    
+                    // Stop monitoring after 5 seconds
+                    setTimeout(() => {
+                        clearInterval(monitoringInterval);
+                        console.log('[Crater WebView] Stopped periodic monitoring of image settings');
+                    }, 5000);
+                    
+                    // Set loading to false after starting the process
                     isLoadingSettings = false;
                     break;
                 case 'settings-saved':
@@ -1250,7 +1491,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 type: 'save-settings',
                 aiProvider: providerEl.value,
                 aiModel: modelEl.value,
-                apiKey: apiKeyEl.value
+                apiKey: apiKeyEl.value,
+                imageSize: imageSizeEl.value,
+                imageQuality: imageQualityEl.value
             });
         });
 

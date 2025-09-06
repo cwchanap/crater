@@ -10,6 +10,10 @@ export interface AIProviderConfig {
     model?: string
     /** Custom endpoint URL (optional) */
     endpoint?: string
+    /** Default image size for OpenAI provider */
+    defaultImageSize?: string
+    /** Default image quality for OpenAI provider */
+    defaultImageQuality?: string
     /** Additional provider-specific options */
     options?: Record<string, unknown>
 }
