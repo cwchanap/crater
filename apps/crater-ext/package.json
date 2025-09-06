@@ -99,8 +99,24 @@
         },
         "crater-ext.aiModel": {
           "type": "string",
-          "default": "gemini-2.0-flash-exp",
-          "description": "AI model to use for generating responses"
+          "default": "gemini-2.5-flash-image-preview",
+          "enum": [
+            "gemini-2.5-flash-image-preview",
+            "imagen-4.0-generate-001",
+            "gemini-2.0-flash-exp",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "gpt-image-1"
+          ],
+          "enumDescriptions": [
+            "Gemini 2.5 Flash (Image Preview) - Conversational image generation and editing",
+            "Imagen 4.0 - High-quality direct image generation",
+            "Gemini 2.0 Flash (Experimental) - Text generation only",
+            "Gemini 1.5 Flash - Text generation only",
+            "Gemini 1.5 Pro - Text generation only",
+            "OpenAI GPT-Image-1 - Latest OpenAI image generation"
+          ],
+          "description": "AI model to use for generating images and responses"
         },
         "crater-ext.imageSaveDirectory": {
           "type": "string",

@@ -55,6 +55,12 @@ export interface ImageGenerationRequest {
     style?: 'vivid' | 'natural'
     /** Number of images to generate */
     n?: number
+    /** Temperature for response creativity (0-1) */
+    temperature?: number
+    /** Model to use for generation */
+    model?: string
+    /** Reference images for style transfer or editing */
+    referenceImages?: string[]
 }
 
 export interface ImageGenerationResponse {

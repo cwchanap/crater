@@ -698,9 +698,28 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         // Add user message to extended chat history
                         this.addMessageToHistory(messageText, 'user', 'text')
 
+                        // Get the configured model
+                        const config =
+                            vscode.workspace.getConfiguration('crater-ext')
+                        const aiModel = config.get<string>(
+                            'aiModel',
+                            'gemini-2.5-flash-image-preview'
+                        )
+
+                        // Determine which model to use for image generation
+                        let imageModel = 'gemini' // default to gemini image generation
+                        if (aiModel === 'imagen-4.0-generate-001') {
+                            imageModel = 'imagen' // use imagen for high quality
+                        }
+
                         // Generate image directly without fallback
                         const imageResponse =
-                            await this.chatBotService.generateImage(messageText)
+                            await this.chatBotService.generateImage(
+                                messageText,
+                                {
+                                    model: imageModel,
+                                }
+                            )
                         console.log(
                             '[Crater ChatbotProvider] Image generated successfully'
                         )
@@ -717,14 +736,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             if (img.url) {
                                 imageUrls.push(img.url)
                             } else if (img.base64) {
-                                // Convert base64 to data URL for display
-                                imageUrls.push(
-                                    `data:image/png;base64,${img.base64}`
-                                )
+                                // img.base64 already contains the full data URL
+                                imageUrls.push(img.base64)
 
-                                // Save image to file
+                                // Extract just the base64 data for saving to file
+                                const base64Data = img.base64.includes(
+                                    'base64,'
+                                )
+                                    ? img.base64.split('base64,')[1]
+                                    : img.base64
                                 const savedPath = await this.saveImageToFile(
-                                    img.base64,
+                                    base64Data,
                                     messageText
                                 )
                                 if (savedPath) {
@@ -1794,7 +1816,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             const models = {
                 gemini: [
-                    { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image Preview' }
+                    { value: 'gemini-2.5-flash-image-preview', label: 'Gemini 2.5 Flash Image Preview (Default)' },
+                    { value: 'imagen-4.0-generate-001', label: 'Imagen 4.0 (High Quality)' }
                 ],
                 openai: [
                     { value: 'gpt-image-1', label: 'GPT-Image-1 (Latest)' }
