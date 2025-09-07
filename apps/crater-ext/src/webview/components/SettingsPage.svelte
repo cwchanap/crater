@@ -2,7 +2,8 @@
   import { onMount } from 'svelte'
   import { 
     vscode, 
-    currentProvider, 
+    currentProvider,
+    currentModel, 
     isLoadingSettings, 
     tempApiKeys, 
     imageSettings 
@@ -18,14 +19,13 @@
   let imageSaveDirectory: string = ''
 
   onMount(() => {
-    // Request current settings when component mounts
-    if ($vscode) {
-      $vscode.postMessage({ type: 'get-settings' })
-    }
-
-    // Subscribe to store updates
+    // Subscribe to store updates - these will be updated by App.svelte when settings arrive
     const unsubscribeProvider = currentProvider.subscribe(value => {
       if (value) aiProvider = value
+    })
+
+    const unsubscribeModel = currentModel.subscribe(value => {
+      if (value) aiModel = value
     })
 
     const unsubscribeApiKeys = tempApiKeys.subscribe(keys => {
@@ -38,18 +38,14 @@
       imageQuality = settings.quality
     })
 
-    // Listen for settings messages from extension
+    // Handle settings for fields not in stores
+    let settingsReceived = false
     const handleMessage = (event: MessageEvent) => {
       if (event.data.type === 'settings') {
         const message = event.data
-        aiProvider = message.aiProvider || 'gemini'
-        aiModel = message.aiModel || 'gemini-2.5-flash-image-preview'
-        geminiApiKey = message.geminiApiKey || ''
-        openaiApiKey = message.openaiApiKey || ''
         imageSaveDirectory = message.imageSaveDirectory || '${workspaceFolder}/images'
         autoSaveImages = message.autoSaveImages ?? true
-        imageSize = message.imageSize || 'auto'
-        imageQuality = message.imageQuality || 'auto'
+        settingsReceived = true
       } else if (event.data.type === 'settings-saved') {
         isLoadingSettings.set(false)
       }
@@ -57,8 +53,16 @@
 
     window.addEventListener('message', handleMessage)
 
+    // Fallback: request settings if not received proactively within 100ms
+    setTimeout(() => {
+      if (!settingsReceived && $vscode) {
+        $vscode.postMessage({ type: 'get-settings' })
+      }
+    }, 100)
+
     return () => {
       unsubscribeProvider()
+      unsubscribeModel()
       unsubscribeApiKeys()
       unsubscribeImageSettings()
       window.removeEventListener('message', handleMessage)

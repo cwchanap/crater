@@ -635,11 +635,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             '[Crater ChatbotProvider] resolveWebviewView completed successfully'
         )
 
-        // Proactively send chat history to the webview after a short delay
+        // Proactively send all initial data to the webview after a short delay
         // This helps with cases where the webview loads before the initial request is made
         setTimeout(() => {
             this.loadChatHistory()
                 .then(() => {
+                    if (!this._view) return
+
+                    // Send chat history
                     const messages = this._extendedChatHistory.map((msg) => ({
                         text: msg.text,
                         sender: msg.sender,
@@ -647,7 +650,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         messageType: msg.messageType,
                         imageData: msg.imageData,
                     }))
-                    if (messages.length > 0 && this._view) {
+                    if (messages.length > 0) {
                         console.log(
                             `[Crater ChatbotProvider] Proactively sending ${messages.length} messages to newly created webview`
                         )
@@ -656,10 +659,80 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             messages: messages,
                         })
                     }
+
+                    // Send provider info
+                    this._view.webview.postMessage({
+                        type: 'provider-info',
+                        provider: this.currentProvider?.type || null,
+                        configured: !!this.currentProvider,
+                    })
+
+                    // Send settings
+                    const config =
+                        vscode.workspace.getConfiguration('crater-ext')
+                    const aiProvider = config.get<string>(
+                        'aiProvider',
+                        'gemini'
+                    )
+                    const aiModel = config.get<string>(
+                        'aiModel',
+                        aiProvider === 'gemini'
+                            ? 'gemini-2.5-flash-image-preview'
+                            : 'gpt-image-1'
+                    )
+                    const geminiApiKey = config.get<string>('geminiApiKey', '')
+                    const openaiApiKey = config.get<string>('openaiApiKey', '')
+                    const imageSaveDirectory = config.get<string>(
+                        'imageSaveDirectory',
+                        '${workspaceFolder}/images'
+                    )
+                    const autoSaveImages = config.get<boolean>(
+                        'autoSaveImages',
+                        true
+                    )
+                    const imageSize = config.get<string>('imageSize', 'auto')
+                    const imageQuality = config.get<string>(
+                        'imageQuality',
+                        'auto'
+                    )
+
+                    this._view.webview.postMessage({
+                        type: 'settings',
+                        aiProvider,
+                        aiModel,
+                        geminiApiKey,
+                        openaiApiKey,
+                        imageSaveDirectory,
+                        autoSaveImages,
+                        imageSize,
+                        imageQuality,
+                    })
+
+                    // Send chat sessions
+                    const sortedSessions = [...this._chatSessions].sort(
+                        (a, b) =>
+                            new Date(b.lastActivity).getTime() -
+                            new Date(a.lastActivity).getTime()
+                    )
+                    this._view.webview.postMessage({
+                        type: 'chat-sessions',
+                        sessions: sortedSessions.map((s) => ({
+                            id: s.id,
+                            title: s.title,
+                            createdAt: s.createdAt,
+                            lastActivity: s.lastActivity,
+                            messageCount: s.messages.length,
+                        })),
+                        currentSessionId: this._currentSessionId,
+                    })
+
+                    console.log(
+                        '[Crater ChatbotProvider] Proactively sent all initial data to webview'
+                    )
                 })
                 .catch((error) => {
                     console.error(
-                        '[Crater] Error proactively loading chat history:',
+                        '[Crater] Error proactively loading initial data:',
                         error
                     )
                 })

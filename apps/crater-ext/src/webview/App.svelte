@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { currentPage, vscode, isConfigured, messages, isLoading, currentProvider, chatSessions, currentSessionId, tempApiKeys, imageSettings } from './stores'
+  import { currentPage, vscode, isConfigured, messages, isLoading, currentProvider, currentModel, chatSessions, currentSessionId, tempApiKeys, imageSettings } from './stores'
   import type { WebviewMessage } from './types'
   
   // Import components
@@ -9,25 +9,16 @@
   import ConfigPage from './components/ConfigPage.svelte'
   import SettingsPage from './components/SettingsPage.svelte'
   import ChatHistoryModal from './components/ChatHistoryModal.svelte'
-  
-  console.log('[Crater WebView] Full Crater app loading')
 
   onMount(() => {
-    console.log('[Crater WebView] App mounted, requesting initial data')
-    
     // Listen for messages from the extension
     window.addEventListener('message', handleMessage)
     
-    // Request initial data
-    const vsCode = $vscode
-    if (vsCode) {
-      vsCode.postMessage({ type: 'get-chat-history' })
-      vsCode.postMessage({ type: 'get-provider-info' })
-    }
+    // Note: Initial data (chat history, provider info, settings) is sent 
+    // proactively by the extension - no need to request it
   })
 
   function handleMessage(event: MessageEvent<WebviewMessage>) {
-    console.log('[Crater WebView] Received message:', event.data.type)
     const message = event.data
 
     switch (message.type) {
@@ -86,6 +77,9 @@
         // Handle settings received from extension
         if (message.aiProvider) {
           currentProvider.set(message.aiProvider)
+        }
+        if (message.aiModel) {
+          currentModel.set(message.aiModel)
         }
         
         // Update API key stores

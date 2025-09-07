@@ -1,21 +1,44 @@
 import { writable } from 'svelte/store'
 
+interface VSCodeApi {
+    postMessage(message: unknown): void
+    getState(): unknown
+    setState(state: unknown): void
+}
+
+interface ChatMessage {
+    text: string
+    sender: string
+    timestamp: string
+    messageType?: string
+    imageData?: string
+}
+
+interface ChatSession {
+    id: string
+    title: string
+    createdAt: string
+    lastActivity: string
+    messageCount: number
+}
+
 // VS Code webview API type declaration
-declare function acquireVsCodeApi(): any
+declare function acquireVsCodeApi(): VSCodeApi
 
 // VS Code API integration
-export const vscode = writable<any>(null)
+export const vscode = writable<VSCodeApi | null>(null)
 
 // Navigation state
 export const currentPage = writable<'chat' | 'config' | 'settings'>('chat')
 export const currentProvider = writable<string>('gemini')
+export const currentModel = writable<string>('gemini-2.5-flash-image-preview')
 export const isConfigured = writable<boolean>(false)
 
 // Chat state
-export const messages = writable<any[]>([])
+export const messages = writable<ChatMessage[]>([])
 export const isLoading = writable<boolean>(false)
 export const showChatHistoryModal = writable<boolean>(false)
-export const chatSessions = writable<any[]>([])
+export const chatSessions = writable<ChatSession[]>([])
 export const currentSessionId = writable<string | null>(null)
 
 // Settings state
@@ -34,12 +57,9 @@ if (typeof acquireVsCodeApi !== 'undefined') {
     try {
         const api = acquireVsCodeApi()
         vscode.set(api)
-        console.log('[Crater WebView] VS Code API acquired in stores')
-    } catch (error) {
-        console.error('[Crater WebView] VS Code API error in stores:', error)
+    } catch {
         vscode.set(null)
     }
 } else {
-    console.log('[Crater WebView] acquireVsCodeApi not available in stores')
     vscode.set(null)
 }
