@@ -1029,13 +1029,28 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             )
             const scriptUri = webview.asWebviewUri(scriptPathOnDisk)
 
-            // Replace the placeholder with the actual script URI
-            html = html.replace('{{SCRIPT_URI}}', scriptUri.toString())
+            // Get the compiled CSS URI for the webview styles
+            const cssPathOnDisk = vscode.Uri.joinPath(
+                this._extensionUri,
+                'dist',
+                'webview.css'
+            )
+            const cssUri = webview.asWebviewUri(cssPathOnDisk)
+
+            // Add cache-busting parameter to force reload
+            const cacheBuster = Date.now()
+            const scriptUriWithCache = `${scriptUri.toString()}?v=${cacheBuster}`
+            const cssUriWithCache = `${cssUri.toString()}?v=${cacheBuster}`
+
+            // Replace all placeholders with the actual URIs
+            html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUriWithCache)
+            html = html.replace(/\{\{CSS_URI\}\}/g, cssUriWithCache)
 
             console.log(
                 '[Crater] HTML loaded and processed successfully, length:',
                 html.length
             )
+            console.log('[Crater] Generated HTML:', html)
             return html
         } catch (error) {
             console.error('[Crater] Error loading HTML for WebView:', error)

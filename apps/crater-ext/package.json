@@ -19,16 +19,6 @@
         "command": "crater-ext.openChatbot",
         "title": "Open Game Asset Chatbot",
         "category": "Crater"
-      },
-      {
-        "command": "crater-ext.showChatbot",
-        "title": "Show Game Asset Chatbot (Debug)",
-        "category": "Crater"
-      },
-      {
-        "command": "crater-ext.testViewRegistration",
-        "title": "Test View Registration",
-        "category": "Crater"
       }
     ],
     "viewsContainers": {
@@ -48,26 +38,12 @@
           "when": "true",
           "type": "webview"
         }
-      ],
-      "explorer": [
-        {
-          "id": "crater-ext.chatbotViewDebug",
-          "name": "Game Asset Assistant (Debug)",
-          "when": "true",
-          "type": "webview"
-        }
       ]
     },
     "menus": {
       "commandPalette": [
         {
           "command": "crater-ext.openChatbot"
-        },
-        {
-          "command": "crater-ext.showChatbot"
-        },
-        {
-          "command": "crater-ext.testViewRegistration"
         }
       ]
     },
@@ -192,6 +168,7 @@
     "@crater/core": "workspace:*"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.103.0",
@@ -204,6 +181,7 @@
     "esbuild": "^0.25.8",
     "eslint": "^9.32.0",
     "npm-run-all": "^4.1.5",
+    "svelte": "^5.0.0",
     "typescript": "^5.9.2",
     "vite": "^7.0.4"
   }
