@@ -15,6 +15,10 @@
 		{
 			"name": "UI Components",
 			"path": "./packages/ui-components"
+		},
+		{
+			"name": "Core",
+			"path": "./packages/core"
 		}
 	],
 	"settings": {
