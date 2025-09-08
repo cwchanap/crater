@@ -1,8 +1,22 @@
 <script lang="ts">
   import { messages, isLoading, vscode, showChatHistoryModal, currentProvider } from '../stores'
   import type { ChatMessage } from '../types'
+  import ImageContextMenu from './ImageContextMenu.svelte'
+  import ConfirmDialog from './ConfirmDialog.svelte'
   
   let messageInput = ''
+  let contextMenu = {
+    show: false,
+    x: 0,
+    y: 0,
+    messageIndex: -1,
+    imageIndex: -1
+  }
+  let confirmDialog = {
+    show: false,
+    pendingDeleteImageIndex: -1,
+    pendingDeleteMessageIndex: -1
+  }
 
   function sendMessage() {
     if (!messageInput.trim() || !$vscode) return
@@ -62,6 +76,112 @@
       provider: newProvider
     })
   }
+
+  function handleImageRightClick(event: MouseEvent, messageIndex: number, imageIndex: number) {
+    event.preventDefault()
+    contextMenu = {
+      show: true,
+      x: event.clientX,
+      y: event.clientY,
+      messageIndex,
+      imageIndex
+    }
+  }
+
+  function handleDeleteImage(imageIndex: number) {
+    if (contextMenu.messageIndex === -1) return
+    
+    // Show confirmation dialog
+    confirmDialog = {
+      show: true,
+      pendingDeleteImageIndex: imageIndex,
+      pendingDeleteMessageIndex: contextMenu.messageIndex
+    }
+  }
+
+  function confirmDeleteImage() {
+    if (confirmDialog.pendingDeleteMessageIndex === -1 || confirmDialog.pendingDeleteImageIndex === -1) return
+    
+    messages.update(msgs => {
+      const newMessages = [...msgs]
+      const message = newMessages[confirmDialog.pendingDeleteMessageIndex]
+      
+      if (message.messageType === 'image' && message.imageData) {
+        // Initialize imageStates if not present
+        if (!message.imageData.imageStates) {
+          message.imageData.imageStates = {
+            deleted: new Array(message.imageData.images.length).fill(false),
+            hidden: new Array(message.imageData.images.length).fill(false)
+          }
+        }
+        
+        // Mark image as deleted
+        message.imageData.imageStates.deleted[confirmDialog.pendingDeleteImageIndex] = true
+      }
+      
+      return newMessages
+    })
+
+    // Reset dialog state
+    confirmDialog = {
+      show: false,
+      pendingDeleteImageIndex: -1,
+      pendingDeleteMessageIndex: -1
+    }
+  }
+
+  function cancelDeleteImage() {
+    confirmDialog = {
+      show: false,
+      pendingDeleteImageIndex: -1,
+      pendingDeleteMessageIndex: -1
+    }
+  }
+
+  function handleToggleImageVisibility(imageIndex: number) {
+    if (contextMenu.messageIndex === -1) return
+    
+    messages.update(msgs => {
+      const newMessages = [...msgs]
+      const message = newMessages[contextMenu.messageIndex]
+      
+      if (message.messageType === 'image' && message.imageData) {
+        // Initialize imageStates if not present
+        if (!message.imageData.imageStates) {
+          message.imageData.imageStates = {
+            deleted: new Array(message.imageData.images.length).fill(false),
+            hidden: new Array(message.imageData.images.length).fill(false)
+          }
+        }
+        
+        // Toggle hidden state
+        message.imageData.imageStates.hidden[imageIndex] = !message.imageData.imageStates.hidden[imageIndex]
+      }
+      
+      return newMessages
+    })
+  }
+
+  function closeContextMenu() {
+    contextMenu.show = false
+  }
+
+  function handleShowHiddenImage(event: MouseEvent, messageIndex: number, imageIndex: number) {
+    // Only handle left clicks
+    if (event.button !== 0) return
+    
+    messages.update(msgs => {
+      const newMessages = [...msgs]
+      const message = newMessages[messageIndex]
+      
+      if (message.messageType === 'image' && message.imageData && message.imageData.imageStates) {
+        // Show the hidden image
+        message.imageData.imageStates.hidden[imageIndex] = false
+      }
+      
+      return newMessages
+    })
+  }
 </script>
 
 <div class="chat-container">
@@ -72,22 +192,43 @@
       </div>
     {/if}
     
-    {#each $messages as message}
+    {#each $messages as message, messageIndex}
       <div class="message {message.sender}">
         {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData}
           {@const imageData = message.imageData}
           <div style="margin-bottom: 8px; font-style: italic;">
             Generated image for: "{imageData.prompt}"
           </div>
-          {#each imageData.images as imageUrl}
-            <img 
-              src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
-                ? imageUrl 
-                : `data:image/png;base64,${imageUrl}`}
-              alt="Generated game asset: {imageData.prompt}"
-              style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 4px;"
-              on:error={() => console.error('Failed to load image:', imageUrl)}
-            />
+          {#each imageData.images as imageUrl, imageIndex}
+            {@const isDeleted = imageData.imageStates?.deleted?.[imageIndex] || false}
+            {@const isHidden = imageData.imageStates?.hidden?.[imageIndex] || false}
+            
+            {#if isDeleted}
+              <div class="deleted-image-placeholder">
+                🗑️ Image deleted
+              </div>
+            {:else if isHidden}
+              <div 
+                class="hidden-image-placeholder"
+                role="button"
+                tabindex="0"
+                on:click={(e) => handleShowHiddenImage(e, messageIndex, imageIndex)}
+                on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? handleShowHiddenImage(e, messageIndex, imageIndex) : null}
+                on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
+              >
+                🙈 Image hidden (click to show)
+              </div>
+            {:else}
+              <img 
+                src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
+                  ? imageUrl 
+                  : `data:image/png;base64,${imageUrl}`}
+                alt="Generated game asset: {imageData.prompt}"
+                class="generated-image"
+                on:error={() => console.error('Failed to load image:', imageUrl)}
+                on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
+              />
+            {/if}
           {/each}
           
           {#if imageData.usage && imageData.cost}
@@ -147,6 +288,28 @@
     <button class="send-button" on:click={sendMessage}>Send</button>
   </div>
 </div>
+
+<ImageContextMenu
+  show={contextMenu.show}
+  x={contextMenu.x}
+  y={contextMenu.y}
+  imageIndex={contextMenu.imageIndex}
+  isDeleted={contextMenu.messageIndex >= 0 && contextMenu.imageIndex >= 0 && $messages[contextMenu.messageIndex]?.imageData?.imageStates?.deleted?.[contextMenu.imageIndex] || false}
+  isHidden={contextMenu.messageIndex >= 0 && contextMenu.imageIndex >= 0 && $messages[contextMenu.messageIndex]?.imageData?.imageStates?.hidden?.[contextMenu.imageIndex] || false}
+  onDelete={handleDeleteImage}
+  onToggleVisibility={handleToggleImageVisibility}
+  onClose={closeContextMenu}
+/>
+
+<ConfirmDialog
+  show={confirmDialog.show}
+  title="Delete Image"
+  message="Are you sure you want to delete this image? This action cannot be undone."
+  confirmText="Delete"
+  cancelText="Cancel"
+  onConfirm={confirmDeleteImage}
+  onCancel={cancelDeleteImage}
+/>
 
 <style>
   .chat-container {
@@ -323,5 +486,34 @@
     grid-column: span 3;
     text-align: center;
     color: var(--vscode-foreground);
+  }
+
+  .generated-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    cursor: context-menu;
+  }
+
+  .deleted-image-placeholder,
+  .hidden-image-placeholder {
+    padding: 20px;
+    margin-bottom: 4px;
+    border: 2px dashed var(--vscode-widget-border);
+    border-radius: 4px;
+    text-align: center;
+    color: var(--vscode-descriptionForeground);
+    font-style: italic;
+    background-color: var(--vscode-input-background);
+    user-select: none;
+  }
+
+  .hidden-image-placeholder {
+    cursor: context-menu;
+  }
+
+  .hidden-image-placeholder:hover {
+    background-color: var(--vscode-list-hoverBackground);
   }
 </style>

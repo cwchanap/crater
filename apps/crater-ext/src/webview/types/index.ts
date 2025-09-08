@@ -7,6 +7,10 @@ export interface ChatMessage {
         images: string[]
         prompt: string
         savedPaths?: string[]
+        imageStates?: {
+            deleted: boolean[]
+            hidden: boolean[]
+        }
         usage?: {
             inputTextTokens: number
             inputImageTokens: number
