@@ -19,6 +19,25 @@ interface WebviewMessage {
             images: string[]
             prompt: string
             savedPaths?: string[]
+            usage?: {
+                inputTextTokens: number
+                inputImageTokens: number
+                outputImageTokens: number
+                totalTokens: number
+            }
+            cost?: {
+                inputTextCost: number
+                inputImageCost: number
+                outputImageCost: number
+                perImageCost: number
+                totalImageCost: number
+                totalCost: number
+                currency: string
+                breakdown: {
+                    tokenBasedCost: number
+                    qualityBasedCost: number
+                }
+            }
         }
     }>
     [key: string]: unknown
@@ -34,6 +53,25 @@ interface ExtendedChatMessage {
         images: string[]
         prompt: string
         savedPaths?: string[]
+        usage?: {
+            inputTextTokens: number
+            inputImageTokens: number
+            outputImageTokens: number
+            totalTokens: number
+        }
+        cost?: {
+            inputTextCost: number
+            inputImageCost: number
+            outputImageCost: number
+            perImageCost: number
+            totalImageCost: number
+            totalCost: number
+            currency: string
+            breakdown: {
+                tokenBasedCost: number
+                qualityBasedCost: number
+            }
+        }
     }
 }
 
@@ -450,7 +488,30 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         text: string,
         sender: 'user' | 'assistant',
         messageType: 'text' | 'image' = 'text',
-        imageData?: { images: string[]; prompt: string; savedPaths?: string[] }
+        imageData?: {
+            images: string[]
+            prompt: string
+            savedPaths?: string[]
+            usage?: {
+                inputTextTokens: number
+                inputImageTokens: number
+                outputImageTokens: number
+                totalTokens: number
+            }
+            cost?: {
+                inputTextCost: number
+                inputImageCost: number
+                outputImageCost: number
+                perImageCost: number
+                totalImageCost: number
+                totalCost: number
+                currency: string
+                breakdown: {
+                    tokenBasedCost: number
+                    qualityBasedCost: number
+                }
+            }
+        }
     ): void {
         const message: ExtendedChatMessage = {
             id: this.generateMessageId(),
@@ -991,6 +1052,31 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         )
 
                         if (imageUrls.length > 0) {
+                            // Extract usage and cost data from metadata
+                            const usage = imageResponse.metadata?.usage as
+                                | {
+                                      inputTextTokens: number
+                                      inputImageTokens: number
+                                      outputImageTokens: number
+                                      totalTokens: number
+                                  }
+                                | undefined
+                            const cost = imageResponse.metadata?.cost as
+                                | {
+                                      inputTextCost: number
+                                      inputImageCost: number
+                                      outputImageCost: number
+                                      perImageCost: number
+                                      totalImageCost: number
+                                      totalCost: number
+                                      currency: string
+                                      breakdown: {
+                                          tokenBasedCost: number
+                                          qualityBasedCost: number
+                                      }
+                                  }
+                                | undefined
+
                             // Add assistant response to extended chat history with image data
                             const responseText = `Generated ${imageUrls.length} image(s) for: "${messageText}"`
                             this.addMessageToHistory(
@@ -1001,6 +1087,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                     images: imageUrls,
                                     prompt: messageText,
                                     savedPaths: savedPaths,
+                                    usage: usage,
+                                    cost: cost,
                                 }
                             )
 
@@ -1012,6 +1100,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                 images: imageUrls,
                                 prompt: messageText,
                                 savedPaths: savedPaths,
+                                usage: usage,
+                                cost: cost,
                             })
 
                             // Show success message if images were saved

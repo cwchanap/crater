@@ -89,6 +89,24 @@
               on:error={() => console.error('Failed to load image:', imageUrl)}
             />
           {/each}
+          
+          {#if imageData.usage && imageData.cost}
+            <div class="usage-info">
+              <div class="usage-section">
+                <strong>💰 Tokens & Cost</strong>
+                <div class="usage-details">
+                  <div>Input Tokens: {imageData.usage.inputTextTokens.toLocaleString()}</div>
+                  <div>Output Tokens: {imageData.usage.outputImageTokens.toLocaleString()}</div>
+                  <div>Total Tokens: {imageData.usage.totalTokens.toLocaleString()}</div>
+                </div>
+                <div class="cost-details">
+                  <div>Token Cost: ${imageData.cost.breakdown.tokenBasedCost.toFixed(6)}</div>
+                  <div>Image Cost: ${imageData.cost.breakdown.qualityBasedCost.toFixed(6)}</div>
+                  <div><strong>Total: ${imageData.cost.totalCost.toFixed(6)} {imageData.cost.currency}</strong></div>
+                </div>
+              </div>
+            </div>
+          {/if}
         {:else}
           <div>{message.text}</div>
         {/if}
@@ -268,5 +286,40 @@
 
   .send-button:hover {
     background-color: var(--vscode-button-hoverBackground);
+  }
+
+  .usage-info {
+    margin-top: 12px;
+    padding: 8px;
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 4px;
+    background-color: var(--vscode-input-background);
+    font-size: 11px;
+  }
+
+  .usage-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .usage-details, .cost-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 4px;
+    color: var(--vscode-descriptionForeground);
+  }
+
+  .cost-details {
+    margin-top: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--vscode-widget-border);
+  }
+
+  .cost-details div:last-child {
+    grid-column: span 3;
+    text-align: center;
+    color: var(--vscode-foreground);
   }
 </style>

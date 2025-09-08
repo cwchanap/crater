@@ -67,7 +67,9 @@
             imageData: {
               images: message.images,
               prompt: message.prompt,
-              savedPaths: message.savedPaths
+              savedPaths: message.savedPaths,
+              usage: message.usage,
+              cost: message.cost
             }
           }
           messages.update(msgs => [...msgs, imageMessage])

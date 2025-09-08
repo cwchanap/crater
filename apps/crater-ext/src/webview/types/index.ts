@@ -7,6 +7,25 @@ export interface ChatMessage {
         images: string[]
         prompt: string
         savedPaths?: string[]
+        usage?: {
+            inputTextTokens: number
+            inputImageTokens: number
+            outputImageTokens: number
+            totalTokens: number
+        }
+        cost?: {
+            inputTextCost: number
+            inputImageCost: number
+            outputImageCost: number
+            perImageCost: number
+            totalImageCost: number
+            totalCost: number
+            currency: string
+            breakdown: {
+                tokenBasedCost: number
+                qualityBasedCost: number
+            }
+        }
     }
 }
 
@@ -26,6 +45,25 @@ export interface WebviewMessage {
     images?: string[]
     prompt?: string
     savedPaths?: string[]
+    usage?: {
+        inputTextTokens: number
+        inputImageTokens: number
+        outputImageTokens: number
+        totalTokens: number
+    }
+    cost?: {
+        inputTextCost: number
+        inputImageCost: number
+        outputImageCost: number
+        perImageCost: number
+        totalImageCost: number
+        totalCost: number
+        currency: string
+        breakdown: {
+            tokenBasedCost: number
+            qualityBasedCost: number
+        }
+    }
     messages?: ChatMessage[]
     sessions?: ChatSession[]
     currentSessionId?: string

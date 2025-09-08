@@ -83,7 +83,7 @@ export interface AIProviderError {
     originalError?: unknown
 }
 
-export type AIProviderType = 'gemini' | 'openai' | 'mock'
+export type AIProviderType = 'gemini' | 'openai' | 'mock' | 'text-only'
 
 /**
  * Abstract base class for AI image model providers
