@@ -95,6 +95,57 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(refreshWebviewCommand)
         console.log('[Crater] Refresh webview command registered')
 
+        // Register a command to browse for folder selection
+        const browseFolderCommand = vscode.commands.registerCommand(
+            'crater-ext.browseFolder',
+            async () => {
+                console.log('[Crater] Browse folder command triggered')
+                try {
+                    const options: vscode.OpenDialogOptions = {
+                        canSelectFolders: true,
+                        canSelectFiles: false,
+                        canSelectMany: false,
+                        openLabel: 'Select Folder',
+                        title: 'Select Directory for Saving Images',
+                    }
+
+                    const result = await vscode.window.showOpenDialog(options)
+                    if (result && result[0]) {
+                        const selectedPath = result[0].fsPath
+                        console.log('[Crater] Selected folder:', selectedPath)
+
+                        // Update the configuration
+                        const config =
+                            vscode.workspace.getConfiguration('crater-ext')
+                        await config.update(
+                            'imageSaveDirectory',
+                            selectedPath,
+                            vscode.ConfigurationTarget.Global
+                        )
+
+                        // Notify the webview about the change
+                        chatbotProvider.notifySettingsChanged()
+
+                        vscode.window.showInformationMessage(
+                            `[Crater] Image save directory updated to: ${selectedPath}`
+                        )
+                        return selectedPath
+                    }
+                } catch (error) {
+                    console.error(
+                        '[Crater] Error in browse folder command:',
+                        error
+                    )
+                    vscode.window.showErrorMessage(
+                        `Failed to select folder: ${error instanceof Error ? error.message : String(error)}`
+                    )
+                }
+            }
+        )
+
+        context.subscriptions.push(browseFolderCommand)
+        console.log('[Crater] Browse folder command registered')
+
         // Listen for configuration changes
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {

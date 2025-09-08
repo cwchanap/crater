@@ -48,6 +48,9 @@
         settingsReceived = true
       } else if (event.data.type === 'settings-saved') {
         isLoadingSettings.set(false)
+      } else if (event.data.type === 'folder-selected') {
+        // Update the directory path when user selects a folder via browse dialog
+        imageSaveDirectory = event.data.path || imageSaveDirectory
       }
     }
 
@@ -99,6 +102,13 @@
     } else if (aiProvider === 'openai') {
       aiModel = 'gpt-image-1'
     }
+  }
+
+  function handleBrowseFolder() {
+    if (!$vscode) return
+    
+    // Send message to extension to trigger folder browse dialog
+    $vscode.postMessage({ type: 'browse-folder' })
   }
 
   function validateApiKey(key: string, provider: string): boolean {
@@ -248,14 +258,24 @@
   {#if autoSaveImages}
     <div class="section">
       <label for="imageSaveDirectory">Save Directory</label>
-      <input 
-        id="imageSaveDirectory" 
-        type="text" 
-        bind:value={imageSaveDirectory}
-        placeholder="images/ (relative to workspace root)"
-        disabled={$isLoadingSettings}
-      />
-      <div class="note">Directory where images will be saved (relative to workspace)</div>
+      <div class="directory-input-group">
+        <input 
+          id="imageSaveDirectory" 
+          type="text" 
+          bind:value={imageSaveDirectory}
+          placeholder="images/ (relative to workspace root)"
+          disabled={$isLoadingSettings}
+        />
+        <button 
+          class="btn browse-btn" 
+          type="button"
+          disabled={$isLoadingSettings}
+          on:click={handleBrowseFolder}
+        >
+          Browse...
+        </button>
+      </div>
+      <div class="note">Directory where images will be saved. Click Browse to select from filesystem.</div>
     </div>
   {/if}
 
@@ -389,5 +409,27 @@
 
   label input[type="checkbox"] {
     margin-bottom: 0;
+  }
+
+  .directory-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .directory-input-group input {
+    flex: 1;
+  }
+
+  .browse-btn {
+    background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+    color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+    padding: 6px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .browse-btn:hover:not(:disabled) {
+    background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-hoverBackground));
   }
 </style>

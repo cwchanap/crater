@@ -24,6 +24,11 @@
         "command": "crater-ext.refreshWebview",
         "title": "Refresh Webview (Development)",
         "category": "Crater"
+      },
+      {
+        "command": "crater-ext.browseFolder",
+        "title": "Browse for Image Save Directory",
+        "category": "Crater"
       }
     ],
     "viewsContainers": {
@@ -52,6 +57,9 @@
         },
         {
           "command": "crater-ext.refreshWebview"
+        },
+        {
+          "command": "crater-ext.browseFolder"
         }
       ]
     },

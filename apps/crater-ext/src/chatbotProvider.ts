@@ -119,41 +119,37 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         try {
             console.log('[Crater] Setting up development file watchers...')
 
-            const handleFileChange = (uri?: vscode.Uri) => {
+            const handleFileChange = async (uri?: vscode.Uri) => {
                 const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
                 console.log(
                     `[Crater] 🔥 Dev: ${fileName} changed, triggering refresh...`
                 )
 
                 // Option 1: Use VS Code's built-in webview reload command
-                vscode.commands
-                    .executeCommand(
+                try {
+                    await vscode.commands.executeCommand(
                         'workbench.action.webview.reloadWebviewAction'
                     )
-                    .then(() => {
-                        console.log(
-                            '[Crater] ✅ Webview reloaded via VS Code command'
+                    console.log(
+                        '[Crater] ✅ Webview reloaded via VS Code command'
+                    )
+                    vscode.window.setStatusBarMessage(
+                        `🔥 ${fileName} → webview reloaded`,
+                        2000
+                    )
+                } catch {
+                    // Fallback: Manual HTML refresh
+                    console.log('[Crater] 🔄 Fallback: Manual webview refresh')
+                    if (this._view) {
+                        this._view.webview.html = this._getHtmlForWebview(
+                            this._view.webview
                         )
-                        vscode.window.setStatusBarMessage(
-                            `🔥 ${fileName} → webview reloaded`,
-                            2000
-                        )
-                    })
-                    .catch(() => {
-                        // Fallback: Manual HTML refresh
-                        console.log(
-                            '[Crater] 🔄 Fallback: Manual webview refresh'
-                        )
-                        if (this._view) {
-                            this._view.webview.html = this._getHtmlForWebview(
-                                this._view.webview
-                            )
-                        }
-                        vscode.window.setStatusBarMessage(
-                            `🔄 ${fileName} → manual refresh`,
-                            2000
-                        )
-                    })
+                    }
+                    vscode.window.setStatusBarMessage(
+                        `🔄 ${fileName} → manual refresh`,
+                        2000
+                    )
+                }
             }
 
             // Watch dist files for immediate refresh
@@ -643,6 +639,42 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         } else {
             console.log('[Crater] No webview available to refresh')
             vscode.window.showWarningMessage('No webview available to refresh')
+        }
+    }
+
+    public notifySettingsChanged(): void {
+        console.log('[Crater] Notifying webview about settings change')
+        if (this._view) {
+            const config = vscode.workspace.getConfiguration('crater-ext')
+            const aiProvider = config.get<string>('aiProvider', 'gemini')
+            const aiModel = config.get<string>(
+                'aiModel',
+                aiProvider === 'gemini'
+                    ? 'gemini-2.5-flash-image-preview'
+                    : 'gpt-image-1'
+            )
+            const geminiApiKey = config.get<string>('geminiApiKey', '')
+            const openaiApiKey = config.get<string>('openaiApiKey', '')
+            const imageSaveDirectory = config.get<string>(
+                'imageSaveDirectory',
+                '${workspaceFolder}/images'
+            )
+            const autoSaveImages = config.get<boolean>('autoSaveImages', true)
+            const imageSize = config.get<string>('imageSize', 'auto')
+            const imageQuality = config.get<string>('imageQuality', 'auto')
+
+            this._view.webview.postMessage({
+                type: 'settings',
+                aiProvider,
+                aiModel,
+                geminiApiKey,
+                openaiApiKey,
+                imageSaveDirectory,
+                autoSaveImages,
+                imageSize,
+                imageQuality,
+            })
+            console.log('[Crater] Settings notification sent to webview')
         }
     }
 
@@ -1213,6 +1245,20 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
                 this._view.webview.postMessage({ type: 'settings-saved' })
                 vscode.window.showInformationMessage('[Crater] Settings saved')
+                break
+            }
+            case 'browse-folder': {
+                // Trigger the browse folder command
+                const selectedPath = await vscode.commands.executeCommand(
+                    'crater-ext.browseFolder'
+                )
+                if (selectedPath) {
+                    // Send the selected path back to the webview
+                    this._view.webview.postMessage({
+                        type: 'folder-selected',
+                        path: selectedPath,
+                    })
+                }
                 break
             }
             default:

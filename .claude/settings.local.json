@@ -9,7 +9,10 @@
       "mcp__Context7__get-library-docs",
       "WebSearch",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm type-check:*)"
     ],
     "deny": [],
     "ask": []
