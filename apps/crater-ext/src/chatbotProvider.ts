@@ -10,6 +10,11 @@ import {
 interface WebviewMessage {
     type: string
     text?: string
+    messageIndex?: number
+    imageStates?: {
+        deleted: boolean[]
+        hidden: boolean[]
+    }
     messages?: Array<{
         text: string
         sender: string
@@ -19,6 +24,10 @@ interface WebviewMessage {
             images: string[]
             prompt: string
             savedPaths?: string[]
+            imageStates?: {
+                deleted: boolean[]
+                hidden: boolean[]
+            }
             usage?: {
                 inputTextTokens: number
                 inputImageTokens: number
@@ -53,6 +62,10 @@ interface ExtendedChatMessage {
         images: string[]
         prompt: string
         savedPaths?: string[]
+        imageStates?: {
+            deleted: boolean[]
+            hidden: boolean[]
+        }
         usage?: {
             inputTextTokens: number
             inputImageTokens: number
@@ -492,6 +505,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             images: string[]
             prompt: string
             savedPaths?: string[]
+            imageStates?: {
+                deleted: boolean[]
+                hidden: boolean[]
+            }
             usage?: {
                 inputTextTokens: number
                 inputImageTokens: number
@@ -1348,6 +1365,119 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         type: 'folder-selected',
                         path: selectedPath,
                     })
+                }
+                break
+            }
+            case 'update-image-states': {
+                const messageIndex = message.messageIndex as number
+                const imageStates = message.imageStates as {
+                    deleted: boolean[]
+                    hidden: boolean[]
+                }
+
+                if (
+                    typeof messageIndex === 'number' &&
+                    imageStates &&
+                    this._extendedChatHistory.length > messageIndex
+                ) {
+                    const targetMessage =
+                        this._extendedChatHistory[messageIndex]
+                    if (
+                        targetMessage.messageType === 'image' &&
+                        targetMessage.imageData
+                    ) {
+                        const oldStates = targetMessage.imageData.imageStates
+
+                        // Update the image states in the current chat history
+                        targetMessage.imageData.imageStates = imageStates
+
+                        // Delete actual files for newly deleted images
+                        if (targetMessage.imageData.savedPaths && oldStates) {
+                            for (
+                                let i = 0;
+                                i < imageStates.deleted.length;
+                                i++
+                            ) {
+                                // If image was just marked as deleted (wasn't deleted before)
+                                if (
+                                    imageStates.deleted[i] &&
+                                    !oldStates.deleted[i]
+                                ) {
+                                    const filePath =
+                                        targetMessage.imageData.savedPaths[i]
+                                    if (filePath && fs.existsSync(filePath)) {
+                                        try {
+                                            fs.unlinkSync(filePath)
+                                            console.log(
+                                                '[Crater ChatbotProvider] Deleted image file:',
+                                                filePath
+                                            )
+                                        } catch (error) {
+                                            console.error(
+                                                '[Crater ChatbotProvider] Error deleting image file:',
+                                                filePath,
+                                                error
+                                            )
+                                            // Show user notification for file deletion errors
+                                            vscode.window.showWarningMessage(
+                                                `Failed to delete image file: ${path.basename(filePath)}. File may have been moved or deleted manually.`
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (targetMessage.imageData.savedPaths) {
+                            // No previous states, check for newly deleted images
+                            for (
+                                let i = 0;
+                                i < imageStates.deleted.length;
+                                i++
+                            ) {
+                                if (imageStates.deleted[i]) {
+                                    const filePath =
+                                        targetMessage.imageData.savedPaths[i]
+                                    if (filePath && fs.existsSync(filePath)) {
+                                        try {
+                                            fs.unlinkSync(filePath)
+                                            console.log(
+                                                '[Crater ChatbotProvider] Deleted image file:',
+                                                filePath
+                                            )
+                                        } catch (error) {
+                                            console.error(
+                                                '[Crater ChatbotProvider] Error deleting image file:',
+                                                filePath,
+                                                error
+                                            )
+                                            // Show user notification for file deletion errors
+                                            vscode.window.showWarningMessage(
+                                                `Failed to delete image file: ${path.basename(filePath)}. File may have been moved or deleted manually.`
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Save the updated chat history
+                        await this.saveChatHistory()
+                        console.log(
+                            '[Crater ChatbotProvider] Image states updated and saved for message',
+                            messageIndex
+                        )
+
+                        // Show success notification if files were deleted
+                        const deletedCount =
+                            imageStates.deleted.filter(Boolean).length
+                        if (
+                            deletedCount > 0 &&
+                            targetMessage.imageData.savedPaths
+                        ) {
+                            vscode.window.showInformationMessage(
+                                `Deleted ${deletedCount} image file${deletedCount > 1 ? 's' : ''} from directory.`
+                            )
+                        }
+                    }
                 }
                 break
             }

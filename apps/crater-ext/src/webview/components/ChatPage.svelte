@@ -122,6 +122,15 @@
       return newMessages
     })
 
+    // Send update to extension to persist the change
+    if ($vscode) {
+      $vscode.postMessage({
+        type: 'update-image-states',
+        messageIndex: confirmDialog.pendingDeleteMessageIndex,
+        imageStates: $messages[confirmDialog.pendingDeleteMessageIndex].imageData?.imageStates
+      })
+    }
+
     // Reset dialog state
     confirmDialog = {
       show: false,
@@ -160,15 +169,25 @@
       
       return newMessages
     })
+
+    // Send update to extension to persist the change
+    if ($vscode && contextMenu.messageIndex >= 0) {
+      $vscode.postMessage({
+        type: 'update-image-states',
+        messageIndex: contextMenu.messageIndex,
+        imageStates: $messages[contextMenu.messageIndex].imageData?.imageStates
+      })
+    }
   }
 
   function closeContextMenu() {
     contextMenu.show = false
   }
 
-  function handleShowHiddenImage(event: MouseEvent, messageIndex: number, imageIndex: number) {
-    // Only handle left clicks
-    if (event.button !== 0) return
+  function handleShowHiddenImage(event: MouseEvent | KeyboardEvent, messageIndex: number, imageIndex: number) {
+    // Only handle left clicks or Enter/Space keys
+    if (event instanceof MouseEvent && event.button !== 0) return
+    if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return
     
     messages.update(msgs => {
       const newMessages = [...msgs]
@@ -181,6 +200,15 @@
       
       return newMessages
     })
+
+    // Send update to extension to persist the change
+    if ($vscode) {
+      $vscode.postMessage({
+        type: 'update-image-states',
+        messageIndex: messageIndex,
+        imageStates: $messages[messageIndex].imageData?.imageStates
+      })
+    }
   }
 </script>
 
@@ -194,7 +222,7 @@
     
     {#each $messages as message, messageIndex}
       <div class="message {message.sender}">
-        {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData}
+        {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData && Array.isArray(message.imageData.images)}
           {@const imageData = message.imageData}
           <div style="margin-bottom: 8px; font-style: italic;">
             Generated image for: "{imageData.prompt}"
@@ -213,7 +241,7 @@
                 role="button"
                 tabindex="0"
                 on:click={(e) => handleShowHiddenImage(e, messageIndex, imageIndex)}
-                on:keydown={(e) => e.key === 'Enter' || e.key === ' ' ? handleShowHiddenImage(e, messageIndex, imageIndex) : null}
+                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleShowHiddenImage(e, messageIndex, imageIndex) }}
                 on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
               >
                 🙈 Image hidden (click to show)
@@ -304,7 +332,7 @@
 <ConfirmDialog
   show={confirmDialog.show}
   title="Delete Image"
-  message="Are you sure you want to delete this image? This action cannot be undone."
+  message="Are you sure you want to delete this image? This will remove it from the chat and permanently delete the saved file from your directory. This action cannot be undone."
   confirmText="Delete"
   cancelText="Cancel"
   onConfirm={confirmDeleteImage}
