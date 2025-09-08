@@ -66,6 +66,13 @@ export class GeminiImageProvider extends BaseImageModelProvider {
     private static readonly API_ENDPOINT =
         'https://generativelanguage.googleapis.com/v1beta/models'
 
+    // Gemini 2.5 Flash Image pricing constants
+    private static readonly GEMINI_2_5_FLASH_IMAGE_PRICING = {
+        OUTPUT_TOKENS_PER_MILLION: 30.0, // $30 per 1M output tokens
+        TOKENS_PER_IMAGE: 1290, // tokens per image generation
+        COST_PER_IMAGE: 0.039, // $0.039 per image (up to 1024x1024)
+    }
+
     constructor(config: AIProviderConfig = {}) {
         super('gemini', GeminiImageProvider.DEFAULT_MODEL, config)
     }
@@ -119,7 +126,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
                 model,
                 request
             )
-            return this.parseGeminiImageResponse(response)
+            return this.parseGeminiImageResponse(response, model, request)
         } catch (error) {
             throw this.handleGeminiError(error)
         }
@@ -291,7 +298,9 @@ export class GeminiImageProvider extends BaseImageModelProvider {
     }
 
     private parseGeminiImageResponse(
-        response: GeminiResponse
+        response: GeminiResponse,
+        model: string,
+        request: ImageGenerationRequest
     ): ImageGenerationResponse {
         const candidate = response.candidates?.[0]
         if (!candidate) {
@@ -318,16 +327,132 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             }
         }
 
+        // Calculate token usage and costs for Gemini 2.5 Flash Image
+        const tokenUsage = this.calculateGeminiTokenUsage(
+            response,
+            images.length,
+            request
+        )
+        const costBreakdown = this.calculateGeminiCostBreakdown(
+            response,
+            images.length,
+            model,
+            request
+        )
+
         return {
             images,
             metadata: {
-                model: response.usageMetadata ? 'gemini' : 'unknown',
+                provider: 'gemini',
+                model:
+                    model === GeminiImageProvider.IMAGE_GENERATION_MODEL
+                        ? 'gemini-2.5-flash-image-preview'
+                        : model,
                 finishReason: candidate.finishReason,
                 textResponse:
                     textResponses.length > 0
                         ? textResponses.join('\n')
                         : undefined,
+                usage: tokenUsage,
+                cost: costBreakdown,
             },
+        }
+    }
+
+    private calculateGeminiTokenUsage(
+        response: GeminiResponse,
+        imageCount: number,
+        request: ImageGenerationRequest
+    ) {
+        // For Gemini 2.5 Flash Image, use actual usage metadata if available
+        if (response.usageMetadata) {
+            return {
+                inputTextTokens: response.usageMetadata.promptTokenCount || 0,
+                inputImageTokens: 0, // Gemini doesn't typically have input images for generation
+                outputImageTokens:
+                    response.usageMetadata.candidatesTokenCount || 0,
+                totalTokens: response.usageMetadata.totalTokenCount || 0,
+            }
+        }
+
+        // Fallback: estimate token usage
+        const promptTokens = Math.ceil(request.prompt.length / 4) // rough approximation
+        const outputTokens =
+            imageCount *
+            GeminiImageProvider.GEMINI_2_5_FLASH_IMAGE_PRICING.TOKENS_PER_IMAGE
+
+        return {
+            inputTextTokens: promptTokens,
+            inputImageTokens: 0,
+            outputImageTokens: outputTokens,
+            totalTokens: promptTokens + outputTokens,
+        }
+    }
+
+    private calculateGeminiCostBreakdown(
+        response: GeminiResponse,
+        imageCount: number,
+        model: string,
+        request: ImageGenerationRequest
+    ) {
+        const tokenUsage = this.calculateGeminiTokenUsage(
+            response,
+            imageCount,
+            request
+        )
+
+        // Different pricing for Gemini 2.5 Flash Image vs other models
+        if (model === GeminiImageProvider.IMAGE_GENERATION_MODEL) {
+            // Gemini 2.5 Flash Image: $0.039 per image
+            const perImageCost =
+                GeminiImageProvider.GEMINI_2_5_FLASH_IMAGE_PRICING
+                    .COST_PER_IMAGE
+            const totalImageCost = perImageCost * imageCount
+
+            // Token-based cost calculation
+            const outputTokenCost =
+                (tokenUsage.outputImageTokens / 1_000_000) *
+                GeminiImageProvider.GEMINI_2_5_FLASH_IMAGE_PRICING
+                    .OUTPUT_TOKENS_PER_MILLION
+
+            // For Gemini, input tokens are typically free for image generation
+            const inputTextCost = 0
+            const inputImageCost = 0
+
+            const totalCost = Math.max(totalImageCost, outputTokenCost) // Use the higher of the two pricing methods
+
+            return {
+                inputTextCost: Number(inputTextCost.toFixed(6)),
+                inputImageCost: Number(inputImageCost.toFixed(6)),
+                outputImageCost: Number(outputTokenCost.toFixed(6)),
+                perImageCost: Number(perImageCost.toFixed(6)),
+                totalImageCost: Number(totalImageCost.toFixed(6)),
+                totalCost: Number(totalCost.toFixed(6)),
+                currency: 'USD',
+                breakdown: {
+                    tokenBasedCost: Number(outputTokenCost.toFixed(6)),
+                    qualityBasedCost: Number(totalImageCost.toFixed(6)),
+                },
+            }
+        } else {
+            // For other models like Imagen, use a different pricing structure
+            // Placeholder for future Imagen pricing
+            const perImageCost = 0.05 // Estimate for Imagen
+            const totalImageCost = perImageCost * imageCount
+
+            return {
+                inputTextCost: 0,
+                inputImageCost: 0,
+                outputImageCost: 0,
+                perImageCost: Number(perImageCost.toFixed(6)),
+                totalImageCost: Number(totalImageCost.toFixed(6)),
+                totalCost: Number(totalImageCost.toFixed(6)),
+                currency: 'USD',
+                breakdown: {
+                    tokenBasedCost: 0,
+                    qualityBasedCost: Number(totalImageCost.toFixed(6)),
+                },
+            }
         }
     }
 

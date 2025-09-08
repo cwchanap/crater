@@ -91,18 +91,20 @@
           {/each}
           
           {#if imageData.usage && imageData.cost}
+            {@const usage = imageData.usage}
+            {@const cost = imageData.cost}
             <div class="usage-info">
               <div class="usage-section">
                 <strong>💰 Tokens & Cost</strong>
                 <div class="usage-details">
-                  <div>Input Tokens: {imageData.usage.inputTextTokens.toLocaleString()}</div>
-                  <div>Output Tokens: {imageData.usage.outputImageTokens.toLocaleString()}</div>
-                  <div>Total Tokens: {imageData.usage.totalTokens.toLocaleString()}</div>
+                  <div>Input Tokens: {usage.inputTextTokens.toLocaleString()}</div>
+                  <div>Output Tokens: {usage.outputImageTokens.toLocaleString()}</div>
+                  <div>Total Tokens: {usage.totalTokens.toLocaleString()}</div>
                 </div>
                 <div class="cost-details">
-                  <div>Token Cost: ${imageData.cost.breakdown.tokenBasedCost.toFixed(6)}</div>
-                  <div>Image Cost: ${imageData.cost.breakdown.qualityBasedCost.toFixed(6)}</div>
-                  <div><strong>Total: ${imageData.cost.totalCost.toFixed(6)} {imageData.cost.currency}</strong></div>
+                  <div>Token Cost: ${cost.breakdown.tokenBasedCost.toFixed(6)}</div>
+                  <div>Per-Image Cost: ${cost.breakdown.qualityBasedCost.toFixed(6)}</div>
+                  <div><strong>Total: ${cost.totalCost.toFixed(6)} {cost.currency}</strong></div>
                 </div>
               </div>
             </div>
