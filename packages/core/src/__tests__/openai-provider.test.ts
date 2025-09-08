@@ -237,4 +237,208 @@ describe('OpenAIImageProvider', () => {
             expect(provider).toBeDefined()
         })
     })
+
+    describe('Token Usage and Cost Tracking', () => {
+        describe('GPT-image-1 cost calculation', () => {
+            it('should calculate costs with usage metadata from API response', async () => {
+                const mockImageResponse = {
+                    data: [
+                        {
+                            b64_json: 'mock-base64-image-data',
+                            revised_prompt:
+                                'Enhanced: A beautiful game character',
+                        },
+                    ],
+                    usage: {
+                        prompt_tokens: 100,
+                        image_input_tokens: 0,
+                        image_output_tokens: 2000,
+                        total_tokens: 2100,
+                    },
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                const request: ImageGenerationRequest = {
+                    prompt: 'A beautiful game character',
+                    quality: 'medium',
+                    n: 1,
+                }
+
+                const response = await provider.generateImage!(request)
+
+                expect(response.metadata?.usage).toEqual({
+                    inputTextTokens: 100,
+                    inputImageTokens: 0,
+                    outputImageTokens: 2000,
+                    totalTokens: 2100,
+                })
+
+                expect(response.metadata?.cost).toEqual({
+                    inputTextCost: 0.0005, // 100/1M * $5
+                    inputImageCost: 0,
+                    outputImageCost: 0.08, // 2000/1M * $40
+                    perImageCost: 0.04, // medium quality
+                    totalImageCost: 0.04,
+                    totalCost: 0.1205, // 0.0005 + 0 + 0.08 + 0.04
+                    currency: 'USD',
+                    breakdown: {
+                        tokenBasedCost: 0.0805, // input + output token costs
+                        qualityBasedCost: 0.04, // per-image costs
+                    },
+                })
+            })
+
+            it('should calculate costs with different quality settings', async () => {
+                const mockImageResponse = {
+                    data: [{ b64_json: 'mock-base64' }],
+                    usage: {
+                        prompt_tokens: 50,
+                        total_tokens: 1550,
+                    },
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                // Test high quality
+                const highQualityResponse = await provider.generateImage!({
+                    prompt: 'Test image',
+                    quality: 'high',
+                    n: 1,
+                })
+
+                expect(highQualityResponse.metadata?.cost?.perImageCost).toBe(
+                    0.17
+                )
+                expect(highQualityResponse.metadata?.cost?.totalImageCost).toBe(
+                    0.17
+                )
+
+                // Test low quality
+                const lowQualityResponse = await provider.generateImage!({
+                    prompt: 'Test image',
+                    quality: 'low',
+                    n: 1,
+                })
+
+                expect(lowQualityResponse.metadata?.cost?.perImageCost).toBe(
+                    0.01
+                )
+                expect(lowQualityResponse.metadata?.cost?.totalImageCost).toBe(
+                    0.01
+                )
+            })
+
+            it('should handle multiple image generation cost calculation', async () => {
+                const mockImageResponse = {
+                    data: [
+                        { b64_json: 'image1-data' },
+                        { b64_json: 'image2-data' },
+                        { b64_json: 'image3-data' },
+                    ],
+                    usage: {
+                        prompt_tokens: 75,
+                        image_output_tokens: 3000,
+                        total_tokens: 3075,
+                    },
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                const response = await provider.generateImage!({
+                    prompt: 'Generate three images',
+                    quality: 'medium',
+                    n: 3,
+                })
+
+                expect(response.metadata?.usage?.totalTokens).toBe(3075)
+                expect(response.metadata?.cost?.perImageCost).toBe(0.04)
+                expect(response.metadata?.cost?.totalImageCost).toBe(0.12) // 3 * $0.04
+                // Total cost = inputText (75/1M*$5) + outputImage (3000/1M*$40) + totalImage (0.12)
+                // = 0.000375 + 0.12 + 0.12 = 0.240375
+                expect(response.metadata?.cost?.totalCost).toBeCloseTo(
+                    0.240375,
+                    5
+                )
+            })
+
+            it('should estimate costs when usage metadata is missing', async () => {
+                const mockImageResponse = {
+                    data: [{ b64_json: 'mock-base64' }],
+                    // No usage metadata
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                const response = await provider.generateImage!({
+                    prompt: 'A game character with detailed armor and weapons',
+                    quality: 'auto',
+                    size: '1024x1024',
+                    n: 1,
+                })
+
+                // Should fallback to estimation
+                expect(
+                    response.metadata?.usage?.inputTextTokens
+                ).toBeGreaterThan(0)
+                expect(response.metadata?.usage?.outputImageTokens).toBe(1000) // estimate
+                expect(response.metadata?.cost?.totalCost).toBeGreaterThan(0)
+                expect(response.metadata?.cost?.perImageCost).toBe(0.016) // 1024x1024 resolution cost
+            })
+
+            it('should handle auto quality with different resolutions', async () => {
+                const mockImageResponse = {
+                    data: [{ b64_json: 'mock-base64' }],
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                // Test different resolution costs
+                const resolutionTests = [
+                    { size: '768x768', expectedCost: 0.008 },
+                    { size: '1024x1024', expectedCost: 0.016 },
+                    { size: '1536x1536', expectedCost: 0.032 },
+                    { size: '2048x2048', expectedCost: 0.064 },
+                ]
+
+                for (const test of resolutionTests) {
+                    const response = await provider.generateImage!({
+                        prompt: 'Test image',
+                        quality: 'auto',
+                        size: test.size,
+                        n: 1,
+                    })
+
+                    expect(response.metadata?.cost?.perImageCost).toBe(
+                        test.expectedCost
+                    )
+                }
+            })
+
+            it('should handle edge case with zero tokens', async () => {
+                const mockImageResponse = {
+                    data: [{ b64_json: 'mock-base64' }],
+                    usage: {
+                        prompt_tokens: 0,
+                        image_output_tokens: 0,
+                        total_tokens: 0,
+                    },
+                }
+
+                setupMockFetch(mockImageResponse)
+
+                const response = await provider.generateImage!({
+                    prompt: '',
+                    quality: 'low',
+                    n: 1,
+                })
+
+                expect(response.metadata?.usage?.inputTextTokens).toBe(0)
+                expect(response.metadata?.usage?.outputImageTokens).toBe(0)
+                expect(response.metadata?.cost?.inputTextCost).toBe(0)
+                expect(response.metadata?.cost?.outputImageCost).toBe(0)
+                expect(response.metadata?.cost?.totalCost).toBe(0.01) // Only per-image cost
+            })
+        })
+    })
 })

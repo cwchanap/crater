@@ -332,10 +332,16 @@ export class OpenAIImageProvider extends BaseImageModelProvider {
         // If usage is provided in the response, use it
         if (response.usage) {
             return {
-                inputTextTokens: response.usage.prompt_tokens,
-                inputImageTokens: response.usage.image_input_tokens || 0,
-                outputImageTokens: response.usage.image_output_tokens || 0,
-                totalTokens: response.usage.total_tokens,
+                inputTextTokens: Math.max(0, response.usage.prompt_tokens || 0),
+                inputImageTokens: Math.max(
+                    0,
+                    response.usage.image_input_tokens || 0
+                ),
+                outputImageTokens: Math.max(
+                    0,
+                    response.usage.image_output_tokens || 0
+                ),
+                totalTokens: Math.max(0, response.usage.total_tokens || 0),
             }
         }
 
@@ -360,15 +366,21 @@ export class OpenAIImageProvider extends BaseImageModelProvider {
         const imageCount = requestParams.n || 1
 
         // Calculate token-based costs
-        const inputTextCost =
+        const inputTextCost = Math.max(
+            0,
             (tokenUsage.inputTextTokens / 1_000_000) *
-            OpenAIImageProvider.GPT_IMAGE_1_PRICING.INPUT_TEXT_TOKENS
-        const inputImageCost =
+                OpenAIImageProvider.GPT_IMAGE_1_PRICING.INPUT_TEXT_TOKENS
+        )
+        const inputImageCost = Math.max(
+            0,
             (tokenUsage.inputImageTokens / 1_000_000) *
-            OpenAIImageProvider.GPT_IMAGE_1_PRICING.INPUT_IMAGE_TOKENS
-        const outputImageCost =
+                OpenAIImageProvider.GPT_IMAGE_1_PRICING.INPUT_IMAGE_TOKENS
+        )
+        const outputImageCost = Math.max(
+            0,
             (tokenUsage.outputImageTokens / 1_000_000) *
-            OpenAIImageProvider.GPT_IMAGE_1_PRICING.OUTPUT_IMAGE_TOKENS
+                OpenAIImageProvider.GPT_IMAGE_1_PRICING.OUTPUT_IMAGE_TOKENS
+        )
 
         // Calculate per-image costs based on quality
         let perImageCost = 0
