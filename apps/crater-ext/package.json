@@ -19,6 +19,11 @@
         "command": "crater-ext.openChatbot",
         "title": "Open Game Asset Chatbot",
         "category": "Crater"
+      },
+      {
+        "command": "crater-ext.refreshWebview",
+        "title": "Refresh Webview (Development)",
+        "category": "Crater"
       }
     ],
     "viewsContainers": {
@@ -44,9 +49,20 @@
       "commandPalette": [
         {
           "command": "crater-ext.openChatbot"
+        },
+        {
+          "command": "crater-ext.refreshWebview"
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "crater-ext.refreshWebview",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "activeViewlet == 'crater-ext-container'"
+      }
+    ],
     "configuration": {
       "title": "Crater Game Asset Assistant",
       "properties": {
@@ -147,7 +163,9 @@
     "build:webview": "vite build",
     "dev": "npm-run-all -p dev:*",
     "dev:ext": "node esbuild.js --watch",
-    "dev:webview": "vite build --watch",
+    "dev:webview": "vite build --watch --mode development",
+    "dev:hmr": "npm-run-all -p dev:ext dev:webview:hmr",
+    "dev:webview:hmr": "vite --mode development",
     "vscode:prepublish": "pnpm run build",
     "compile": "pnpm run type-check && pnpm run lint && pnpm run build:ext && pnpm run build:webview",
     "watch": "npm-run-all -p watch:*",

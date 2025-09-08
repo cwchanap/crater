@@ -25,6 +25,7 @@
       case 'provider-info':
       case 'provider-updated':
         if (message.provider) {
+          currentProvider.set(message.provider)
           isConfigured.set(true)
           $currentPage === 'config' && currentPage.set('chat')
         } else {

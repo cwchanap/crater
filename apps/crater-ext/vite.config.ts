@@ -2,8 +2,19 @@ import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { resolve } from 'path'
 
-export default defineConfig({
+export default defineConfig(({ command, mode }) => ({
     plugins: [svelte()],
+
+    // Development server configuration for HMR
+    server: {
+        port: 3000,
+        hmr: {
+            port: 3001,
+        },
+        cors: true,
+        host: 'localhost',
+    },
+
     build: {
         lib: {
             entry: resolve(__dirname, 'src/webview.ts'),
@@ -24,8 +35,16 @@ export default defineConfig({
         },
         target: 'es2020',
         sourcemap: true,
+        // Enable watch mode in development
+        watch: mode === 'development' ? {} : null,
     },
     esbuild: {
         target: 'es2020',
     },
-})
+
+    // Define constants for different environments
+    define: {
+        __DEV__: mode === 'development',
+        __HMR_ENABLED__: command === 'serve',
+    },
+}))

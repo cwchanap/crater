@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { messages, isLoading, vscode, showChatHistoryModal } from '../stores'
+  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider } from '../stores'
   import type { ChatMessage } from '../types'
   
   let messageInput = ''
@@ -45,8 +45,22 @@
     }
   }
 
-  function formatTime(date: Date): string {
-    return new Date(date).toLocaleTimeString()
+  function formatTime(timestamp: Date | string): string {
+    const date = timestamp instanceof Date ? timestamp : new Date(timestamp)
+    return date.toLocaleTimeString()
+  }
+
+  function handleProviderChange(event: Event) {
+    const target = event.target as HTMLSelectElement
+    const newProvider = target.value
+    
+    if (!$vscode) return
+    
+    currentProvider.set(newProvider)
+    $vscode.postMessage({
+      type: 'switch-provider',
+      provider: newProvider
+    })
   }
 </script>
 
@@ -60,16 +74,17 @@
     
     {#each $messages as message}
       <div class="message {message.sender}">
-        {#if message.messageType === 'image' && message.imageData}
+        {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData}
+          {@const imageData = message.imageData}
           <div style="margin-bottom: 8px; font-style: italic;">
-            Generated image for: "{message.imageData.prompt}"
+            Generated image for: "{imageData.prompt}"
           </div>
-          {#each message.imageData.images as imageUrl}
+          {#each imageData.images as imageUrl}
             <img 
               src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
                 ? imageUrl 
                 : `data:image/png;base64,${imageUrl}`}
-              alt="Generated game asset: {message.imageData.prompt}"
+              alt="Generated game asset: {imageData.prompt}"
               style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 4px;"
               on:error={() => console.error('Failed to load image:', imageUrl)}
             />
@@ -89,6 +104,10 @@
   </div>
 
   <div class="controls">
+    <select class="provider-dropdown" value={$currentProvider} on:change={handleProviderChange}>
+      <option value="gemini">🤖 Gemini</option>
+      <option value="openai">🔮 OpenAI</option>
+    </select>
     <button class="new-chat-btn" on:click={newChat}>
       ✨ New Chat
     </button>
@@ -169,6 +188,23 @@
     display: flex;
     gap: 8px;
     margin-bottom: 12px;
+  }
+
+  .provider-dropdown {
+    padding: 6px 8px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 4px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    min-width: 100px;
+  }
+
+  .provider-dropdown:focus {
+    outline: none;
+    border-color: var(--vscode-focusBorder);
   }
 
   .new-chat-btn, .chat-history-btn {

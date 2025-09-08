@@ -1,25 +1,10 @@
 import { writable } from 'svelte/store'
+import type { ChatMessage, ChatSession } from '../types'
 
 interface VSCodeApi {
     postMessage(message: unknown): void
     getState(): unknown
     setState(state: unknown): void
-}
-
-interface ChatMessage {
-    text: string
-    sender: string
-    timestamp: string
-    messageType?: string
-    imageData?: string
-}
-
-interface ChatSession {
-    id: string
-    title: string
-    createdAt: string
-    lastActivity: string
-    messageCount: number
 }
 
 // VS Code webview API type declaration

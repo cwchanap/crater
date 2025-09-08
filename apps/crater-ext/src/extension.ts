@@ -83,6 +83,18 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(updateProviderCommand)
         console.log('[Crater] Update AI provider command registered')
 
+        // Register a command to manually refresh the webview (for development)
+        const refreshWebviewCommand = vscode.commands.registerCommand(
+            'crater-ext.refreshWebview',
+            () => {
+                console.log('[Crater] Manual webview refresh command triggered')
+                chatbotProvider.refreshWebview()
+            }
+        )
+
+        context.subscriptions.push(refreshWebviewCommand)
+        console.log('[Crater] Refresh webview command registered')
+
         // Listen for configuration changes
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {

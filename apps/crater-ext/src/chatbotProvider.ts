@@ -55,6 +55,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     private _extendedChatHistory: ExtendedChatMessage[] = []
     private _chatSessions: ChatSession[] = []
     private _currentSessionId: string | null = null
+    private _fileWatcher?: vscode.FileSystemWatcher
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -98,6 +99,106 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     `[Crater] Failed to initialize chatbot: ${error instanceof Error ? error.message : String(error)}`
                 )
             })
+
+        // Setup file watcher for development hot reload
+        this.setupDevelopmentWatcher()
+    }
+
+    private setupDevelopmentWatcher(): void {
+        const isHMREnabled =
+            process.env.NODE_ENV === 'development' ||
+            process.env.CRATER_HMR_ENABLED === 'true'
+
+        if (!isHMREnabled) {
+            console.log(
+                '[Crater] HMR not enabled, skipping development watcher'
+            )
+            return
+        }
+
+        try {
+            console.log('[Crater] Setting up development file watchers...')
+
+            const handleFileChange = (uri?: vscode.Uri) => {
+                const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
+                console.log(
+                    `[Crater] 🔥 Dev: ${fileName} changed, triggering refresh...`
+                )
+
+                // Option 1: Use VS Code's built-in webview reload command
+                vscode.commands
+                    .executeCommand(
+                        'workbench.action.webview.reloadWebviewAction'
+                    )
+                    .then(() => {
+                        console.log(
+                            '[Crater] ✅ Webview reloaded via VS Code command'
+                        )
+                        vscode.window.setStatusBarMessage(
+                            `🔥 ${fileName} → webview reloaded`,
+                            2000
+                        )
+                    })
+                    .catch(() => {
+                        // Fallback: Manual HTML refresh
+                        console.log(
+                            '[Crater] 🔄 Fallback: Manual webview refresh'
+                        )
+                        if (this._view) {
+                            this._view.webview.html = this._getHtmlForWebview(
+                                this._view.webview
+                            )
+                        }
+                        vscode.window.setStatusBarMessage(
+                            `🔄 ${fileName} → manual refresh`,
+                            2000
+                        )
+                    })
+            }
+
+            // Watch dist files for immediate refresh
+            const distJsPattern = path.join(
+                this._extensionUri.fsPath,
+                'dist',
+                'webview.js'
+            )
+            const distCssPattern = path.join(
+                this._extensionUri.fsPath,
+                'dist',
+                'webview.css'
+            )
+
+            console.log('[Crater] Watching for webview changes:')
+            console.log(`  📦 ${distJsPattern}`)
+            console.log(`  🎨 ${distCssPattern}`)
+
+            const distJsWatcher =
+                vscode.workspace.createFileSystemWatcher(distJsPattern)
+            const distCssWatcher =
+                vscode.workspace.createFileSystemWatcher(distCssPattern)
+
+            // Immediate refresh for dist files
+            distJsWatcher.onDidChange((uri) => {
+                setTimeout(() => handleFileChange(uri), 300) // Wait for file write completion
+            })
+            distCssWatcher.onDidChange((uri) => {
+                setTimeout(() => handleFileChange(uri), 300)
+            })
+
+            // Store watcher for cleanup
+            this._fileWatcher = distJsWatcher
+
+            console.log('[Crater] ✅ Development watchers active!')
+            vscode.window.showInformationMessage(
+                '🔥 Crater Dev Mode: Auto-reload on webview changes'
+            )
+        } catch (error) {
+            console.log('[Crater] Could not setup development watcher:', error)
+        }
+    }
+
+    dispose(): void {
+        this._fileWatcher?.dispose()
     }
 
     private async loadChatHistory(): Promise<void> {
@@ -525,6 +626,23 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 provider: this.currentProvider?.type || null,
                 configured: !!this.currentProvider,
             })
+        }
+    }
+
+    public refreshWebview(): void {
+        console.log('[Crater] Manual webview refresh requested')
+        if (this._view) {
+            console.log('[Crater] Refreshing webview HTML manually...')
+            this._view.webview.html = this._getHtmlForWebview(
+                this._view.webview
+            )
+            vscode.window.showInformationMessage(
+                '🔄 Webview refreshed manually'
+            )
+            console.log('[Crater] Manual webview refresh complete')
+        } else {
+            console.log('[Crater] No webview available to refresh')
+            vscode.window.showWarningMessage('No webview available to refresh')
         }
     }
 
@@ -1027,6 +1145,29 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 })
                 break
             }
+            case 'switch-provider': {
+                const newProvider = message.provider as string
+                if (
+                    !newProvider ||
+                    (newProvider !== 'gemini' && newProvider !== 'openai')
+                ) {
+                    console.warn('[Crater] Invalid provider:', newProvider)
+                    break
+                }
+
+                const config = vscode.workspace.getConfiguration('crater-ext')
+                const target = vscode.ConfigurationTarget.Global
+
+                await config.update('aiProvider', newProvider, target)
+
+                // Update the AI provider
+                await this.updateAIProvider()
+
+                vscode.window.showInformationMessage(
+                    `[Crater] Switched to ${newProvider === 'gemini' ? 'Gemini' : 'OpenAI'} provider`
+                )
+                break
+            }
             case 'save-settings': {
                 const config = vscode.workspace.getConfiguration('crater-ext')
                 const target = vscode.ConfigurationTarget.Global
@@ -1094,30 +1235,29 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             )
             let html = fs.readFileSync(htmlPath, 'utf8')
 
-            // Get the compiled JavaScript URI for the webview script
+            // Always use built files but with aggressive cache-busting for development
             const scriptPathOnDisk = vscode.Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.js'
             )
-            const scriptUri = webview.asWebviewUri(scriptPathOnDisk)
+            const scriptUriWebview = webview.asWebviewUri(scriptPathOnDisk)
 
-            // Get the compiled CSS URI for the webview styles
             const cssPathOnDisk = vscode.Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.css'
             )
-            const cssUri = webview.asWebviewUri(cssPathOnDisk)
+            const cssUriWebview = webview.asWebviewUri(cssPathOnDisk)
 
-            // Add cache-busting parameter to force reload
+            // Add aggressive cache-busting parameter for better development experience
             const cacheBuster = Date.now()
-            const scriptUriWithCache = `${scriptUri.toString()}?v=${cacheBuster}`
-            const cssUriWithCache = `${cssUri.toString()}?v=${cacheBuster}`
+            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}`
+            const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}`
 
             // Replace all placeholders with the actual URIs
-            html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUriWithCache)
-            html = html.replace(/\{\{CSS_URI\}\}/g, cssUriWithCache)
+            html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
+            html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
 
             console.log(
                 '[Crater] HTML loaded and processed successfully, length:',

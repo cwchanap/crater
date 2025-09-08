@@ -150,6 +150,10 @@ The extension uses a message-based protocol between the webview and extension:
 ### WebView Development
 
 - **Hot Reload**: Use `pnpm run dev` for automatic rebuilds of both extension and webview
+- **HMR Development**: Use "Run Extension with HMR" debug configuration for hot module replacement
+  - Automatically refreshes webview on file changes
+  - Shows status bar notifications when files reload
+  - Environment variables: `NODE_ENV=development`, `CRATER_HMR_ENABLED=true`
 - **Debug WebView**: Right-click webview → "Open WebView Developer Tools"
 - **Message Protocol**: All extension ↔ webview communication uses structured message passing
 - **State Management**: Svelte stores handle UI state; extension handles persistence
