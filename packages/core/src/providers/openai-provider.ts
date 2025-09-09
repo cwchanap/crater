@@ -5,6 +5,8 @@ import {
     AIGenerationResponse,
     ImageGenerationRequest,
     ImageGenerationResponse,
+    ImageGenerationUsage,
+    ImageGenerationCost,
     AIProviderError,
 } from '../base-provider'
 
@@ -328,7 +330,7 @@ export class OpenAIImageProvider extends BaseImageModelProvider {
     private calculateTokenUsage(
         response: OpenAIImageResponse,
         requestParams: OpenAIImageRequest
-    ) {
+    ): ImageGenerationUsage {
         // If usage is provided in the response, use it
         if (response.usage) {
             return {
@@ -361,7 +363,7 @@ export class OpenAIImageProvider extends BaseImageModelProvider {
     private calculateCostBreakdown(
         response: OpenAIImageResponse,
         requestParams: OpenAIImageRequest
-    ) {
+    ): ImageGenerationCost {
         const tokenUsage = this.calculateTokenUsage(response, requestParams)
         const imageCount = requestParams.n || 1
 

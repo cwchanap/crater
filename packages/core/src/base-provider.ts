@@ -63,6 +63,61 @@ export interface ImageGenerationRequest {
     referenceImages?: string[]
 }
 
+/** Token usage metadata for image generation */
+export interface ImageGenerationUsage {
+    /** Input text tokens used */
+    inputTextTokens: number
+    /** Input image tokens used */
+    inputImageTokens: number
+    /** Output image tokens generated */
+    outputImageTokens: number
+    /** Total tokens used */
+    totalTokens: number
+}
+
+/** Cost breakdown metadata for image generation */
+export interface ImageGenerationCost {
+    /** Cost for input text tokens */
+    inputTextCost: number
+    /** Cost for input image tokens */
+    inputImageCost: number
+    /** Cost for output image tokens */
+    outputImageCost: number
+    /** Cost per image generated */
+    perImageCost: number
+    /** Total cost for all images */
+    totalImageCost: number
+    /** Total cost for the operation */
+    totalCost: number
+    /** Currency of the cost */
+    currency: string
+    /** Detailed cost breakdown */
+    breakdown: {
+        /** Token-based cost component */
+        tokenBasedCost: number
+        /** Quality/resolution-based cost component */
+        qualityBasedCost: number
+    }
+}
+
+/** Metadata for image generation responses */
+export interface ImageGenerationMetadata {
+    /** AI provider name */
+    provider: string
+    /** Model used for generation */
+    model: string
+    /** Token usage information */
+    usage?: ImageGenerationUsage
+    /** Cost breakdown information */
+    cost?: ImageGenerationCost
+    /** Finish reason from the provider */
+    finishReason?: string
+    /** Text response if any */
+    textResponse?: string
+    /** Additional provider-specific metadata */
+    [key: string]: unknown
+}
+
 export interface ImageGenerationResponse {
     /** Generated images as base64 or URLs */
     images: Array<{
@@ -71,7 +126,7 @@ export interface ImageGenerationResponse {
         revisedPrompt?: string
     }>
     /** Provider-specific metadata */
-    metadata?: Record<string, unknown>
+    metadata?: ImageGenerationMetadata
 }
 
 export interface AIProviderError {

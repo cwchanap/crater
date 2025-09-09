@@ -5,6 +5,8 @@ import {
     AIGenerationResponse,
     ImageGenerationRequest,
     ImageGenerationResponse,
+    ImageGenerationUsage,
+    ImageGenerationCost,
     AIProviderError,
 } from '../base-provider'
 
@@ -363,7 +365,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         response: GeminiResponse,
         imageCount: number,
         request: ImageGenerationRequest
-    ) {
+    ): ImageGenerationUsage {
         // For Gemini 2.5 Flash Image, use actual usage metadata if available
         if (response.usageMetadata) {
             return {
@@ -394,7 +396,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         imageCount: number,
         model: string,
         request: ImageGenerationRequest
-    ) {
+    ): ImageGenerationCost {
         const tokenUsage = this.calculateGeminiTokenUsage(
             response,
             imageCount,
