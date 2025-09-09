@@ -30,24 +30,24 @@ Add the explicit `"type": "webview"` property to view definitions in `package.js
 
 ```json
 {
-  "contributes": {
-    "views": {
-      "crater-ext-container": [
-        {
-          "id": "crater-ext.chatbotView",
-          "name": "Game Asset Assistant",
-          "when": "true"
+    "contributes": {
+        "views": {
+            "crater-ext-container": [
+                {
+                    "id": "crater-ext.chatbotView",
+                    "name": "Game Asset Assistant",
+                    "when": "true"
+                }
+            ],
+            "explorer": [
+                {
+                    "id": "crater-ext.chatbotViewDebug",
+                    "name": "Game Asset Assistant (Debug)",
+                    "when": "true"
+                }
+            ]
         }
-      ],
-      "explorer": [
-        {
-          "id": "crater-ext.chatbotViewDebug",
-          "name": "Game Asset Assistant (Debug)",
-          "when": "true"
-        }
-      ]
     }
-  }
 }
 ```
 
@@ -55,26 +55,26 @@ Add the explicit `"type": "webview"` property to view definitions in `package.js
 
 ```json
 {
-  "contributes": {
-    "views": {
-      "crater-ext-container": [
-        {
-          "id": "crater-ext.chatbotView",
-          "name": "Game Asset Assistant",
-          "when": "true",
-          "type": "webview"
+    "contributes": {
+        "views": {
+            "crater-ext-container": [
+                {
+                    "id": "crater-ext.chatbotView",
+                    "name": "Game Asset Assistant",
+                    "when": "true",
+                    "type": "webview"
+                }
+            ],
+            "explorer": [
+                {
+                    "id": "crater-ext.chatbotViewDebug",
+                    "name": "Game Asset Assistant (Debug)",
+                    "when": "true",
+                    "type": "webview"
+                }
+            ]
         }
-      ],
-      "explorer": [
-        {
-          "id": "crater-ext.chatbotViewDebug",
-          "name": "Game Asset Assistant (Debug)",
-          "when": "true",
-          "type": "webview"
-        }
-      ]
     }
-  }
 }
 ```
 
@@ -107,15 +107,15 @@ Add debugging commands to verify view provider functionality:
 
 ```typescript
 vscode.commands.registerCommand('your-ext.testViews', async () => {
-  // Test view focusing
-  await vscode.commands.executeCommand('your-view-id.focus')
+    // Test view focusing
+    await vscode.commands.executeCommand('your-view-id.focus')
 
-  // Check available commands
-  const commands = await vscode.commands.getCommands()
-  console.log(
-    'Available view commands:',
-    commands.filter((c) => c.includes('your-view'))
-  )
+    // Check available commands
+    const commands = await vscode.commands.getCommands()
+    console.log(
+        'Available view commands:',
+        commands.filter((c) => c.includes('your-view'))
+    )
 })
 ```
 

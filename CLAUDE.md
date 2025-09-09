@@ -72,8 +72,8 @@ pnpm test:watch     # Run tests in watch mode
 - WebView uses embedded HTML/CSS/JS with VS Code theme integration
 - Message passing between extension and webview via `postMessage`/`onDidReceiveMessage`
 - Build process:
-  - Extension: esbuild via `esbuild.js` → `dist/extension.js`
-  - WebView: Vite → `dist/webview.js`
+    - Extension: esbuild via `esbuild.js` → `dist/extension.js`
+    - WebView: Vite → `dist/webview.js`
 - Support for hot module replacement during development
 
 ### Package Dependencies

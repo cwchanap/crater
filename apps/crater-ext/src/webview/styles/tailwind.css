@@ -4,30 +4,30 @@
 
 /* VS Code theme integration */
 :root {
-  color-scheme: var(--vscode-ui-kind, dark);
+    color-scheme: var(--vscode-ui-kind, dark);
 }
 
 /* Custom component styles */
 @layer components {
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
-  }
-  
-  .btn-primary {
-    @apply bg-vscode-button text-white hover:bg-vscode-button-hover focus:ring-blue-500;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
-    @apply dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600;
-  }
-  
-  .input-field {
-    @apply w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md;
-    @apply text-vscode-foreground focus:outline-none focus:ring-2 focus:ring-blue-500;
-  }
-  
-  .card {
-    @apply bg-vscode-background border border-vscode-border rounded-lg p-4 shadow-sm;
-  }
+    .btn {
+        @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+
+    .btn-primary {
+        @apply bg-vscode-button text-white hover:bg-vscode-button-hover focus:ring-blue-500;
+    }
+
+    .btn-secondary {
+        @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
+        @apply dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600;
+    }
+
+    .input-field {
+        @apply w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md;
+        @apply text-vscode-foreground focus:outline-none focus:ring-2 focus:ring-blue-500;
+    }
+
+    .card {
+        @apply bg-vscode-background border border-vscode-border rounded-lg p-4 shadow-sm;
+    }
 }

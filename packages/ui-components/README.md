@@ -16,16 +16,16 @@ Import the components you need:
 import { Button, Card, CardHeader, CardContent } from '@crater/ui-components'
 
 function MyComponent() {
-  return (
-    <Card>
-      <CardHeader>
-        <h2>Welcome</h2>
-      </CardHeader>
-      <CardContent>
-        <Button>Click me</Button>
-      </CardContent>
-    </Card>
-  )
+    return (
+        <Card>
+            <CardHeader>
+                <h2>Welcome</h2>
+            </CardHeader>
+            <CardContent>
+                <Button>Click me</Button>
+            </CardContent>
+        </Card>
+    )
 }
 ```
 
@@ -36,11 +36,11 @@ This package requires Tailwind CSS to be configured in your project. Make sure t
 ```js
 // tailwind.config.js
 module.exports = {
-  content: [
-    // ... your content
-    './node_modules/@crater/ui-components/dist/**/*.{js,ts,jsx,tsx}',
-  ],
-  // ... rest of config
+    content: [
+        // ... your content
+        './node_modules/@crater/ui-components/dist/**/*.{js,ts,jsx,tsx}',
+    ],
+    // ... rest of config
 }
 ```
 
@@ -77,16 +77,16 @@ A flexible card component for displaying content.
 
 ```tsx
 <Card>
-  <CardHeader>
-    <CardTitle>Card Title</CardTitle>
-    <CardDescription>Card description</CardDescription>
-  </CardHeader>
-  <CardContent>
-    <p>Card content goes here</p>
-  </CardContent>
-  <CardFooter>
-    <Button>Action</Button>
-  </CardFooter>
+    <CardHeader>
+        <CardTitle>Card Title</CardTitle>
+        <CardDescription>Card description</CardDescription>
+    </CardHeader>
+    <CardContent>
+        <p>Card content goes here</p>
+    </CardContent>
+    <CardFooter>
+        <Button>Action</Button>
+    </CardFooter>
 </Card>
 ```
 

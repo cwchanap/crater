@@ -30,7 +30,7 @@ const id = generateId('user')
 
 // Debounce function calls
 const debouncedSearch = debounce((query: string) => {
-  // Search logic
+    // Search logic
 }, 300)
 ```
 
@@ -40,14 +40,14 @@ const debouncedSearch = debounce((query: string) => {
 import { ApiResponse, BaseEntity, UserPreferences } from '@crater/core'
 
 interface User extends BaseEntity {
-  name: string
-  email: string
+    name: string
+    email: string
 }
 
 const response: ApiResponse<User> = {
-  data: user,
-  success: true,
-  message: 'User retrieved successfully',
+    data: user,
+    success: true,
+    message: 'User retrieved successfully',
 }
 ```
 
@@ -58,7 +58,7 @@ import { HTTP_STATUS, STORAGE_KEYS, REGEX_PATTERNS } from '@crater/core'
 
 // Use HTTP status codes
 if (response.status === HTTP_STATUS.OK) {
-  // Handle success
+    // Handle success
 }
 
 // Access storage keys
@@ -77,7 +77,7 @@ import { EventEmitter, PreferencesService } from '@crater/core'
 import { globalEventEmitter } from '@crater/core'
 
 globalEventEmitter.on('user:login', (user) => {
-  console.log('User logged in:', user)
+    console.log('User logged in:', user)
 })
 
 // Use preferences service

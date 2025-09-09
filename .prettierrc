@@ -1,0 +1,22 @@
+{
+    "tabWidth": 4,
+    "useTabs": false,
+    "endOfLine": "lf",
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "semi": false,
+    "overrides": [
+        {
+            "files": ["*.json", "*.jsonc"],
+            "options": {
+                "tabWidth": 2
+            }
+        },
+        {
+            "files": ["*.ts", "*.tsx"],
+            "options": {
+                "tabWidth": 4
+            }
+        }
+    ]
+}

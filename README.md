@@ -96,9 +96,9 @@ The UI components package is available as `@crater/ui-components` and can be use
 
 ```json
 {
-  "dependencies": {
-    "@crater/ui-components": "workspace:*"
-  }
+    "dependencies": {
+        "@crater/ui-components": "workspace:*"
+    }
 }
 ```
 
