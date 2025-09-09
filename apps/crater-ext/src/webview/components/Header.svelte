@@ -36,15 +36,22 @@
   }
 </script>
 
-<header class="header">
-  <div class="header-left">
+<header class="flex justify-between items-center mb-5 p-3 rounded-md card">
+  <div class="flex items-center gap-2">
     {#if $currentPage === 'settings'}
-      <button class="back-btn" on:click={goBack}>← Back</button>
+      <button 
+        class="btn-secondary text-xs px-2 py-1" 
+        on:click={goBack}
+      >
+        ← Back
+      </button>
     {/if}
     <div>
-      <h2>{pageTitle}</h2>
+      <h2 class="m-0 text-base font-medium" style="color: var(--vscode-badge-foreground);">
+        {pageTitle}
+      </h2>
       {#if $currentPage === 'chat'}
-        <div class="provider-info">
+        <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
           AI Provider: {getProviderName($currentProvider)}
         </div>
       {/if}
@@ -52,64 +59,11 @@
   </div>
   
   {#if $currentPage !== 'settings'}
-    <button class="settings-btn" on:click={openSettings}>⚙️ Settings</button>
+    <button 
+      class="btn-primary text-xs px-2 py-1" 
+      on:click={openSettings}
+    >
+      ⚙️ Settings
+    </button>
   {/if}
 </header>
-
-<style>
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 12px;
-    background-color: var(--vscode-badge-background);
-    border-radius: 6px;
-  }
-
-  .header h2 {
-    margin: 0;
-    color: var(--vscode-badge-foreground);
-    font-size: 16px;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .back-btn {
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 11px;
-  }
-
-  .back-btn:hover {
-    background: var(--vscode-button-secondaryHoverBackground);
-  }
-
-  .settings-btn {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    font-size: 11px;
-  }
-
-  .settings-btn:hover {
-    background: var(--vscode-button-hoverBackground);
-  }
-
-  .provider-info {
-    font-size: 12px;
-    color: var(--vscode-descriptionForeground);
-    margin-top: 4px;
-  }
-</style>

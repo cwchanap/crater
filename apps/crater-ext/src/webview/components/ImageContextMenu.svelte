@@ -51,18 +51,29 @@
 {#if show}
   <div 
     bind:this={menuElement}
-    class="context-menu" 
-    style="left: {x}px; top: {y}px;"
+    class="fixed z-[1000] min-w-32 py-0.5 rounded shadow-lg border" 
+    style="left: {x}px; top: {y}px; background-color: var(--vscode-menu-background); border-color: var(--vscode-menu-border);"
   >
     {#if !isDeleted}
-      <button class="menu-item" on:click={handleDelete}>
+      <button 
+        class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
+        style="color: var(--vscode-menu-foreground);"
+        on:click={handleDelete}
+      >
         🗑️ Delete Image
       </button>
-      <button class="menu-item" on:click={handleToggleVisibility}>
+      <button 
+        class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
+        style="color: var(--vscode-menu-foreground);"
+        on:click={handleToggleVisibility}
+      >
         {isHidden ? '👁️ Show Image' : '🙈 Hide Image'}
       </button>
     {:else}
-      <div class="menu-item disabled">
+      <div 
+        class="flex items-center gap-1.5 w-full px-3 py-1.5 text-xs cursor-default whitespace-nowrap italic"
+        style="color: var(--vscode-descriptionForeground);"
+      >
         Image deleted
       </div>
     {/if}
@@ -70,41 +81,8 @@
 {/if}
 
 <style>
-  .context-menu {
-    position: fixed;
-    z-index: 1000;
-    background-color: var(--vscode-menu-background);
-    border: 1px solid var(--vscode-menu-border);
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    min-width: 120px;
-    padding: 2px 0;
-  }
-
-  .menu-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    padding: 6px 12px;
-    border: none;
-    background: none;
-    color: var(--vscode-menu-foreground);
-    font-family: inherit;
-    font-size: 12px;
-    text-align: left;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .menu-item:hover:not(.disabled) {
+  .menu-item:hover {
     background-color: var(--vscode-menu-selectionBackground);
     color: var(--vscode-menu-selectionForeground);
-  }
-
-  .menu-item.disabled {
-    color: var(--vscode-descriptionForeground);
-    cursor: default;
-    font-style: italic;
   }
 </style>

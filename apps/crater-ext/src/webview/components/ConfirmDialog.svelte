@@ -34,7 +34,7 @@
 
 {#if show}
   <div 
-    class="dialog-backdrop" 
+    class="fixed inset-0 bg-black/50 flex items-center justify-center z-[2000] backdrop-blur-sm" 
     on:click={handleBackdropClick}
     on:keydown={handleKeydown}
     role="dialog"
@@ -42,25 +42,31 @@
     aria-labelledby="dialog-title"
     tabindex="-1"
   >
-    <div class="dialog-content">
-      <div class="dialog-header">
-        <h3 id="dialog-title">{title}</h3>
+    <div class="card min-w-80 max-w-96 m-5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+      <div class="px-5 pt-4 pb-2 border-b" style="border-color: var(--vscode-quickInput-border);">
+        <h3 id="dialog-title" class="m-0 text-sm font-semibold" style="color: var(--vscode-quickInput-foreground);">
+          {title}
+        </h3>
       </div>
       
-      <div class="dialog-body">
-        <p>{message}</p>
+      <div class="px-5 py-4">
+        <p class="m-0 text-xs leading-relaxed" style="color: var(--vscode-quickInput-foreground);">
+          {message}
+        </p>
       </div>
       
-      <div class="dialog-footer">
+      <div class="px-5 pb-4 pt-3 flex gap-2 justify-end">
         <button 
-          class="dialog-button cancel-button" 
+          class="btn-secondary text-xs px-4 py-2 min-w-20 focus:ring-2 focus:ring-offset-2" 
+          style="focus:ring-color: var(--vscode-focusBorder);"
           on:click={handleCancel}
           type="button"
         >
           {cancelText}
         </button>
         <button 
-          class="dialog-button confirm-button" 
+          class="btn-primary text-xs px-4 py-2 min-w-20 focus:ring-2 focus:ring-offset-2" 
+          style="focus:ring-color: var(--vscode-focusBorder);"
           on:click={handleConfirm}
           type="button"
         >
@@ -72,104 +78,20 @@
 {/if}
 
 <style>
-  .dialog-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    backdrop-filter: blur(2px);
-  }
-
-  .dialog-content {
-    background-color: var(--vscode-quickInput-background);
-    border: 1px solid var(--vscode-quickInput-border);
-    border-radius: 6px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    min-width: 320px;
-    max-width: 480px;
-    margin: 20px;
-    animation: dialogSlideIn 0.2s ease-out;
-  }
-
-  @keyframes dialogSlideIn {
+  @keyframes slide-in-from-bottom {
     from {
+      transform: translateY(10px);
       opacity: 0;
-      transform: scale(0.9) translateY(-10px);
+      scale: 0.9;
     }
     to {
+      transform: translateY(0);
       opacity: 1;
-      transform: scale(1) translateY(0);
+      scale: 1;
     }
   }
-
-  .dialog-header {
-    padding: 16px 20px 8px 20px;
-    border-bottom: 1px solid var(--vscode-quickInput-border);
-  }
-
-  .dialog-header h3 {
-    margin: 0;
-    color: var(--vscode-quickInput-foreground);
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .dialog-body {
-    padding: 16px 20px;
-  }
-
-  .dialog-body p {
-    margin: 0;
-    color: var(--vscode-quickInput-foreground);
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
-  .dialog-footer {
-    padding: 12px 20px 16px 20px;
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-  }
-
-  .dialog-button {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 3px;
-    font-family: inherit;
-    font-size: 13px;
-    cursor: pointer;
-    min-width: 80px;
-    transition: background-color 0.1s ease;
-  }
-
-  .cancel-button {
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-  }
-
-  .cancel-button:hover {
-    background-color: var(--vscode-button-secondaryHoverBackground);
-  }
-
-  .confirm-button {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-  }
-
-  .confirm-button:hover {
-    background-color: var(--vscode-button-hoverBackground);
-  }
-
-  .confirm-button:focus,
-  .cancel-button:focus {
-    outline: 1px solid var(--vscode-focusBorder);
-    outline-offset: 2px;
+  
+  .animate-in {
+    animation: slide-in-from-bottom 0.2s ease-out;
   }
 </style>

@@ -212,16 +212,17 @@
   }
 </script>
 
-<div class="chat-container">
-  <div class="messages">
+<div class="flex flex-col min-h-[300px]" style="height: calc(100vh - 200px);">
+  <div class="flex-1 overflow-y-auto p-2 border rounded mb-3 card">
     {#if $messages.length === 0}
-      <div class="welcome-message">
+      <div class="text-center italic my-5" style="color: var(--vscode-descriptionForeground);">
         👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
       </div>
     {/if}
     
     {#each $messages as message, messageIndex}
-      <div class="message {message.sender}">
+      <div class="mb-3 p-2 rounded max-w-full break-words {message.sender === 'user' ? 'ml-5' : 'mr-5'}" 
+           style="background-color: {message.sender === 'user' ? 'var(--vscode-button-background)' : 'var(--vscode-badge-background)'}; color: {message.sender === 'user' ? 'var(--vscode-button-foreground)' : 'var(--vscode-badge-foreground)'};">
         {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData && Array.isArray(message.imageData.images)}
           {@const imageData = message.imageData}
           <div style="margin-bottom: 8px; font-style: italic;">
@@ -281,7 +282,9 @@
         {:else}
           <div>{message.text}</div>
         {/if}
-        <div class="timestamp">{formatTime(message.timestamp)}</div>
+        <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
+          {formatTime(message.timestamp)}
+        </div>
       </div>
     {/each}
     
@@ -292,28 +295,32 @@
     {/if}
   </div>
 
-  <div class="controls">
-    <select class="provider-dropdown" value={$currentProvider} on:change={handleProviderChange}>
+  <div class="flex gap-2 mb-3">
+    <select 
+      class="input-field text-xs min-w-24 px-2 py-1.5" 
+      value={$currentProvider} 
+      on:change={handleProviderChange}
+    >
       <option value="gemini">🤖 Gemini</option>
       <option value="openai">🔮 OpenAI</option>
     </select>
-    <button class="new-chat-btn" on:click={newChat}>
+    <button class="btn-primary text-xs px-2 py-1.5 flex items-center gap-1" on:click={newChat}>
       ✨ New Chat
     </button>
-    <button class="chat-history-btn" on:click={showHistory}>
+    <button class="btn-secondary text-xs px-2 py-1.5 flex items-center gap-1" on:click={showHistory}>
       📂 History
     </button>
   </div>
 
-  <div class="input-container">
+  <div class="flex gap-2">
     <input 
       type="text" 
-      class="message-input" 
+      class="input-field flex-1" 
       placeholder="Ask about game assets..." 
       bind:value={messageInput}
       on:keypress={handleKeyPress}
     />
-    <button class="send-button" on:click={sendMessage}>Send</button>
+    <button class="btn-primary px-3 py-2" on:click={sendMessage}>Send</button>
   </div>
 </div>
 
@@ -340,146 +347,6 @@
 />
 
 <style>
-  .chat-container {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 200px);
-    min-height: 300px;
-  }
-
-  .messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid var(--vscode-widget-border);
-    border-radius: 4px;
-    margin-bottom: 12px;
-    background-color: var(--vscode-input-background);
-  }
-
-  .message {
-    margin-bottom: 12px;
-    padding: 8px;
-    border-radius: 4px;
-    max-width: 100%;
-    word-wrap: break-word;
-  }
-
-  .message.user {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    margin-left: 20px;
-  }
-
-  .message.assistant {
-    background-color: var(--vscode-badge-background);
-    color: var(--vscode-badge-foreground);
-    margin-right: 20px;
-  }
-
-  .message.loading {
-    font-style: italic;
-    color: var(--vscode-descriptionForeground);
-  }
-
-  .timestamp {
-    font-size: 10px;
-    color: var(--vscode-descriptionForeground);
-    margin-top: 4px;
-  }
-
-  .welcome-message {
-    text-align: center;
-    color: var(--vscode-descriptionForeground);
-    font-style: italic;
-    margin: 20px 0;
-  }
-
-  .controls {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .provider-dropdown {
-    padding: 6px 8px;
-    border: 1px solid var(--vscode-input-border);
-    border-radius: 4px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 11px;
-    min-width: 100px;
-  }
-
-  .provider-dropdown:focus {
-    outline: none;
-    border-color: var(--vscode-focusBorder);
-  }
-
-  .new-chat-btn, .chat-history-btn {
-    padding: 6px 8px;
-    border: none;
-    border-radius: 4px;
-    background-color: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .new-chat-btn {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-  }
-
-  .new-chat-btn:hover {
-    background-color: var(--vscode-button-hoverBackground);
-  }
-
-  .chat-history-btn:hover {
-    background-color: var(--vscode-button-secondaryHoverBackground);
-  }
-
-  .input-container {
-    display: flex;
-    gap: 8px;
-  }
-
-  .message-input {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid var(--vscode-input-border);
-    border-radius: 4px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    font-family: inherit;
-    font-size: inherit;
-  }
-
-  .message-input:focus {
-    outline: none;
-    border-color: var(--vscode-focusBorder);
-  }
-
-  .send-button {
-    padding: 8px 12px;
-    border: none;
-    border-radius: 4px;
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    cursor: pointer;
-    font-family: inherit;
-    font-size: inherit;
-  }
-
-  .send-button:hover {
-    background-color: var(--vscode-button-hoverBackground);
-  }
 
   .usage-info {
     margin-top: 12px;
