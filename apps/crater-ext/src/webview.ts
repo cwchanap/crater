@@ -1,5 +1,6 @@
 import { mount } from 'svelte'
 import App from './webview/App.svelte'
+import './webview/styles/tailwind.css'
 
 // Wait for DOM to be ready
 function initializeApp() {

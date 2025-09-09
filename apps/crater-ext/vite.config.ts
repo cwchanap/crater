@@ -4,6 +4,10 @@ import { resolve } from 'path'
 
 export default defineConfig(({ command, mode }) => ({
     plugins: [svelte()],
+    
+    css: {
+        postcss: './postcss.config.js'
+    },
 
     // Development server configuration for HMR
     server: {
