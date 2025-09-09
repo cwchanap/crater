@@ -731,6 +731,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     ? 'gemini-2.5-flash-image-preview'
                     : 'gpt-image-1'
             )
+
             const geminiApiKey = config.get<string>('geminiApiKey', '')
             const openaiApiKey = config.get<string>('openaiApiKey', '')
             const imageSaveDirectory = config.get<string>(
@@ -908,6 +909,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             ? 'gemini-2.5-flash-image-preview'
                             : 'gpt-image-1'
                     )
+
                     const geminiApiKey = config.get<string>('geminiApiKey', '')
                     const openaiApiKey = config.get<string>('openaiApiKey', '')
                     const imageSaveDirectory = config.get<string>(
@@ -1259,6 +1261,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         ? 'gemini-2.5-flash-image-preview'
                         : 'gpt-image-1'
                 )
+
                 const geminiApiKey = config.get<string>('geminiApiKey', '')
                 const openaiApiKey = config.get<string>('openaiApiKey', '')
                 const imageSaveDirectory = config.get<string>(

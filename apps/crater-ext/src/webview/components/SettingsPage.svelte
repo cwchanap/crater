@@ -9,8 +9,7 @@
     imageSettings 
   } from '../stores'
   
-  let aiProvider: string = 'gemini'
-  let aiModel: string = 'gemini-2.5-flash-image-preview'
+  // Using stores directly for provider and model, no need for local variables
   let geminiApiKey: string = ''
   let openaiApiKey: string = ''
   let imageSize: string = 'auto'
@@ -18,25 +17,16 @@
   let autoSaveImages: boolean = true
   let imageSaveDirectory: string = ''
 
+  $: if ($tempApiKeys) {
+    geminiApiKey = $tempApiKeys.gemini
+    openaiApiKey = $tempApiKeys.openai
+  }
+  $: if ($imageSettings) {
+    imageSize = $imageSettings.size
+    imageQuality = $imageSettings.quality
+  }
+
   onMount(() => {
-    // Subscribe to store updates - these will be updated by App.svelte when settings arrive
-    const unsubscribeProvider = currentProvider.subscribe(value => {
-      if (value) aiProvider = value
-    })
-
-    const unsubscribeModel = currentModel.subscribe(value => {
-      if (value) aiModel = value
-    })
-
-    const unsubscribeApiKeys = tempApiKeys.subscribe(keys => {
-      geminiApiKey = keys.gemini
-      openaiApiKey = keys.openai
-    })
-
-    const unsubscribeImageSettings = imageSettings.subscribe(settings => {
-      imageSize = settings.size
-      imageQuality = settings.quality
-    })
 
     // Handle settings for fields not in stores
     let settingsReceived = false
@@ -56,18 +46,19 @@
 
     window.addEventListener('message', handleMessage)
 
-    // Fallback: request settings if not received proactively within 100ms
+    // Always request fresh settings when settings page loads
+    if ($vscode) {
+      $vscode.postMessage({ type: 'get-settings' })
+    }
+    
+    // Fallback: request settings again if not received within 200ms
     setTimeout(() => {
       if (!settingsReceived && $vscode) {
         $vscode.postMessage({ type: 'get-settings' })
       }
-    }, 100)
+    }, 200)
 
     return () => {
-      unsubscribeProvider()
-      unsubscribeModel()
-      unsubscribeApiKeys()
-      unsubscribeImageSettings()
       window.removeEventListener('message', handleMessage)
     }
   })
@@ -77,11 +68,11 @@
 
     isLoadingSettings.set(true)
     
-    const apiKey = aiProvider === 'gemini' ? geminiApiKey.trim() : openaiApiKey.trim()
+    const apiKey = $currentProvider === 'gemini' ? geminiApiKey.trim() : openaiApiKey.trim()
     
     const settings = {
-      aiProvider,
-      aiModel,
+      aiProvider: $currentProvider,
+      aiModel: $currentModel,
       apiKey,
       imageSize,
       imageQuality,
@@ -95,13 +86,20 @@
     })
   }
 
-  function handleProviderChange() {
-    // Update model based on provider
-    if (aiProvider === 'gemini') {
-      aiModel = 'gemini-2.5-flash-image-preview'
-    } else if (aiProvider === 'openai') {
-      aiModel = 'gpt-image-1'
+  // Track previous provider to detect actual changes
+  let previousProvider = $currentProvider
+  
+  // Only reset model when provider actually changes from user interaction
+  $: {
+    if ($currentProvider && $currentProvider !== previousProvider && previousProvider) {
+      // Only reset if this seems like a user action (both values are non-empty)
+      if ($currentProvider === 'gemini') {
+        currentModel.set('gemini-2.5-flash-image-preview')
+      } else if ($currentProvider === 'openai') {
+        currentModel.set('gpt-image-1')
+      }
     }
+    previousProvider = $currentProvider
   }
 
   function handleBrowseFolder() {
@@ -125,8 +123,8 @@
 
   $: isGeminiKeyValid = validateApiKey(geminiApiKey, 'gemini')
   $: isOpenAIKeyValid = validateApiKey(openaiApiKey, 'openai')
-  $: canSave = (aiProvider === 'gemini' && isGeminiKeyValid) || 
-               (aiProvider === 'openai' && isOpenAIKeyValid)
+  $: canSave = ($currentProvider === 'gemini' && isGeminiKeyValid) || 
+               ($currentProvider === 'openai' && isOpenAIKeyValid)
 </script>
 
 <div class="settings-page">
@@ -138,8 +136,7 @@
     <label for="provider">Model Provider</label>
     <select 
       id="provider" 
-      bind:value={aiProvider} 
-      on:change={handleProviderChange}
+      bind:value={$currentProvider} 
       disabled={$isLoadingSettings}
     >
       <option value="gemini">Google Gemini - Requires API key</option>
@@ -152,21 +149,23 @@
     <label for="model">AI Model</label>
     <select 
       id="model" 
-      bind:value={aiModel}
+      bind:value={$currentModel}
       disabled={$isLoadingSettings}
     >
-      {#if aiProvider === 'gemini'}
-        <option value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash (Image Generation)</option>
+      {#if $currentProvider === 'gemini'}
+        <option value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash (Image Preview)</option>
         <option value="imagen-4.0-generate-001">Imagen 4.0 (High Quality)</option>
-      {:else if aiProvider === 'openai'}
+        <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+      {:else if $currentProvider === 'openai'}
         <option value="gpt-image-1">GPT Image 1 (Latest)</option>
-        <option value="dall-e-3">DALL-E 3 (Legacy)</option>
       {/if}
     </select>
     <div class="note">Select the specific model to use for generation</div>
   </div>
 
-  {#if aiProvider === 'gemini'}
+  {#if $currentProvider === 'gemini'}
     <div class="section">
       <label for="geminiApiKey">Google Gemini API Key</label>
       <input 
@@ -187,7 +186,7 @@
         {/if}
       </div>
     </div>
-  {:else if aiProvider === 'openai'}
+  {:else if $currentProvider === 'openai'}
     <div class="section">
       <label for="openaiApiKey">OpenAI API Key</label>
       <input 
@@ -221,7 +220,7 @@
       <option value="256x256">256×256 (Small)</option>
       <option value="512x512">512×512 (Medium)</option>
       <option value="1024x1024">1024×1024 (Large)</option>
-      {#if aiProvider === 'openai'}
+      {#if $currentProvider === 'openai'}
         <option value="1024x1792">1024×1792 (Portrait)</option>
         <option value="1792x1024">1792×1024 (Landscape)</option>
       {/if}
