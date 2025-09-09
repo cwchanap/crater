@@ -14,7 +14,10 @@ declare function acquireVsCodeApi(): VSCodeApi
 export const vscode = writable<VSCodeApi | null>(null)
 
 // Navigation state
-export const currentPage = writable<'chat' | 'config' | 'settings'>('chat')
+export const currentPage = writable<'chat' | 'config' | 'settings' | 'gallery'>(
+    'chat'
+)
+export const currentView = writable<'chat' | 'gallery'>('chat')
 export const currentProvider = writable<string>('gemini')
 export const currentModel = writable<string>('gemini-2.5-flash-image-preview')
 

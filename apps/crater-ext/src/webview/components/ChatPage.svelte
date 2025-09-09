@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider } from '../stores'
+  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider, currentView } from '../stores'
   import type { ChatMessage } from '../types'
   import ImageContextMenu from './ImageContextMenu.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
+  import GalleryView from './GalleryView.svelte'
   
   let messageInput = ''
   let contextMenu = {
@@ -210,101 +211,125 @@
       })
     }
   }
+
+  function toggleView() {
+    currentView.update(view => view === 'chat' ? 'gallery' : 'chat')
+  }
 </script>
 
 <div class="flex flex-col min-h-[300px]" style="height: calc(100vh - 200px);">
-  <div class="flex-1 overflow-y-auto p-2 border rounded mb-3 card">
-    {#if $messages.length === 0}
-      <div class="text-center italic my-5" style="color: var(--vscode-descriptionForeground);">
-        👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
-      </div>
-    {/if}
-    
-    {#each $messages as message, messageIndex}
-      <div class="mb-3 p-2 rounded max-w-full break-words {message.sender === 'user' ? 'ml-5' : 'mr-5'}" 
-           style="background-color: {message.sender === 'user' ? 'var(--vscode-button-background)' : 'var(--vscode-badge-background)'}; color: {message.sender === 'user' ? 'var(--vscode-button-foreground)' : 'var(--vscode-badge-foreground)'};">
-        {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData && Array.isArray(message.imageData.images)}
-          {@const imageData = message.imageData}
-          <div style="margin-bottom: 8px; font-style: italic;">
-            Generated image for: "{imageData.prompt}"
-          </div>
-          {#each imageData.images as imageUrl, imageIndex}
-            {@const isDeleted = imageData.imageStates?.deleted?.[imageIndex] || false}
-            {@const isHidden = imageData.imageStates?.hidden?.[imageIndex] || false}
-            
-            {#if isDeleted}
-              <div class="deleted-image-placeholder">
-                🗑️ Image deleted
-              </div>
-            {:else if isHidden}
-              <div 
-                class="hidden-image-placeholder"
-                role="button"
-                tabindex="0"
-                on:click={(e) => handleShowHiddenImage(e, messageIndex, imageIndex)}
-                on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleShowHiddenImage(e, messageIndex, imageIndex) }}
-                on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
-              >
-                🙈 Image hidden (click to show)
-              </div>
-            {:else}
-              <img 
-                src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
-                  ? imageUrl 
-                  : `data:image/png;base64,${imageUrl}`}
-                alt="Generated game asset: {imageData.prompt}"
-                class="generated-image"
-                on:error={() => console.error('Failed to load image:', imageUrl)}
-                on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
-              />
-            {/if}
-          {/each}
-          
-          {#if imageData.usage && imageData.cost}
-            {@const usage = imageData.usage}
-            {@const cost = imageData.cost}
-            <div class="usage-info">
-              <div class="usage-section">
-                <strong>💰 Tokens & Cost</strong>
-                <div class="usage-details">
-                  <div>Input Tokens: {usage.inputTextTokens.toLocaleString()}</div>
-                  <div>Output Tokens: {usage.outputImageTokens.toLocaleString()}</div>
-                  <div>Total Tokens: {usage.totalTokens.toLocaleString()}</div>
-                </div>
-                <div class="cost-details">
-                  <div>Token Cost: ${cost.breakdown.tokenBasedCost.toFixed(6)}</div>
-                  <div>Per-Image Cost: ${cost.breakdown.qualityBasedCost.toFixed(6)}</div>
-                  <div><strong>Total: ${cost.totalCost.toFixed(6)} {cost.currency}</strong></div>
-                </div>
-              </div>
-            </div>
-          {/if}
-        {:else}
-          <div>{message.text}</div>
-        {/if}
-        <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
-          {formatTime(message.timestamp)}
+  {#if $currentView === 'chat'}
+    <div class="flex-1 overflow-y-auto p-2 border rounded mb-3 card">
+      {#if $messages.length === 0}
+        <div class="text-center italic my-5" style="color: var(--vscode-descriptionForeground);">
+          👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
         </div>
-      </div>
-    {/each}
-    
-    {#if $isLoading}
-      <div class="message assistant loading">
-        🎨 Generating your game asset...
-      </div>
-    {/if}
-  </div>
+      {/if}
+      
+      {#each $messages as message, messageIndex}
+        <div class="mb-3 p-2 rounded max-w-full break-words {message.sender === 'user' ? 'ml-5' : 'mr-5'}" 
+             style="background-color: {message.sender === 'user' ? 'var(--vscode-button-background)' : 'var(--vscode-badge-background)'}; color: {message.sender === 'user' ? 'var(--vscode-button-foreground)' : 'var(--vscode-badge-foreground)'};">
+          {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData && Array.isArray(message.imageData.images)}
+            {@const imageData = message.imageData}
+            <div style="margin-bottom: 8px; font-style: italic;">
+              Generated image for: "{imageData.prompt}"
+            </div>
+            {#each imageData.images as imageUrl, imageIndex}
+              {@const isDeleted = imageData.imageStates?.deleted?.[imageIndex] || false}
+              {@const isHidden = imageData.imageStates?.hidden?.[imageIndex] || false}
+              
+              {#if isDeleted}
+                <div class="deleted-image-placeholder">
+                  🗑️ Image deleted
+                </div>
+              {:else if isHidden}
+                <div 
+                  class="hidden-image-placeholder"
+                  role="button"
+                  tabindex="0"
+                  on:click={(e) => handleShowHiddenImage(e, messageIndex, imageIndex)}
+                  on:keydown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleShowHiddenImage(e, messageIndex, imageIndex) }}
+                  on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
+                >
+                  🙈 Image hidden (click to show)
+                </div>
+              {:else}
+                <img 
+                  src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
+                    ? imageUrl 
+                    : `data:image/png;base64,${imageUrl}`}
+                  alt="Generated game asset: {imageData.prompt}"
+                  class="generated-image"
+                  on:error={() => console.error('Failed to load image:', imageUrl)}
+                  on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
+                />
+              {/if}
+            {/each}
+            
+            {#if imageData.usage && imageData.cost}
+              {@const usage = imageData.usage}
+              {@const cost = imageData.cost}
+              <div class="usage-info">
+                <div class="usage-section">
+                  <strong>💰 Tokens & Cost</strong>
+                  <div class="usage-details">
+                    <div>Input Tokens: {usage.inputTextTokens.toLocaleString()}</div>
+                    <div>Output Tokens: {usage.outputImageTokens.toLocaleString()}</div>
+                    <div>Total Tokens: {usage.totalTokens.toLocaleString()}</div>
+                  </div>
+                  <div class="cost-details">
+                    <div>Token Cost: ${cost.breakdown.tokenBasedCost.toFixed(6)}</div>
+                    <div>Per-Image Cost: ${cost.breakdown.qualityBasedCost.toFixed(6)}</div>
+                    <div><strong>Total: ${cost.totalCost.toFixed(6)} {cost.currency}</strong></div>
+                  </div>
+                </div>
+              </div>
+            {/if}
+          {:else}
+            <div>{message.text}</div>
+          {/if}
+          <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
+            {formatTime(message.timestamp)}
+          </div>
+        </div>
+      {/each}
+      
+      {#if $isLoading}
+        <div class="message assistant loading">
+          🎨 Generating your game asset...
+        </div>
+      {/if}
+    </div>
+  {:else}
+    <div class="flex-1">
+      <GalleryView />
+    </div>
+  {/if}
 
   <div class="flex gap-2 mb-3">
+    <button 
+      class="btn-toggle text-xs px-3 py-1.5 flex items-center gap-1 {$currentView === 'chat' ? 'active' : ''}" 
+      on:click={() => currentView.set('chat')}
+    >
+      💬 Chat
+    </button>
+    <button 
+      class="btn-toggle text-xs px-3 py-1.5 flex items-center gap-1 {$currentView === 'gallery' ? 'active' : ''}" 
+      on:click={() => currentView.set('gallery')}
+    >
+      🖼️ Gallery
+    </button>
+    <div class="flex-1"></div>
     <select 
       class="input-field text-xs min-w-24 px-2 py-1.5" 
       value={$currentProvider} 
       on:change={handleProviderChange}
+      disabled={$currentView === 'gallery'}
     >
       <option value="gemini">🤖 Gemini</option>
       <option value="openai">🔮 OpenAI</option>
     </select>
-    <button class="btn-primary text-xs px-2 py-1.5 flex items-center gap-1" on:click={newChat}>
+    <button class="btn-primary text-xs px-2 py-1.5 flex items-center gap-1" on:click={newChat} disabled={$currentView === 'gallery'}>
       ✨ New Chat
     </button>
     <button class="btn-secondary text-xs px-2 py-1.5 flex items-center gap-1" on:click={showHistory}>
@@ -312,16 +337,18 @@
     </button>
   </div>
 
-  <div class="flex gap-2">
-    <input 
-      type="text" 
-      class="input-field flex-1" 
-      placeholder="Ask about game assets..." 
-      bind:value={messageInput}
-      on:keypress={handleKeyPress}
-    />
-    <button class="btn-primary px-3 py-2" on:click={sendMessage}>Send</button>
-  </div>
+  {#if $currentView === 'chat'}
+    <div class="flex gap-2">
+      <input 
+        type="text" 
+        class="input-field flex-1" 
+        placeholder="Ask about game assets..." 
+        bind:value={messageInput}
+        on:keypress={handleKeyPress}
+      />
+      <button class="btn-primary px-3 py-2" on:click={sendMessage}>Send</button>
+    </div>
+  {/if}
 </div>
 
 <ImageContextMenu
@@ -410,5 +437,24 @@
 
   .hidden-image-placeholder:hover {
     background-color: var(--vscode-list-hoverBackground);
+  }
+
+  .btn-toggle {
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-widget-border);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-toggle:hover {
+    background-color: var(--vscode-list-hoverBackground);
+  }
+
+  .btn-toggle.active {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border-color: var(--vscode-focusBorder);
   }
 </style>

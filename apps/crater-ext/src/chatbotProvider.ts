@@ -1484,6 +1484,30 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
                 break
             }
+            case 'open-image': {
+                const imagePath = message.path as string
+                if (imagePath) {
+                    try {
+                        // Open the image file in VS Code editor
+                        const imageUri = vscode.Uri.file(imagePath)
+                        await vscode.commands.executeCommand(
+                            'vscode.open',
+                            imageUri
+                        )
+                        console.log(
+                            `[Crater ChatbotProvider] Opened image in editor: ${imagePath}`
+                        )
+                    } catch (error) {
+                        console.error(
+                            `[Crater ChatbotProvider] Error opening image: ${error}`
+                        )
+                        vscode.window.showErrorMessage(
+                            `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
+                        )
+                    }
+                }
+                break
+            }
             default:
                 console.warn(
                     '[Crater ChatbotProvider] Unknown message type:',
