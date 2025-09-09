@@ -5,8 +5,10 @@
   export let imageIndex = 0
   export let isDeleted = false
   export let isHidden = false
+  export let savedPath = ''
   export let onDelete: (index: number) => void = () => {}
   export let onToggleVisibility: (index: number) => void = () => {}
+  export let onOpenImage: (index: number) => void = () => {}
   export let onClose: () => void = () => {}
 
   let menuElement: HTMLDivElement
@@ -35,6 +37,11 @@
     onClose()
   }
 
+  function handleOpenImage() {
+    onOpenImage(imageIndex)
+    onClose()
+  }
+
   function handleClickOutside(event: MouseEvent) {
     if (menuElement && !menuElement.contains(event.target as Node)) {
       onClose()
@@ -55,19 +62,28 @@
     style="left: {x}px; top: {y}px; background-color: var(--vscode-menu-background); border-color: var(--vscode-menu-border);"
   >
     {#if !isDeleted}
-      <button 
-        class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
-        style="color: var(--vscode-menu-foreground);"
-        on:click={handleDelete}
-      >
-        🗑️ Delete Image
-      </button>
+      {#if savedPath}
+        <button 
+          class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
+          style="color: var(--vscode-menu-foreground);"
+          on:click={handleOpenImage}
+        >
+          📂 Open in Editor
+        </button>
+      {/if}
       <button 
         class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
         style="color: var(--vscode-menu-foreground);"
         on:click={handleToggleVisibility}
       >
         {isHidden ? '👁️ Show Image' : '🙈 Hide Image'}
+      </button>
+      <button 
+        class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
+        style="color: var(--vscode-menu-foreground);"
+        on:click={handleDelete}
+      >
+        🗑️ Delete Image
       </button>
     {:else}
       <div 

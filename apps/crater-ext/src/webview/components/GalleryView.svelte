@@ -50,7 +50,7 @@
   
   {#if allImages.length > 0}
     <div class="gallery-grid">
-      {#each allImages as image, index}
+      {#each allImages as image}
         <div class="thumbnail-card">
           <div class="thumbnail-container">
             <button
@@ -226,6 +226,7 @@
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     word-break: break-word;
   }

@@ -89,6 +89,21 @@
     }
   }
 
+  function handleOpenImage(imageIndex: number) {
+    if (contextMenu.messageIndex === -1 || !$vscode) return
+    
+    const message = $messages[contextMenu.messageIndex]
+    if (message.messageType === 'image' && message.imageData?.savedPaths) {
+      const savedPath = message.imageData.savedPaths[imageIndex]
+      if (savedPath) {
+        $vscode.postMessage({
+          type: 'open-image',
+          path: savedPath
+        })
+      }
+    }
+  }
+
   function handleDeleteImage(imageIndex: number) {
     if (contextMenu.messageIndex === -1) return
     
@@ -212,9 +227,6 @@
     }
   }
 
-  function toggleView() {
-    currentView.update(view => view === 'chat' ? 'gallery' : 'chat')
-  }
 </script>
 
 <div class="flex flex-col min-h-[300px]" style="height: calc(100vh - 200px);">
@@ -358,8 +370,10 @@
   imageIndex={contextMenu.imageIndex}
   isDeleted={contextMenu.messageIndex >= 0 && contextMenu.imageIndex >= 0 && $messages[contextMenu.messageIndex]?.imageData?.imageStates?.deleted?.[contextMenu.imageIndex] || false}
   isHidden={contextMenu.messageIndex >= 0 && contextMenu.imageIndex >= 0 && $messages[contextMenu.messageIndex]?.imageData?.imageStates?.hidden?.[contextMenu.imageIndex] || false}
+  savedPath={contextMenu.messageIndex >= 0 && contextMenu.imageIndex >= 0 && $messages[contextMenu.messageIndex]?.imageData?.savedPaths?.[contextMenu.imageIndex] || ''}
   onDelete={handleDeleteImage}
   onToggleVisibility={handleToggleImageVisibility}
+  onOpenImage={handleOpenImage}
   onClose={closeContextMenu}
 />
 
