@@ -8,33 +8,33 @@ A VS Code extension featuring an AI-powered chatbot assistant for brainstorming 
 
 - Interactive chatbot interface in the Explorer panel
 - Helps brainstorm ideas for various game assets:
-    - Character sprites and animations
-    - Background environments and textures
-    - UI elements and interfaces
-    - Sound effect concepts
-    - Game mechanics ideas
+  - Character sprites and animations
+  - Background environments and textures
+  - UI elements and interfaces
+  - Sound effect concepts
+  - Game mechanics ideas
 
 ## Usage
 
 ### Opening the Chatbot
 
 1. **Via Command Palette**:
-    - Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
-    - Type "Open Game Asset Chatbot" and select the command
+   - Press `Cmd+Shift+P` (macOS) or `Ctrl+Shift+P` (Windows/Linux)
+   - Type "Open Game Asset Chatbot" and select the command
 
 2. **Via Explorer Panel**:
-    - The "Game Asset Assistant" panel will appear in the Explorer sidebar
-    - Click on it to start chatting
+   - The "Game Asset Assistant" panel will appear in the Explorer sidebar
+   - Click on it to start chatting
 
 ### Using the Chatbot
 
 - Type your questions or requests about game assets
 - The assistant can help with:
-    - Character design ideas
-    - Environment and background concepts
-    - Texture and material suggestions
-    - UI/UX element planning
-    - Game mechanics brainstorming
+  - Character design ideas
+  - Environment and background concepts
+  - Texture and material suggestions
+  - UI/UX element planning
+  - Game mechanics brainstorming
 
 ### Example Questions
 
