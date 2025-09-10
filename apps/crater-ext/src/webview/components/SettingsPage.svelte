@@ -209,6 +209,7 @@
     </div>
   {/if}
 
+  {#if $currentProvider === 'openai'}
   <div class="mb-4">
     <label for="imageSize" class="block mb-1.5 text-vscode-foreground">Image Size</label>
     <select 
@@ -221,14 +222,14 @@
       <option value="256x256">256×256 (Small)</option>
       <option value="512x512">512×512 (Medium)</option>
       <option value="1024x1024">1024×1024 (Large)</option>
-      {#if $currentProvider === 'openai'}
-        <option value="1024x1792">1024×1792 (Portrait)</option>
-        <option value="1792x1024">1792×1024 (Landscape)</option>
-      {/if}
+      <option value="1024x1792">1024×1792 (Portrait)</option>
+      <option value="1792x1024">1792×1024 (Landscape)</option>
     </select>
     <div class="text-vscode-foreground text-xs mt-1">Generated image dimensions</div>
   </div>
+  {/if}
 
+  {#if $currentProvider === 'openai'}
   <div class="mb-4">
     <label for="imageQuality" class="block mb-1.5 text-vscode-foreground">Image Quality</label>
     <select 
@@ -243,6 +244,7 @@
     </select>
     <div class="text-vscode-foreground text-xs mt-1">Image generation quality level</div>
   </div>
+  {/if}
 
   <div class="mb-4">
     <label class="flex items-center text-vscode-foreground">
