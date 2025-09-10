@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store'
+import { writable, derived } from 'svelte/store'
 import type { ChatMessage, ChatSession } from '../types'
 
 interface VSCodeApi {
@@ -52,3 +52,36 @@ if (typeof acquireVsCodeApi !== 'undefined') {
 } else {
     vscode.set(null)
 }
+
+// Derived store for total usage across all messages
+export const totalUsage = derived(messages, ($messages) => {
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let totalTokens = 0
+    let totalCost = 0
+    let currency = 'USD'
+
+    $messages.forEach((message) => {
+        if (message.messageType === 'image' && message.imageData) {
+            if (message.imageData.usage) {
+                totalInputTokens +=
+                    message.imageData.usage.inputTextTokens +
+                    (message.imageData.usage.inputImageTokens || 0)
+                totalOutputTokens += message.imageData.usage.outputImageTokens
+                totalTokens += message.imageData.usage.totalTokens
+            }
+            if (message.imageData.cost) {
+                totalCost += message.imageData.cost.totalCost
+                currency = message.imageData.cost.currency
+            }
+        }
+    })
+
+    return {
+        totalInputTokens,
+        totalOutputTokens,
+        totalTokens,
+        totalCost,
+        currency,
+    }
+})

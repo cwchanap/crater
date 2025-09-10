@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider, currentView } from '../stores'
+  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider, currentView, totalUsage } from '../stores'
   import type { ChatMessage } from '../types'
   import ImageContextMenu from './ImageContextMenu.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
@@ -232,6 +232,17 @@
 <div class="flex flex-col h-full">
   {#if $currentView === 'chat'}
     <div class="flex flex-col h-full border rounded card">
+      <!-- Total Usage Header -->
+      {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
+        <div class="px-3 py-2 bg-vscode-input border-b border-vscode-border text-xs text-vscode-foreground">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
+              <span><strong>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
+            </div>
+          </div>
+        </div>
+      {/if}
       <!-- Messages area -->
       <div class="flex-1 overflow-y-auto p-2 min-h-0">
           {#if $messages.length === 0}
@@ -280,25 +291,6 @@
               {/if}
             {/each}
             
-            {#if imageData.usage && imageData.cost}
-              {@const usage = imageData.usage}
-              {@const cost = imageData.cost}
-              <div class="usage-info">
-                <div class="usage-section">
-                  <strong>💰 Tokens & Cost</strong>
-                  <div class="usage-details">
-                    <div>Input Tokens: {usage.inputTextTokens.toLocaleString()}</div>
-                    <div>Output Tokens: {usage.outputImageTokens.toLocaleString()}</div>
-                    <div>Total Tokens: {usage.totalTokens.toLocaleString()}</div>
-                  </div>
-                  <div class="cost-details">
-                    <div>Token Cost: ${cost.breakdown.tokenBasedCost.toFixed(6)}</div>
-                    <div>Per-Image Cost: ${cost.breakdown.qualityBasedCost.toFixed(6)}</div>
-                    <div><strong>Total: ${cost.totalCost.toFixed(6)} {cost.currency}</strong></div>
-                  </div>
-                </div>
-              </div>
-            {/if}
           {:else}
             <div>{message.text}</div>
           {/if}
@@ -328,7 +320,7 @@
           {/if}
         </button>
         <div class="flex-1"></div>
-        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView === 'gallery'}>
+        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView !== 'chat'}>
           ✨ New Chat
         </button>
         <button class="btn-secondary text-xs px-1.5 py-1 flex items-center gap-1" on:click={showHistory}>
@@ -364,6 +356,17 @@
     </div>
   {:else}
     <div class="flex flex-col h-full">
+      <!-- Total Usage Header for Gallery -->
+      {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
+        <div class="px-3 py-2 bg-vscode-input border-b border-vscode-border text-xs text-vscode-foreground">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
+              <span><strong>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
+            </div>
+          </div>
+        </div>
+      {/if}
       <!-- Gallery content -->
       <div class="flex-1 min-h-0">
         <GalleryView />
@@ -382,7 +385,7 @@
           {/if}
         </button>
         <div class="flex-1"></div>
-        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView === 'gallery'}>
+        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView !== 'chat'}>
           ✨ New Chat
         </button>
         <button class="btn-secondary text-xs px-1.5 py-1 flex items-center gap-1" on:click={showHistory}>
@@ -418,38 +421,5 @@
 />
 
 <style>
-  .usage-info {
-    margin-top: 12px;
-    padding: 8px;
-    border: 1px solid var(--vscode-widget-border);
-    border-radius: 4px;
-    background-color: var(--vscode-input-background);
-    font-size: 11px;
-  }
-
-  .usage-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .usage-details, .cost-details {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    margin-top: 4px;
-    color: var(--vscode-descriptionForeground);
-  }
-
-  .cost-details {
-    margin-top: 8px;
-    padding-top: 4px;
-    border-top: 1px solid var(--vscode-widget-border);
-  }
-
-  .cost-details div:last-child {
-    grid-column: span 3;
-    text-align: center;
-    color: var(--vscode-foreground);
-  }
+  /* No styles needed for now */
 </style>
