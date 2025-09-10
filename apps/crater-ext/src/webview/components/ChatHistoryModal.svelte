@@ -1,6 +1,5 @@
 <script lang="ts">
   import { showChatHistoryModal, chatSessions, currentSessionId, vscode } from '../stores'
-  import type { ChatSession } from '../types'
 
   function hideModal() {
     showChatHistoryModal.set(false)

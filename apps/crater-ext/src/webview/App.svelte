@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { currentPage, vscode, isConfigured, messages, isLoading, currentProvider, currentModel, chatSessions, currentSessionId, tempApiKeys, imageSettings } from './stores'
+  import { currentPage, isConfigured, messages, isLoading, currentProvider, currentModel, chatSessions, currentSessionId, tempApiKeys, imageSettings } from './stores'
   import type { WebviewMessage } from './types'
   
   // Import components
@@ -118,16 +118,18 @@
   }
 </script>
 
-<main class="min-h-screen">
+<main class="h-screen flex flex-col">
   <Header />
   
-  {#if $currentPage === 'chat'}
-    <ChatPage />
-  {:else if $currentPage === 'config'}
-    <ConfigPage />
-  {:else if $currentPage === 'settings'}
-    <SettingsPage />
-  {/if}
+  <div class="flex-1 min-h-0">
+    {#if $currentPage === 'chat'}
+      <ChatPage />
+    {:else if $currentPage === 'config'}
+      <ConfigPage />
+    {:else if $currentPage === 'settings'}
+      <SettingsPage />
+    {/if}
+  </div>
   
   <ChatHistoryModal />
 </main>

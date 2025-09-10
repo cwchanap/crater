@@ -36,7 +36,7 @@
   $: allImages = extractAllImages()
 </script>
 
-<div class="p-4 h-[calc(100vh-200px)] overflow-y-auto">
+<div class="p-4 h-full overflow-y-auto">
   <div class="mb-6 text-center">
     <h2 class="m-0 mb-2 text-vscode-foreground text-lg font-semibold">Generated Images Gallery</h2>
     <p class="m-0 text-vscode-foreground text-sm">

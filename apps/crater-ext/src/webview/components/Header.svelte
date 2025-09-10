@@ -36,7 +36,7 @@
   }
 </script>
 
-<header class="flex justify-between items-center mb-5 p-3 rounded-md card">
+<header class="flex justify-between items-center p-3 rounded-md card flex-shrink-0">
   <div class="flex items-center gap-2">
     {#if $currentPage === 'settings'}
       <button 

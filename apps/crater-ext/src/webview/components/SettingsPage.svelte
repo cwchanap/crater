@@ -284,7 +284,7 @@
 
   <div class="flex gap-2 items-center justify-end mt-5">
     <button 
-      class="btn-primary {$isLoadingSettings ? 'opacity-80' : ''}"
+      class="btn-primary px-4 py-2 min-w-fit whitespace-nowrap {$isLoadingSettings ? 'opacity-80' : ''}"
       disabled={!canSave || $isLoadingSettings}
       on:click={handleSaveSettings}
     >
