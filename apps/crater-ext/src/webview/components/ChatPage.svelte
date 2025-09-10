@@ -251,12 +251,12 @@
               {@const isHidden = imageData.imageStates?.hidden?.[imageIndex] || false}
               
               {#if isDeleted}
-                <div class="deleted-image-placeholder">
+                <div class="p-5 mb-1 border-2 border-dashed border-vscode-border rounded text-center text-vscode-foreground italic bg-vscode-input select-none">
                   🗑️ Image deleted
                 </div>
               {:else if isHidden}
                 <div 
-                  class="hidden-image-placeholder"
+                  class="p-5 mb-1 border-2 border-dashed border-vscode-border rounded text-center text-vscode-foreground italic bg-vscode-input select-none cursor-context-menu hover:bg-vscode-background"
                   role="button"
                   tabindex="0"
                   on:click={(e) => handleShowHiddenImage(e, messageIndex, imageIndex)}
@@ -271,7 +271,7 @@
                     ? imageUrl 
                     : `data:image/png;base64,${imageUrl}`}
                   alt="Generated game asset: {imageData.prompt}"
-                  class="generated-image"
+                  class="max-w-full h-auto rounded mb-1 cursor-context-menu"
                   on:error={() => console.error('Failed to load image:', imageUrl)}
                   on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
                 />
@@ -307,7 +307,7 @@
       {/each}
       
       {#if $isLoading}
-        <div class="message assistant loading">
+        <div class="mb-3 p-2 rounded max-w-full break-words mr-5 bg-vscode-input text-vscode-foreground">
           🎨 Generating your game asset...
         </div>
       {/if}
@@ -326,7 +326,7 @@
       💬 Chat
     </button>
     <button 
-      class="btn-toggle text-xs px-3 py-1.5 flex items-center gap-1 {$currentView === 'gallery' ? 'active' : ''}" 
+      class="bg-vscode-input text-vscode-foreground border border-vscode-border rounded cursor-pointer transition-all duration-200 hover:bg-vscode-background text-xs px-3 py-1.5 flex items-center gap-1 {$currentView === 'gallery' ? 'bg-vscode-button text-white border-blue-500' : ''}" 
       on:click={() => currentView.set('gallery')}
     >
       🖼️ Gallery
@@ -388,7 +388,6 @@
 />
 
 <style>
-
   .usage-info {
     margin-top: 12px;
     padding: 8px;
@@ -422,53 +421,5 @@
     grid-column: span 3;
     text-align: center;
     color: var(--vscode-foreground);
-  }
-
-  .generated-image {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-    margin-bottom: 4px;
-    cursor: context-menu;
-  }
-
-  .deleted-image-placeholder,
-  .hidden-image-placeholder {
-    padding: 20px;
-    margin-bottom: 4px;
-    border: 2px dashed var(--vscode-widget-border);
-    border-radius: 4px;
-    text-align: center;
-    color: var(--vscode-descriptionForeground);
-    font-style: italic;
-    background-color: var(--vscode-input-background);
-    user-select: none;
-  }
-
-  .hidden-image-placeholder {
-    cursor: context-menu;
-  }
-
-  .hidden-image-placeholder:hover {
-    background-color: var(--vscode-list-hoverBackground);
-  }
-
-  .btn-toggle {
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-widget-border);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .btn-toggle:hover {
-    background-color: var(--vscode-list-hoverBackground);
-  }
-
-  .btn-toggle.active {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border-color: var(--vscode-focusBorder);
   }
 </style>

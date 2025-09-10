@@ -118,7 +118,7 @@
   }
 </script>
 
-<main>
+<main class="min-h-screen">
   <Header />
   
   {#if $currentPage === 'chat'}
@@ -139,9 +139,5 @@
     background-color: var(--vscode-editor-background);
     margin: 0;
     padding: 0;
-  }
-
-  main {
-    min-height: 100vh;
   }
 </style>

@@ -42,7 +42,7 @@
     aria-labelledby="dialog-title"
     tabindex="-1"
   >
-    <div class="card min-w-80 max-w-96 m-5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <div class="card min-w-80 max-w-96 m-5 shadow-2xl animate-slideIn">
       <div class="px-5 pt-4 pb-2 border-b" style="border-color: var(--vscode-quickInput-border);">
         <h3 id="dialog-title" class="m-0 text-sm font-semibold" style="color: var(--vscode-quickInput-foreground);">
           {title}
@@ -78,7 +78,7 @@
 {/if}
 
 <style>
-  @keyframes slide-in-from-bottom {
+  @keyframes slideIn {
     from {
       transform: translateY(10px);
       opacity: 0;
@@ -91,7 +91,7 @@
     }
   }
   
-  .animate-in {
-    animation: slide-in-from-bottom 0.2s ease-out;
+  .animate-slideIn {
+    animation: slideIn 0.2s ease-out;
   }
 </style>

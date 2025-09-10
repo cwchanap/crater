@@ -36,10 +36,10 @@
   $: allImages = extractAllImages()
 </script>
 
-<div class="gallery-container">
-  <div class="gallery-header">
-    <h2>Generated Images Gallery</h2>
-    <p class="gallery-subtitle">
+<div class="p-4 h-[calc(100vh-200px)] overflow-y-auto">
+  <div class="mb-6 text-center">
+    <h2 class="m-0 mb-2 text-vscode-foreground text-lg font-semibold">Generated Images Gallery</h2>
+    <p class="m-0 text-vscode-foreground text-sm">
       {#if allImages.length === 0}
         No images generated yet. Start chatting to create some game assets!
       {:else}
@@ -49,12 +49,12 @@
   </div>
   
   {#if allImages.length > 0}
-    <div class="gallery-grid">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 py-2">
       {#each allImages as image}
-        <div class="thumbnail-card">
-          <div class="thumbnail-container">
+        <div class="group bg-vscode-input border border-vscode-border rounded-lg overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:border-blue-500">
+          <div class="relative w-full h-[150px] overflow-hidden bg-vscode-background">
             <button
-              class="thumbnail-button"
+              class="w-full h-full border-none p-0 m-0 bg-transparent cursor-pointer transition-opacity duration-200 hover:opacity-80 disabled:cursor-default"
               on:click={() => image.savedPath && openImageInEditor(image.savedPath)}
               disabled={!image.savedPath}
               title={image.savedPath ? `Open ${image.savedPath.split('/').pop()} in VS Code` : 'No saved file to open'}
@@ -64,14 +64,14 @@
                   ? image.url 
                   : `data:image/png;base64,${image.url}`}
                 alt="Generated: {image.prompt}"
-                class="thumbnail"
+                class="w-full h-full object-cover block"
                 on:error={() => console.error('Failed to load thumbnail:', image.url)}
               />
             </button>
             {#if image.savedPath}
-              <div class="thumbnail-overlay">
+              <div class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <button
-                  class="open-btn"
+                  class="bg-vscode-button text-white border-none px-4 py-2 rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-vscode-button-hover"
                   on:click={() => openImageInEditor(image.savedPath!)}
                   title="Open in VS Code editor"
                 >
@@ -80,10 +80,10 @@
               </div>
             {/if}
           </div>
-          <div class="thumbnail-caption">
-            <p class="prompt-text" title={image.prompt}>{image.prompt}</p>
+          <div class="p-3">
+            <p class="m-0 mb-1 text-xs leading-relaxed text-vscode-foreground overflow-hidden break-words" title={image.prompt} style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{image.prompt}</p>
             {#if image.savedPath}
-              <p class="file-path" title={image.savedPath}>
+              <p class="m-0 text-[10px] text-gray-500 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={image.savedPath}>
                 📁 {image.savedPath.split('/').pop() || 'Unknown file'}
               </p>
             {/if}
@@ -92,175 +92,11 @@
       {/each}
     </div>
   {:else}
-    <div class="empty-gallery">
-      <div class="empty-icon">🎨</div>
-      <h3>No images yet</h3>
-      <p>Generate some game assets to see them in the gallery!</p>
+    <div class="text-center py-10 px-5 text-vscode-foreground">
+      <div class="text-5xl mb-4">🎨</div>
+      <h3 class="m-0 mb-2 text-vscode-foreground text-base font-medium">No images yet</h3>
+      <p class="m-0 text-sm">Generate some game assets to see them in the gallery!</p>
     </div>
   {/if}
 </div>
 
-<style>
-  .gallery-container {
-    padding: 16px;
-    height: calc(100vh - 200px);
-    overflow-y: auto;
-  }
-  
-  .gallery-header {
-    margin-bottom: 24px;
-    text-align: center;
-  }
-  
-  .gallery-header h2 {
-    margin: 0 0 8px 0;
-    color: var(--vscode-foreground);
-    font-size: 18px;
-    font-weight: 600;
-  }
-  
-  .gallery-subtitle {
-    margin: 0;
-    color: var(--vscode-descriptionForeground);
-    font-size: 14px;
-  }
-  
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-    padding: 8px 0;
-  }
-  
-  .thumbnail-card {
-    background-color: var(--vscode-input-background);
-    border: 1px solid var(--vscode-widget-border);
-    border-radius: 8px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  
-  .thumbnail-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    border-color: var(--vscode-focusBorder);
-  }
-  
-  .thumbnail-container {
-    position: relative;
-    width: 100%;
-    height: 150px;
-    overflow: hidden;
-    background-color: var(--vscode-editor-background);
-  }
-
-  .thumbnail-button {
-    width: 100%;
-    height: 100%;
-    border: none;
-    padding: 0;
-    margin: 0;
-    background: none;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-
-  .thumbnail-button:hover:not(:disabled) {
-    opacity: 0.8;
-  }
-
-  .thumbnail-button:disabled {
-    cursor: default;
-  }
-  
-  .thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-  
-  .thumbnail-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  
-  .thumbnail-container:hover .thumbnail-overlay {
-    opacity: 1;
-  }
-  
-  .open-btn {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: background-color 0.2s;
-  }
-  
-  .open-btn:hover {
-    background-color: var(--vscode-button-hoverBackground);
-  }
-  
-  .thumbnail-caption {
-    padding: 12px;
-  }
-  
-  .prompt-text {
-    margin: 0 0 4px 0;
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--vscode-foreground);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    word-break: break-word;
-  }
-  
-  .file-path {
-    margin: 0;
-    font-size: 10px;
-    color: var(--vscode-descriptionForeground);
-    font-family: var(--vscode-editor-font-family);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .empty-gallery {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--vscode-descriptionForeground);
-  }
-  
-  .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-  }
-  
-  .empty-gallery h3 {
-    margin: 0 0 8px 0;
-    color: var(--vscode-foreground);
-    font-size: 16px;
-    font-weight: 500;
-  }
-  
-  .empty-gallery p {
-    margin: 0;
-    font-size: 14px;
-  }
-</style>
