@@ -1,0 +1,51 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Both Extensions",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-ext",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-image-editor"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/crater-ext/dist/**/*.js",
+        "${workspaceFolder}/apps/crater-image-editor/dist/**/*.js"
+      ]
+    },
+    {
+      "name": "Run Both Extensions (Development)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-ext",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-image-editor",
+        "--disable-extensions"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/crater-ext/dist/**/*.js",
+        "${workspaceFolder}/apps/crater-image-editor/dist/**/*.js"
+      ]
+    },
+    {
+      "name": "Run Both Extensions with HMR",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-ext",
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/crater-image-editor",
+        "--disable-extensions"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/crater-ext/dist/**/*.js",
+        "${workspaceFolder}/apps/crater-image-editor/dist/**/*.js"
+      ],
+      "preLaunchTask": "dev-both-extensions",
+      "env": {
+        "NODE_ENV": "development",
+        "CRATER_HMR_ENABLED": "true"
+      }
+    }
+  ]
+}

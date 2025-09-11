@@ -28,6 +28,11 @@
         "command": "crater-image-editor.editImageFromExplorer",
         "title": "Edit with Crater Image Editor",
         "category": "Crater"
+      },
+      {
+        "command": "crater-image-editor.loadImage",
+        "title": "Load Image (Internal)",
+        "category": "Crater"
       }
     ],
     "viewsContainers": {

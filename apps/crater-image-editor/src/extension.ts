@@ -111,6 +111,43 @@ export async function activate(context: vscode.ExtensionContext) {
             '[Crater Image Editor] Edit from explorer command registered'
         )
 
+        // Register loadImage command for external calls (e.g., from crater-ext)
+        const loadImageCommand = vscode.commands.registerCommand(
+            'crater-image-editor.loadImage',
+            async (imagePath: string) => {
+                console.log(
+                    '[Crater Image Editor] Load image command triggered:',
+                    imagePath
+                )
+                try {
+                    // Focus the image editor view first
+                    await vscode.commands.executeCommand(
+                        'crater-image-editor.editorView.focus'
+                    )
+
+                    // Small delay to ensure webview is ready
+                    setTimeout(() => {
+                        imageEditorProvider.loadImageFromPath(imagePath)
+                    }, 500)
+
+                    console.log(
+                        '[Crater Image Editor] Successfully loaded image from external call'
+                    )
+                } catch (error) {
+                    console.error(
+                        '[Crater Image Editor] Error loading image from external call:',
+                        error
+                    )
+                    vscode.window.showErrorMessage(
+                        `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
+                    )
+                }
+            }
+        )
+
+        context.subscriptions.push(loadImageCommand)
+        console.log('[Crater Image Editor] Load image command registered')
+
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {
                 if (event.affectsConfiguration('crater-image-editor')) {

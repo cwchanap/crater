@@ -29,6 +29,11 @@
         "command": "crater-ext.browseFolder",
         "title": "Browse for Image Save Directory",
         "category": "Crater"
+      },
+      {
+        "command": "crater-ext.openInImageEditor",
+        "title": "Open in Image Editor",
+        "category": "Crater"
       }
     ],
     "viewsContainers": {
@@ -60,6 +65,16 @@
         },
         {
           "command": "crater-ext.browseFolder"
+        },
+        {
+          "command": "crater-ext.openInImageEditor"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "crater-ext.openInImageEditor",
+          "when": "resourceExtname =~ /\\.(png|jpg|jpeg|gif|bmp|webp|svg)$/i",
+          "group": "crater"
         }
       ]
     },

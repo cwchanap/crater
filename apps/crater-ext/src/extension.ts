@@ -146,6 +146,71 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(browseFolderCommand)
         console.log('[Crater] Browse folder command registered')
 
+        // Register a command to open image in the image editor extension
+        const openInImageEditorCommand = vscode.commands.registerCommand(
+            'crater-ext.openInImageEditor',
+            async (uri: vscode.Uri) => {
+                console.log(
+                    '[Crater] Open in image editor command triggered',
+                    uri?.fsPath
+                )
+                try {
+                    if (!uri) {
+                        vscode.window.showErrorMessage(
+                            '[Crater] No file selected'
+                        )
+                        return
+                    }
+
+                    const imagePath = uri.fsPath
+                    console.log('[Crater] Opening image in editor:', imagePath)
+
+                    // Check if the crater-image-editor extension is available
+                    const imageEditorExtension = vscode.extensions.getExtension(
+                        'undefined_publisher.crater-image-editor'
+                    )
+                    if (!imageEditorExtension) {
+                        vscode.window.showErrorMessage(
+                            '[Crater] Image Editor extension not found. Please install the Crater Image Editor extension.'
+                        )
+                        return
+                    }
+
+                    // Activate the image editor extension if it's not already active
+                    if (!imageEditorExtension.isActive) {
+                        console.log(
+                            '[Crater] Activating image editor extension...'
+                        )
+                        await imageEditorExtension.activate()
+                    }
+
+                    // Execute the command to load image in the image editor
+                    await vscode.commands.executeCommand(
+                        'crater-image-editor.loadImage',
+                        imagePath
+                    )
+
+                    // Focus the image editor view
+                    await vscode.commands.executeCommand(
+                        'crater-image-editor.editorView.focus'
+                    )
+
+                    console.log('[Crater] Successfully opened image in editor')
+                } catch (error) {
+                    console.error(
+                        '[Crater] Error opening image in editor:',
+                        error
+                    )
+                    vscode.window.showErrorMessage(
+                        `[Crater] Failed to open image in editor: ${error instanceof Error ? error.message : String(error)}`
+                    )
+                }
+            }
+        )
+
+        context.subscriptions.push(openInImageEditorCommand)
+        console.log('[Crater] Open in image editor command registered')
+
         // Listen for configuration changes
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {
