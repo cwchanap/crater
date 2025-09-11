@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <title>Debug Webview</title>
+    <style>
+        body {
+            background: var(--vscode-editor-background, #1e1e1e);
+            color: var(--vscode-editor-foreground, #d4d4d4);
+            font-family: var(--vscode-font-family, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif);
+            padding: 20px;
+        }
+        .debug-info {
+            border: 1px solid var(--vscode-widget-border, #454545);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <h1>Debug Webview</h1>
+    
+    <div class="debug-info">
+        <h3>Basic HTML Test</h3>
+        <p class="success">✓ HTML is rendering</p>
+        <p class="success">✓ CSS styles are working</p>
+        <p class="success">✓ VS Code theme variables are applied</p>
+    </div>
+
+    <div class="debug-info">
+        <h3>JavaScript Test</h3>
+        <p id="js-test" class="error">✗ JavaScript not executed</p>
+    </div>
+
+    <div class="debug-info">
+        <h3>VS Code API Test</h3>
+        <p id="vscode-api-test" class="error">✗ VS Code API not available</p>
+        <button onclick="testVSCodeAPI()" style="margin-top: 10px; padding: 5px 10px;">Test VS Code API</button>
+    </div>
+
+    <div class="debug-info">
+        <h3>Console Logs</h3>
+        <div id="console-output" style="background: #2d2d2d; padding: 10px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        // Basic JavaScript test
+        document.getElementById('js-test').innerHTML = '<span class="success">✓ JavaScript is working</span>';
+        console.log('Debug webview: JavaScript loaded');
+
+        // Console capture
+        const consoleOutput = document.getElementById('console-output');
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+            consoleOutput.textContent += '[LOG] ' + args.join(' ') + '\n';
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            consoleOutput.textContent += '[ERROR] ' + args.join(' ') + '\n';
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+            originalError.apply(console, args);
+        };
+
+        // VS Code API test
+        function testVSCodeAPI() {
+            try {
+                if (typeof acquireVsCodeApi !== 'undefined') {
+                    const vscode = acquireVsCodeApi();
+                    document.getElementById('vscode-api-test').innerHTML = '<span class="success">✓ VS Code API is available</span>';
+                    console.log('VS Code API acquired successfully');
+                    
+                    // Test message sending
+                    vscode.postMessage({
+                        type: 'debug-test',
+                        message: 'Hello from debug webview!'
+                    });
+                    console.log('Test message sent to extension');
+                } else {
+                    document.getElementById('vscode-api-test').innerHTML = '<span class="error">✗ acquireVsCodeApi is not defined</span>';
+                    console.error('acquireVsCodeApi is not available');
+                }
+            } catch (error) {
+                document.getElementById('vscode-api-test').innerHTML = '<span class="error">✗ Error: ' + error.message + '</span>';
+                console.error('VS Code API test error:', error);
+            }
+        }
+
+        // Auto-test VS Code API on load
+        setTimeout(testVSCodeAPI, 100);
+
+        console.log('Debug webview: Setup complete');
+    </script>
+</body>
+</html>

@@ -3,12 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src vscode-webview-resource: 'unsafe-inline'; img-src data: blob: vscode-webview-resource: https:; script-src vscode-webview-resource: 'unsafe-inline'; font-src vscode-webview-resource:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' vscode-webview-resource: https:; img-src data: blob: vscode-webview-resource: https:; font-src vscode-webview-resource:;">
     <title>Crater Image Editor</title>
     <link href="{{CSS_URI}}" rel="stylesheet">
 </head>
 <body>
-    <div id="app"></div>
-    <script src="{{SCRIPT_URI}}"></script>
+    <div id="app">
+        <div id="loading-indicator">Loading Svelte app...</div>
+    </div>
+    <script>
+        console.log('Inline script: HTML loaded, DOM ready');
+        const loadingEl = document.getElementById('loading-indicator');
+        if (loadingEl) {
+            loadingEl.textContent = 'HTML and inline JS working, loading Svelte...';
+            loadingEl.style.color = '#4CAF50';
+        }
+        
+        // Add error handling for external script
+        window.addEventListener('error', (e) => {
+            console.error('Script loading error:', e);
+            if (loadingEl) {
+                loadingEl.textContent = 'Error loading Svelte script: ' + e.message;
+                loadingEl.style.color = '#f44336';
+            }
+        });
+        
+        // Listen for successful script load
+        window.addEventListener('load', () => {
+            console.log('Window loaded - checking if Svelte initialized');
+            setTimeout(() => {
+                if (!window.svelteApp && loadingEl) {
+                    loadingEl.textContent = 'Script loaded but Svelte failed to initialize';
+                    loadingEl.style.color = '#FFA500';
+                }
+            }, 1000);
+        });
+    </script>
+    <script src="{{SCRIPT_URI}}" onload="console.log('Svelte script loaded successfully')" onerror="console.error('Failed to load Svelte script')"></script>
 </body>
 </html>

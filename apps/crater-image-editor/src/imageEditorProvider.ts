@@ -490,6 +490,27 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 }
                 break
             }
+            case 'minimal-test':
+                console.log(
+                    '[Crater Image Editor] Minimal test message received:',
+                    message
+                )
+                this._view?.webview.postMessage({
+                    type: 'extension-response',
+                    message: 'Hello from extension! Minimal test successful.',
+                    timestamp: Date.now(),
+                })
+                break
+            case 'debug-test':
+                console.log(
+                    '[Crater Image Editor] Debug test message received:',
+                    message
+                )
+                this._view?.webview.postMessage({
+                    type: 'extension-response',
+                    message: 'Hello from extension! Debug test successful.',
+                })
+                break
             case 'test':
             case 'webview-ready':
                 console.log(
@@ -541,6 +562,11 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
             html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
 
+            console.log('[Crater Image Editor] Generated URIs:')
+            console.log('  Script URI:', scriptUri)
+            console.log('  CSS URI:', cssUri)
+            console.log('[Crater Image Editor] Final HTML:')
+            console.log(html)
             console.log(
                 '[Crater Image Editor] HTML loaded and processed successfully, length:',
                 html.length

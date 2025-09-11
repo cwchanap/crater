@@ -24,7 +24,7 @@ export default defineConfig(({ command, mode }) => ({
     build: {
         lib: {
             entry: resolve(__dirname, 'src/webview.ts'),
-            name: 'ImageEditorWebView',
+            name: 'WebView',
             fileName: 'webview',
             formats: ['iife'],
         },
