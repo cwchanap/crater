@@ -9,6 +9,10 @@
             "path": "./apps/crater-ext",
         },
         {
+            "name": "Image Editor Extension",
+            "path": "./apps/crater-image-editor",
+        },
+        {
             "name": "Web App",
             "path": "./apps/crater-web",
         },
@@ -41,6 +45,9 @@
             "ms-vscode.vscode-typescript-next",
             "esbenp.prettier-vscode",
             "dbaeumer.vscode-eslint",
+            "svelte.svelte-vscode",
+            "bradlc.vscode-tailwindcss",
+            "ms-vscode.vscode-json",
         ],
     },
     "launch": {
@@ -77,6 +84,21 @@
                 ],
                 "outFiles": ["${workspaceFolder:Extension}/out/test/**/*.js"],
                 "preLaunchTask": "Extension: Compile Tests",
+            },
+            {
+                "name": "Run Image Editor Extension with HMR",
+                "type": "extensionHost",
+                "request": "launch",
+                "args": [
+                    "--extensionDevelopmentPath=${workspaceFolder:Image Editor Extension}",
+                    "--disable-extensions",
+                ],
+                "outFiles": ["${workspaceFolder:Image Editor Extension}/dist/**/*.js"],
+                "preLaunchTask": "Image Editor: Dev HMR",
+                "env": {
+                    "NODE_ENV": "development",
+                    "CRATER_HMR_ENABLED": "true",
+                },
             },
         ],
     },
@@ -183,6 +205,92 @@
                     "panel": "shared",
                 },
                 "problemMatcher": [],
+            },
+            {
+                "label": "Image Editor: Build",
+                "type": "shell",
+                "command": "pnpm",
+                "args": ["run", "compile"],
+                "options": {
+                    "cwd": "${workspaceFolder:Image Editor Extension}",
+                },
+                "group": {
+                    "kind": "build",
+                    "isDefault": false,
+                },
+                "presentation": {
+                    "echo": true,
+                    "reveal": "silent",
+                    "panel": "shared",
+                },
+                "problemMatcher": "$tsc",
+            },
+            {
+                "label": "Image Editor: Watch",
+                "type": "shell",
+                "command": "pnpm",
+                "args": ["run", "watch"],
+                "options": {
+                    "cwd": "${workspaceFolder:Image Editor Extension}",
+                },
+                "group": "build",
+                "isBackground": true,
+                "presentation": {
+                    "echo": true,
+                    "reveal": "never",
+                    "panel": "shared",
+                },
+                "problemMatcher": "$tsc-watch",
+            },
+            {
+                "label": "Image Editor: Compile Tests",
+                "type": "shell",
+                "command": "pnpm",
+                "args": ["run", "compile-tests"],
+                "options": {
+                    "cwd": "${workspaceFolder:Image Editor Extension}",
+                },
+                "group": "build",
+                "presentation": {
+                    "echo": true,
+                    "reveal": "silent",
+                    "panel": "shared",
+                },
+                "problemMatcher": "$tsc",
+            },
+            {
+                "label": "Image Editor: Dev HMR",
+                "type": "shell",
+                "command": "pnpm",
+                "args": ["run", "dev"],
+                "options": {
+                    "cwd": "${workspaceFolder:Image Editor Extension}",
+                },
+                "group": "build",
+                "isBackground": true,
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "panel": "new",
+                    "showReuseMessage": false,
+                },
+                "problemMatcher": [
+                    {
+                        "pattern": [
+                            {
+                                "regexp": ".",
+                                "file": 1,
+                                "location": 2,
+                                "message": 3,
+                            },
+                        ],
+                        "background": {
+                            "activeOnStart": true,
+                            "beginsPattern": ".",
+                            "endsPattern": "\\[watch\\] build finished",
+                        },
+                    },
+                ],
             },
         ],
     },

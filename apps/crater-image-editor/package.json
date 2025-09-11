@@ -1,0 +1,167 @@
+{
+  "name": "crater-image-editor",
+  "displayName": "Crater - Image Editor",
+  "description": "VS Code extension for cropping and resizing images",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other",
+    "Image Processing"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "crater-image-editor.openEditor",
+        "title": "Open Image Editor",
+        "category": "Crater"
+      },
+      {
+        "command": "crater-image-editor.refreshWebview",
+        "title": "Refresh Webview (Development)",
+        "category": "Crater"
+      },
+      {
+        "command": "crater-image-editor.editImageFromExplorer",
+        "title": "Edit with Crater Image Editor",
+        "category": "Crater"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "crater-image-editor-container",
+          "title": "Crater Image Editor",
+          "icon": "./icons/image-editor.svg"
+        }
+      ]
+    },
+    "views": {
+      "crater-image-editor-container": [
+        {
+          "id": "crater-image-editor.editorView",
+          "name": "Image Editor",
+          "when": "true",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "crater-image-editor.openEditor"
+        },
+        {
+          "command": "crater-image-editor.refreshWebview"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "crater-image-editor.editImageFromExplorer",
+          "when": "resourceExtname =~ /\\.(png|jpg|jpeg|gif|bmp|webp)$/i",
+          "group": "2_workspace@1"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "crater-image-editor.refreshWebview",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i",
+        "when": "activeViewlet == 'crater-image-editor-container'"
+      }
+    ],
+    "configuration": {
+      "title": "Crater Image Editor",
+      "properties": {
+        "crater-image-editor.outputDirectory": {
+          "type": "string",
+          "default": "${workspaceFolder}/edited-images",
+          "description": "Directory where edited images will be saved. Supports VS Code variables like ${workspaceFolder}"
+        },
+        "crater-image-editor.outputFormat": {
+          "type": "string",
+          "default": "png",
+          "enum": [
+            "png",
+            "jpg",
+            "jpeg",
+            "webp"
+          ],
+          "enumDescriptions": [
+            "PNG - Lossless compression, supports transparency",
+            "JPG - Good compression for photos",
+            "JPEG - Same as JPG",
+            "WebP - Modern format with excellent compression"
+          ],
+          "description": "Default output format for edited images"
+        },
+        "crater-image-editor.quality": {
+          "type": "number",
+          "default": 90,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Output quality for lossy formats (JPG, WebP). Higher values mean better quality but larger file size."
+        },
+        "crater-image-editor.preserveOriginal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the original image file when saving edited versions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "pnpm run lint && pnpm run build:ext && pnpm run build:webview",
+    "build:ext": "node esbuild.js --production",
+    "build:webview": "vite build",
+    "dev": "npm-run-all -p dev:*",
+    "dev:ext": "node esbuild.js --watch",
+    "dev:webview": "vite build --watch --mode development",
+    "dev:hmr": "npm-run-all -p dev:ext dev:webview:hmr",
+    "dev:webview:hmr": "vite --mode development",
+    "vscode:prepublish": "pnpm run build",
+    "compile": "pnpm run type-check && pnpm run lint && pnpm run build:ext && pnpm run build:webview",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run build && vsce package",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "test": "vscode-test",
+    "clean": "rm -rf dist out"
+  },
+  "dependencies": {
+    "@crater/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.0.0",
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.103.0",
+    "@types/vscode-webview": "^1.57.5",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
+    "autoprefixer": "^10.4.16",
+    "esbuild": "^0.25.8",
+    "eslint": "^9.32.0",
+    "npm-run-all": "^4.1.5",
+    "postcss": "^8.4.31",
+    "svelte": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.0.4"
+  }
+}
