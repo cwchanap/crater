@@ -493,6 +493,9 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 break
 
             case 'webview-ready':
+                console.log(
+                    '[Crater Image Editor Provider] Webview ready signal received'
+                )
                 this._webviewReady = true
                 this.flushPendingMessages()
                 this._view?.webview.postMessage({

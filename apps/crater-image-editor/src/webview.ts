@@ -17,7 +17,12 @@ function initializeApp() {
     })
 
     // Make app globally accessible for debugging
-    ;(window as any).svelteApp = app
+    declare global {
+        interface Window {
+            svelteApp?: typeof app
+        }
+    }
+    window.svelteApp = app
 
     return app
 }

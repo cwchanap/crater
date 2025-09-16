@@ -99,18 +99,16 @@ export async function activate(context: vscode.ExtensionContext) {
                         }
                     }
 
-                    // Refresh the webview to ensure it loads properly
-                    imageEditorProvider.refreshWebview()
+                    // Wait a bit for the view to become available, then load the image
+                    setTimeout(async () => {
+                        // Load the image directly - the provider will handle queueing if needed
+                        await imageEditorProvider.loadImageFromPath(imagePath)
 
-                    // Wait for webview to initialize, then load the image
-                    setTimeout(() => {
-                        imageEditorProvider.loadImageFromPath(imagePath)
-
-                        // Ensure webview is ready
+                        // Force webview ready state after a delay to ensure proper initialization
                         setTimeout(() => {
                             imageEditorProvider.forceWebviewReady()
-                        }, 2000)
-                    }, 1000)
+                        }, 1500)
+                    }, 500)
                 } catch (error) {
                     vscode.window.showErrorMessage(
                         `Failed to load image: ${error instanceof Error ? error.message : String(error)}`

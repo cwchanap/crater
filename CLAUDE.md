@@ -141,3 +141,66 @@ Extension supports configurable AI providers (Gemini, OpenAI), image settings, a
 - `src/webview.ts` - WebView client-side logic
 - `esbuild.js` - Build configuration
 - `vite.config.js` - WebView build configuration
+
+## Image Editor Extension Specifics
+
+### Architecture & Critical Patterns
+
+- **Svelte WebView**: Uses Svelte for reactive UI with Canvas-based image editing
+- **WebView Provider**: `ImageEditorProvider` manages webview lifecycle and image loading
+- **Message Queuing**: Critical timing system for webview-extension communication
+- **Canvas Integration**: Direct HTML5 Canvas manipulation for image editing operations
+
+### Key Timing Considerations
+
+1. **Webview Initialization Race Conditions**:
+   - Canvas element must be available in DOM before context initialization
+   - Svelte component mounting happens asynchronously
+   - Image loading must wait for canvas readiness
+   - **Fix Pattern**: Use retry logic with `setTimeout` for canvas availability checking
+
+2. **Extension-to-Extension Communication**:
+   - `crater-ext` calls `crater-image-editor.loadImage` command
+   - Proper view focusing required before image loading
+   - Message queueing prevents lost messages during webview initialization
+
+3. **Critical Timing Sequence**:
+   ```
+   1. Focus image editor view
+   2. Wait 500ms for view availability
+   3. Load image (queued if webview not ready)
+   4. Force webview ready after 1500ms
+   5. Canvas checks readiness with 100ms retry intervals
+   ```
+
+### Common Issues & Solutions
+
+**Problem**: Image not displaying after `Open image at editor` command
+
+- **Cause**: Canvas not ready when image data arrives
+- **Solution**: Canvas readiness checking with retry mechanism in `loadImage()`
+
+**Problem**: Webview messages being lost
+
+- **Cause**: Messages sent before webview ready state
+- **Solution**: Message queuing in `sendMessageToWebview()` with `flushPendingMessages()`
+
+**Problem**: Tailwind CSS not applying
+
+- **Cause**: Usually false alarm - CSS builds correctly via Vite + PostCSS
+- **Solution**: Verify `dist/webview.css` contains classes, check CSP headers
+
+### Debug Patterns
+
+- Use extensive console logging in both extension and webview
+- Check VS Code Developer Tools for webview console messages
+- Verify canvas context initialization before image operations
+- Monitor webview ready state transitions
+
+### Key Files (Image Editor)
+
+- `src/extension.ts` - Command registration and inter-extension communication
+- `src/imageEditorProvider.ts` - WebView lifecycle and message handling
+- `src/App.svelte` - Main Svelte component with canvas operations
+- `src/webview.ts` - WebView entry point and Svelte app mounting
+- `vite.config.mjs` - Svelte + Tailwind build configuration

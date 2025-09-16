@@ -102,7 +102,8 @@
     }
 
     function loadImage(messageData: any) {
-        
+        console.log('[Crater Image Editor Webview] Loading image:', messageData.fileName);
+
         currentImage = {
             data: messageData.imageData,
             fileName: messageData.fileName,
@@ -111,39 +112,53 @@
             size: messageData.size
         };
 
-        // Initialize canvas context after currentImage is set (so canvas element exists)
-        setTimeout(() => {
-            if (canvas && !ctx) {
-                ctx = canvas.getContext('2d');
-            }
-        }, 50);
+        // Wait for canvas to be available in the DOM
+        const initializeCanvas = () => {
+            if (canvas) {
+                const canvasContext = canvas.getContext('2d');
+                if (canvasContext) {
+                    ctx = canvasContext;
+                    console.log('[Crater Image Editor Webview] Canvas context initialized');
 
-        img = new Image();
-        img.onload = () => {
-            isImageLoaded = true;
-            originalAspectRatio = img.width / img.height;
-            newWidth = img.width;
-            newHeight = img.height;
+                    // Load image after canvas is ready
+                    img = new Image();
+                    img.onload = () => {
+                        console.log('[Crater Image Editor Webview] Image loaded:', img.width, 'x', img.height);
+                        isImageLoaded = true;
+                        originalAspectRatio = img.width / img.height;
+                        newWidth = img.width;
+                        newHeight = img.height;
 
-            // Resize canvas to fit image
-            if (canvas && ctx) {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+                        // Resize canvas to fit image
+                        if (canvas && ctx) {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0);
+                            console.log('[Crater Image Editor Webview] Image drawn to canvas');
+                        }
+
+                        // Notify extension about image dimensions
+                        vscode.postMessage({
+                            type: 'update-image-dimensions',
+                            width: img.width,
+                            height: img.height
+                        });
+                    };
+                    img.onerror = (error) => {
+                        console.error('[Crater Image Editor Webview] Error loading image:', error);
+                    };
+                    img.src = messageData.imageData;
+                    console.log('[Crater Image Editor Webview] Set image src, length:', messageData.imageData?.length);
+                }
+            } else {
+                // Canvas not ready yet, try again
+                console.log('[Crater Image Editor Webview] Canvas not ready, retrying...');
+                setTimeout(initializeCanvas, 100);
             }
-            
-            // Notify extension about image dimensions
-            vscode.postMessage({
-                type: 'update-image-dimensions',
-                width: img.width,
-                height: img.height
-            });
         };
-        img.onerror = (error) => {
-            console.error('[Crater Image Editor Webview] Error loading image:', error);
-        };
-        img.src = messageData.imageData;
-        console.log('[Crater Image Editor Webview] Set image src, length:', messageData.imageData?.length);
+
+        // Start initialization
+        setTimeout(initializeCanvas, 50);
     }
 
     function selectImage() {
