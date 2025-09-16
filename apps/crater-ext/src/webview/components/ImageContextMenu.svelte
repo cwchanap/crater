@@ -9,6 +9,7 @@
   export let onDelete: (index: number) => void = () => {}
   export let onToggleVisibility: (index: number) => void = () => {}
   export let onOpenImage: (index: number) => void = () => {}
+  export let onOpenInImageEditor: (index: number) => void = () => {}
   export let onClose: () => void = () => {}
 
   let menuElement: HTMLDivElement
@@ -42,6 +43,11 @@
     onClose()
   }
 
+  function handleOpenInImageEditor() {
+    onOpenInImageEditor(imageIndex)
+    onClose()
+  }
+
   function handleClickOutside(event: MouseEvent) {
     if (menuElement && !menuElement.contains(event.target as Node)) {
       onClose()
@@ -68,7 +74,14 @@
           style="color: var(--vscode-menu-foreground);"
           on:click={handleOpenImage}
         >
-          📂 Open in Editor
+          📂 Open in VS Code Editor
+        </button>
+        <button 
+          class="menu-item flex items-center gap-1.5 w-full px-3 py-1.5 text-xs text-left border-none bg-transparent cursor-pointer whitespace-nowrap transition-colors"
+          style="color: var(--vscode-menu-foreground);"
+          on:click={handleOpenInImageEditor}
+        >
+          🎨 Open in Image Editor
         </button>
       {/if}
       <button 

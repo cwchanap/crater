@@ -38,19 +38,13 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     private _extensionContext?: vscode.ExtensionContext
     private _currentSession: ImageEditSession | null = null
     private _fileWatcher?: vscode.FileSystemWatcher
+    private _pendingMessages: any[] = []
+    private _webviewReady = false
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
         extensionContext?: vscode.ExtensionContext
     ) {
-        console.log(
-            '[Crater Image Editor] ImageEditorProvider constructor called'
-        )
-        console.log(
-            '[Crater Image Editor] Extension URI in constructor:',
-            _extensionUri.toString()
-        )
-
         this._extensionContext = extensionContext
         this.setupDevelopmentWatcher()
     }
@@ -61,38 +55,22 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             process.env.CRATER_HMR_ENABLED === 'true'
 
         if (!isHMREnabled) {
-            console.log(
-                '[Crater Image Editor] HMR not enabled, skipping development watcher'
-            )
             return
         }
 
         try {
-            console.log(
-                '[Crater Image Editor] Setting up development file watchers...'
-            )
-
             const handleFileChange = async (uri?: vscode.Uri) => {
                 const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
-                console.log(
-                    `[Crater Image Editor] 🔥 Dev: ${fileName} changed, triggering refresh...`
-                )
 
                 try {
                     await vscode.commands.executeCommand(
                         'workbench.action.webview.reloadWebviewAction'
-                    )
-                    console.log(
-                        '[Crater Image Editor] ✅ Webview reloaded via VS Code command'
                     )
                     vscode.window.setStatusBarMessage(
                         `🔥 ${fileName} → webview reloaded`,
                         2000
                     )
                 } catch {
-                    console.log(
-                        '[Crater Image Editor] 🔄 Fallback: Manual webview refresh'
-                    )
                     if (this._view) {
                         this._view.webview.html = this._getHtmlForWebview(
                             this._view.webview
@@ -116,10 +94,6 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 'webview.css'
             )
 
-            console.log('[Crater Image Editor] Watching for webview changes:')
-            console.log(`  📦 ${distJsPattern}`)
-            console.log(`  🎨 ${distCssPattern}`)
-
             const distJsWatcher =
                 vscode.workspace.createFileSystemWatcher(distJsPattern)
             const distCssWatcher =
@@ -134,15 +108,11 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
             this._fileWatcher = distJsWatcher
 
-            console.log('[Crater Image Editor] ✅ Development watchers active!')
             vscode.window.showInformationMessage(
                 '🔥 Crater Image Editor Dev Mode: Auto-reload on webview changes'
             )
-        } catch (error) {
-            console.log(
-                '[Crater Image Editor] Could not setup development watcher:',
-                error
-            )
+        } catch {
+            // Silent fail for development watcher setup
         }
     }
 
@@ -150,32 +120,36 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         this._fileWatcher?.dispose()
     }
 
-    public refreshWebview(): void {
-        console.log('[Crater Image Editor] Manual webview refresh requested')
+    public forceWebviewReady(): void {
         if (this._view) {
-            console.log(
-                '[Crater Image Editor] Refreshing webview HTML manually...'
-            )
+            this._webviewReady = true
+
+            this._view.webview.postMessage({
+                type: 'test-connection',
+                message: 'Testing webview communication',
+                timestamp: Date.now(),
+            })
+
+            this.flushPendingMessages()
+        }
+    }
+
+    public refreshWebview(): void {
+        if (this._view) {
+            // Reset all state
+            this._webviewReady = false
+            this._pendingMessages = []
+
             this._view.webview.html = this._getHtmlForWebview(
                 this._view.webview
             )
-            vscode.window.showInformationMessage(
-                '🔄 Webview refreshed manually'
-            )
-            console.log('[Crater Image Editor] Manual webview refresh complete')
         } else {
-            console.log('[Crater Image Editor] No webview available to refresh')
             vscode.window.showWarningMessage('No webview available to refresh')
         }
     }
 
     public async loadImageFromPath(imagePath: string): Promise<void> {
         try {
-            console.log(
-                '[Crater Image Editor] Loading image from path:',
-                imagePath
-            )
-
             if (!fs.existsSync(imagePath)) {
                 throw new Error('Image file not found')
             }
@@ -201,19 +175,40 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             }
 
             if (this._view) {
-                this._view.webview.postMessage({
+                const message = {
                     type: 'load-image',
                     imageData: dataUrl,
                     fileName: fileName,
                     originalPath: imagePath,
                     format: ext,
                     size: fileStats.size,
-                })
+                }
+                this.sendMessageToWebview(message)
+
+                // Send a follow-up test message to verify the webview received the load-image message
+                setTimeout(() => {
+                    this.sendMessageToWebview({
+                        type: 'test-connection',
+                        message: 'Follow-up test after load-image',
+                        timestamp: Date.now(),
+                    })
+                }, 100)
             }
 
-            console.log('[Crater Image Editor] Image loaded successfully')
+            // If webview still isn't ready after loading, force it and flush messages
+            if (
+                this._view &&
+                !this._webviewReady &&
+                this._pendingMessages.length > 0
+            ) {
+                setTimeout(() => {
+                    if (!this._webviewReady) {
+                        this._webviewReady = true
+                        this.flushPendingMessages()
+                    }
+                }, 1000)
+            }
         } catch (error) {
-            console.error('[Crater Image Editor] Error loading image:', error)
             vscode.window.showErrorMessage(
                 `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
             )
@@ -232,10 +227,28 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         return mimeTypes[extension] || 'image/png'
     }
 
+    private sendMessageToWebview(message: any): void {
+        if (this._view && this._webviewReady) {
+            this._view.webview.postMessage(message)
+        } else {
+            this._pendingMessages.push(message)
+        }
+    }
+
+    private flushPendingMessages(): void {
+        if (
+            this._view &&
+            this._webviewReady &&
+            this._pendingMessages.length > 0
+        ) {
+            this._pendingMessages.forEach((message) => {
+                this._view!.webview.postMessage(message)
+            })
+            this._pendingMessages = []
+        }
+    }
+
     public notifySettingsChanged(): void {
-        console.log(
-            '[Crater Image Editor] Notifying webview about settings change'
-        )
         if (this._view) {
             const config = vscode.workspace.getConfiguration(
                 'crater-image-editor'
@@ -258,9 +271,6 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 quality,
                 preserveOriginal,
             })
-            console.log(
-                '[Crater Image Editor] Settings notification sent to webview'
-            )
         }
     }
 
@@ -309,23 +319,17 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             const imageBuffer = Buffer.from(base64Data, 'base64')
             fs.writeFileSync(filePath, imageBuffer)
 
-            console.log(`[Crater Image Editor] Image saved to: ${filePath}`)
             return filePath
         } catch (error) {
-            console.error('[Crater Image Editor] Error saving image:', error)
             vscode.window.showErrorMessage(`Failed to save image: ${error}`)
             return null
         }
     }
 
-    resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
-    ): void | Thenable<void> {
-        console.log('[Crater Image Editor] *** resolveWebviewView CALLED! ***')
-
+    resolveWebviewView(webviewView: vscode.WebviewView): void | Thenable<void> {
         this._view = webviewView
+        // Reset webview ready state when a new view is created
+        this._webviewReady = false
 
         webviewView.webview.options = {
             enableScripts: true,
@@ -333,22 +337,13 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         }
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview)
-        console.log('[Crater Image Editor] HTML content set for webview')
 
         webviewView.webview.onDidReceiveMessage(
             (message) => {
-                console.log(
-                    '[Crater Image Editor] Received message from webview:',
-                    message
-                )
                 this._handleMessage(message)
             },
             undefined,
             []
-        )
-
-        console.log(
-            '[Crater Image Editor] resolveWebviewView completed successfully'
         )
 
         setTimeout(() => {
@@ -368,7 +363,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 true
             )
 
-            this._view.webview.postMessage({
+            this.sendMessageToWebview({
                 type: 'settings',
                 outputDirectory,
                 outputFormat,
@@ -376,19 +371,17 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 preserveOriginal,
             })
 
-            console.log(
-                '[Crater Image Editor] Proactively sent initial data to webview'
-            )
+            // Send test message to verify webview connection
+            this.sendMessageToWebview({
+                type: 'test-connection',
+                message: 'Extension can send messages to webview',
+                timestamp: Date.now(),
+            })
         }, 200)
     }
 
     private async _handleMessage(message: WebviewMessage): Promise<void> {
-        console.log('[Crater Image Editor] Handling message:', message.type)
-
         if (!this._view) {
-            console.error(
-                '[Crater Image Editor] No view available to handle message'
-            )
             return
         }
 
@@ -418,10 +411,6 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                         await this.loadImageFromPath(result[0].fsPath)
                     }
                 } catch (error) {
-                    console.error(
-                        '[Crater Image Editor] Error selecting image:',
-                        error
-                    )
                     vscode.window.showErrorMessage(
                         `Failed to select image: ${error instanceof Error ? error.message : String(error)}`
                     )
@@ -483,18 +472,10 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                         width: message.width as number,
                         height: message.height as number,
                     }
-                    console.log(
-                        '[Crater Image Editor] Updated image dimensions:',
-                        this._currentSession.dimensions
-                    )
                 }
                 break
             }
             case 'minimal-test':
-                console.log(
-                    '[Crater Image Editor] Minimal test message received:',
-                    message
-                )
                 this._view?.webview.postMessage({
                     type: 'extension-response',
                     message: 'Hello from extension! Minimal test successful.',
@@ -502,37 +483,37 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 })
                 break
             case 'debug-test':
-                console.log(
-                    '[Crater Image Editor] Debug test message received:',
-                    message
-                )
                 this._view?.webview.postMessage({
                     type: 'extension-response',
                     message: 'Hello from extension! Debug test successful.',
                 })
                 break
             case 'test':
+            case 'direct-test':
+                break
+
             case 'webview-ready':
-                console.log(
-                    '[Crater Image Editor] Test/ready message received:',
-                    message
-                )
+                this._webviewReady = true
+                this.flushPendingMessages()
                 this._view?.webview.postMessage({
                     type: 'extension-response',
                     message: 'Hello from extension!',
                 })
                 break
+
+            case 'manual-test':
+                this._view?.webview.postMessage({
+                    type: 'test-response',
+                    message: 'Manual test response from extension',
+                    timestamp: Date.now(),
+                })
+                break
             default:
-                console.warn(
-                    '[Crater Image Editor] Unknown message type:',
-                    message.type
-                )
+            // Unknown message type - silently ignore
         }
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
-        console.log('[Crater Image Editor] _getHtmlForWebview called')
-
         try {
             const htmlPath = path.join(
                 this._extensionUri.fsPath,
@@ -555,28 +536,18 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             )
             const cssUriWebview = webview.asWebviewUri(cssPathOnDisk)
 
-            const cacheBuster = Date.now()
-            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}`
-            const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}`
+            // Force aggressive cache busting with random number + timestamp
+            const cacheBuster =
+                Date.now() + Math.random().toString(36).substring(2)
+            const randomBuster = Math.random().toString(36).substring(2)
+            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
+            const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
 
             html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
             html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
 
-            console.log('[Crater Image Editor] Generated URIs:')
-            console.log('  Script URI:', scriptUri)
-            console.log('  CSS URI:', cssUri)
-            console.log('[Crater Image Editor] Final HTML:')
-            console.log(html)
-            console.log(
-                '[Crater Image Editor] HTML loaded and processed successfully, length:',
-                html.length
-            )
             return html
         } catch (error) {
-            console.error(
-                '[Crater Image Editor] Error loading HTML for WebView:',
-                error
-            )
             return `<!DOCTYPE html>
 <html lang="en">
 <head>

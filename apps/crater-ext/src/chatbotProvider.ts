@@ -1508,6 +1508,30 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
                 break
             }
+            case 'open-in-image-editor': {
+                const imagePath = message.path as string
+                if (imagePath) {
+                    try {
+                        // Open the image in the Crater Image Editor extension
+                        const imageUri = vscode.Uri.file(imagePath)
+                        await vscode.commands.executeCommand(
+                            'crater-ext.openInImageEditor',
+                            imageUri
+                        )
+                        console.log(
+                            `[Crater ChatbotProvider] Opened image in Crater Image Editor: ${imagePath}`
+                        )
+                    } catch (error) {
+                        console.error(
+                            `[Crater ChatbotProvider] Error opening image in Crater Image Editor: ${error}`
+                        )
+                        vscode.window.showErrorMessage(
+                            `Failed to open image in Crater Image Editor: ${error instanceof Error ? error.message : String(error)}`
+                        )
+                    }
+                }
+                break
+            }
             default:
                 console.warn(
                     '[Crater ChatbotProvider] Unknown message type:',

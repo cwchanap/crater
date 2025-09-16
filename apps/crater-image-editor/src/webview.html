@@ -9,36 +9,16 @@
 </head>
 <body>
     <div id="app">
-        <div id="loading-indicator">Loading Svelte app...</div>
+        <div id="loading-indicator">Loading...</div>
     </div>
     <script>
-        console.log('Inline script: HTML loaded, DOM ready');
-        const loadingEl = document.getElementById('loading-indicator');
-        if (loadingEl) {
-            loadingEl.textContent = 'HTML and inline JS working, loading Svelte...';
-            loadingEl.style.color = '#4CAF50';
+        // Acquire VS Code API and make it globally available
+        try {
+            window.vscode = acquireVsCodeApi();
+        } catch (error) {
+            console.error('[Crater Image Editor] Failed to acquire VS Code API:', error);
         }
-        
-        // Add error handling for external script
-        window.addEventListener('error', (e) => {
-            console.error('Script loading error:', e);
-            if (loadingEl) {
-                loadingEl.textContent = 'Error loading Svelte script: ' + e.message;
-                loadingEl.style.color = '#f44336';
-            }
-        });
-        
-        // Listen for successful script load
-        window.addEventListener('load', () => {
-            console.log('Window loaded - checking if Svelte initialized');
-            setTimeout(() => {
-                if (!window.svelteApp && loadingEl) {
-                    loadingEl.textContent = 'Script loaded but Svelte failed to initialize';
-                    loadingEl.style.color = '#FFA500';
-                }
-            }, 1000);
-        });
     </script>
-    <script src="{{SCRIPT_URI}}" onload="console.log('Svelte script loaded successfully')" onerror="console.error('Failed to load Svelte script')"></script>
+    <script src="{{SCRIPT_URI}}"></script>
 </body>
 </html>

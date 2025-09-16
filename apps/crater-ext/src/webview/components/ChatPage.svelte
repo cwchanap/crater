@@ -104,6 +104,21 @@
     }
   }
 
+  function handleOpenInImageEditor(imageIndex: number) {
+    if (contextMenu.messageIndex === -1 || !$vscode) return
+    
+    const message = $messages[contextMenu.messageIndex]
+    if (message.messageType === 'image' && message.imageData?.savedPaths) {
+      const savedPath = message.imageData.savedPaths[imageIndex]
+      if (savedPath) {
+        $vscode.postMessage({
+          type: 'open-in-image-editor',
+          path: savedPath
+        })
+      }
+    }
+  }
+
   function handleDeleteImage(imageIndex: number) {
     if (contextMenu.messageIndex === -1) return
     
@@ -407,6 +422,7 @@
   onDelete={handleDeleteImage}
   onToggleVisibility={handleToggleImageVisibility}
   onOpenImage={handleOpenImage}
+  onOpenInImageEditor={handleOpenInImageEditor}
   onClose={closeContextMenu}
 />
 

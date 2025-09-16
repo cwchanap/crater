@@ -1,6 +1,9 @@
 <script lang="ts">
     import { onMount } from 'svelte';
 
+    // Initialize webview
+    console.log('[Crater Image Editor] Webview initializing');
+
     interface Settings {
         outputDirectory: string;
         outputFormat: string;
@@ -43,15 +46,26 @@
     let maintainAspectRatio = true;
     let originalAspectRatio = 1;
 
+
     onMount(() => {
-        // @ts-ignore
-        vscode = acquireVsCodeApi();
-        
-        // Initialize canvas
-        ctx = canvas.getContext('2d')!;
-        
+        // Use the globally available vscode API that was acquired in the HTML
+        vscode = window.vscode;
+
         // Request settings on load
         vscode.postMessage({ type: 'get-settings' });
+
+        // Send ready signal to extension
+        let readyAttempts = 0;
+        const sendReadySignal = () => {
+            readyAttempts++;
+            vscode.postMessage({ type: 'webview-ready', attempt: readyAttempts });
+
+            // Keep trying every 1 second until we get a response, max 10 attempts
+            if (readyAttempts < 10) {
+                setTimeout(sendReadySignal, 1000);
+            }
+        };
+        setTimeout(sendReadySignal, 100);
         
         // Listen for messages from extension
         window.addEventListener('message', handleExtensionMessage);
@@ -74,24 +88,49 @@
             case 'image-saved':
                 showSuccessMessage(`Image saved to: ${message.savedPath}`);
                 break;
+            case 'test-connection':
+            case 'test-response':
+            case 'extension-response':
+                // Connection test - no action needed
+                break;
         }
     }
 
-    function loadImage(imageData: ImageData) {
-        currentImage = imageData;
+    // Helper function to check if canvas and context are available
+    function isCanvasReady(): boolean {
+        return !!(canvas && ctx);
+    }
+
+    function loadImage(messageData: any) {
+        
+        currentImage = {
+            data: messageData.imageData,
+            fileName: messageData.fileName,
+            originalPath: messageData.originalPath,
+            format: messageData.format,
+            size: messageData.size
+        };
+
+        // Initialize canvas context after currentImage is set (so canvas element exists)
+        setTimeout(() => {
+            if (canvas && !ctx) {
+                ctx = canvas.getContext('2d');
+            }
+        }, 50);
+
         img = new Image();
         img.onload = () => {
             isImageLoaded = true;
             originalAspectRatio = img.width / img.height;
             newWidth = img.width;
             newHeight = img.height;
-            
+
             // Resize canvas to fit image
-            canvas.width = img.width;
-            canvas.height = img.height;
-            
-            // Draw image on canvas
-            ctx.drawImage(img, 0, 0);
+            if (canvas && ctx) {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+            }
             
             // Notify extension about image dimensions
             vscode.postMessage({
@@ -100,7 +139,11 @@
                 height: img.height
             });
         };
-        img.src = imageData.data;
+        img.onerror = (error) => {
+            console.error('[Crater Image Editor Webview] Error loading image:', error);
+        };
+        img.src = messageData.imageData;
+        console.log('[Crater Image Editor Webview] Set image src, length:', messageData.imageData?.length);
     }
 
     function selectImage() {
@@ -199,8 +242,10 @@
     }
 
     function redrawCanvas() {
-        if (!isImageLoaded) return;
-        
+        if (!isImageLoaded || !isCanvasReady()) {
+            return;
+        }
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
@@ -278,6 +323,7 @@
 <div class="h-full flex flex-col p-4 bg-vscode-background text-vscode-foreground">
     <div class="mb-4">
         <h1 class="text-xl font-bold mb-2">Crater Image Editor</h1>
+        
         
         {#if !currentImage}
             <div class="text-center py-8">

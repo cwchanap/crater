@@ -8,24 +8,15 @@ import { ChatbotProvider } from './chatbotProvider'
 export async function activate(context: vscode.ExtensionContext) {
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
-    console.log('[Crater] Extension activation started')
-
     try {
-        console.log('[Crater] Initializing ChatbotProvider...')
-        console.log('[Crater] Extension URI:', context.extensionUri.toString())
-
         // Register the chatbot webview view provider
         const chatbotProvider = new ChatbotProvider(
             context.extensionUri,
             context
         )
-        console.log('[Crater] ChatbotProvider instance created successfully')
 
         // Register the webview view provider for the sidebar (main)
         const viewType = ChatbotProvider.viewType
-        console.log(
-            `[Crater] Registering webview view provider with viewType: ${viewType}`
-        )
 
         const disposable = vscode.window.registerWebviewViewProvider(
             viewType,
@@ -33,26 +24,17 @@ export async function activate(context: vscode.ExtensionContext) {
         )
 
         context.subscriptions.push(disposable)
-        console.log('[Crater] Main webview provider registered successfully')
 
         // Register the command to open the chatbot (focuses the sidebar view)
         const openChatbotCommand = vscode.commands.registerCommand(
             'crater-ext.openChatbot',
             async () => {
-                console.log(
-                    '[Crater] crater-ext.openChatbot command triggered!'
-                )
                 try {
                     // Focus the chatbot view in the explorer sidebar
                     await vscode.commands.executeCommand(
                         'crater-ext.chatbotView.focus'
                     )
-                    console.log('[Crater] Successfully focused chatbot view')
                 } catch (error) {
-                    console.error(
-                        '[Crater] Error focusing chatbot view:',
-                        error
-                    )
                     vscode.window.showErrorMessage(
                         `Failed to open chatbot: ${error instanceof Error ? error.message : String(error)}`
                     )
@@ -61,18 +43,14 @@ export async function activate(context: vscode.ExtensionContext) {
         )
 
         context.subscriptions.push(openChatbotCommand)
-        console.log('[Crater] Open chatbot command registered')
 
         // Register a command to update AI provider when configuration changes
         const updateProviderCommand = vscode.commands.registerCommand(
             'crater-ext.updateAIProvider',
             async () => {
-                console.log('[Crater] Updating AI provider configuration...')
                 try {
                     await chatbotProvider.updateAIProvider()
-                    console.log('[Crater] AI provider updated successfully')
                 } catch (error) {
-                    console.error('[Crater] Error updating AI provider:', error)
                     vscode.window.showErrorMessage(
                         `Failed to update AI provider: ${error instanceof Error ? error.message : String(error)}`
                     )
@@ -81,25 +59,21 @@ export async function activate(context: vscode.ExtensionContext) {
         )
 
         context.subscriptions.push(updateProviderCommand)
-        console.log('[Crater] Update AI provider command registered')
 
         // Register a command to manually refresh the webview (for development)
         const refreshWebviewCommand = vscode.commands.registerCommand(
             'crater-ext.refreshWebview',
             () => {
-                console.log('[Crater] Manual webview refresh command triggered')
                 chatbotProvider.refreshWebview()
             }
         )
 
         context.subscriptions.push(refreshWebviewCommand)
-        console.log('[Crater] Refresh webview command registered')
 
         // Register a command to browse for folder selection
         const browseFolderCommand = vscode.commands.registerCommand(
             'crater-ext.browseFolder',
             async () => {
-                console.log('[Crater] Browse folder command triggered')
                 try {
                     const options: vscode.OpenDialogOptions = {
                         canSelectFolders: true,
@@ -112,7 +86,6 @@ export async function activate(context: vscode.ExtensionContext) {
                     const result = await vscode.window.showOpenDialog(options)
                     if (result && result[0]) {
                         const selectedPath = result[0].fsPath
-                        console.log('[Crater] Selected folder:', selectedPath)
 
                         // Update the configuration
                         const config =
@@ -132,10 +105,6 @@ export async function activate(context: vscode.ExtensionContext) {
                         return selectedPath
                     }
                 } catch (error) {
-                    console.error(
-                        '[Crater] Error in browse folder command:',
-                        error
-                    )
                     vscode.window.showErrorMessage(
                         `Failed to select folder: ${error instanceof Error ? error.message : String(error)}`
                     )
@@ -144,16 +113,11 @@ export async function activate(context: vscode.ExtensionContext) {
         )
 
         context.subscriptions.push(browseFolderCommand)
-        console.log('[Crater] Browse folder command registered')
 
         // Register a command to open image in the image editor extension
         const openInImageEditorCommand = vscode.commands.registerCommand(
             'crater-ext.openInImageEditor',
             async (uri: vscode.Uri) => {
-                console.log(
-                    '[Crater] Open in image editor command triggered',
-                    uri?.fsPath
-                )
                 try {
                     if (!uri) {
                         vscode.window.showErrorMessage(
@@ -162,32 +126,17 @@ export async function activate(context: vscode.ExtensionContext) {
                         return
                     }
 
-                    const imagePath = uri.fsPath
-                    console.log('[Crater] Opening image in editor:', imagePath)
+                    // Get the image path from the URI
+                    console.log(`[Crater] Opening image: ${uri.fsPath}`)
 
-                    // Check if the crater-image-editor extension is available
-                    const imageEditorExtension = vscode.extensions.getExtension(
-                        'undefined_publisher.crater-image-editor'
-                    )
-                    if (!imageEditorExtension) {
-                        vscode.window.showErrorMessage(
-                            '[Crater] Image Editor extension not found. Please install the Crater Image Editor extension.'
-                        )
-                        return
-                    }
-
-                    // Activate the image editor extension if it's not already active
-                    if (!imageEditorExtension.isActive) {
-                        console.log(
-                            '[Crater] Activating image editor extension...'
-                        )
-                        await imageEditorExtension.activate()
-                    }
+                    // Try to execute the loadImage command directly
+                    // If the extension isn't available, the command will fail and we'll catch the error
 
                     // Execute the command to load image in the image editor
+                    // Pass the original URI object directly
                     await vscode.commands.executeCommand(
                         'crater-image-editor.loadImage',
-                        imagePath
+                        uri
                     )
 
                     // Focus the image editor view
@@ -195,37 +144,45 @@ export async function activate(context: vscode.ExtensionContext) {
                         'crater-image-editor.editorView.focus'
                     )
 
-                    console.log('[Crater] Successfully opened image in editor')
+                    // Show a notification to help user find the image editor
+                    vscode.window.showInformationMessage(
+                        `✅ Image opened in Crater Image Editor! Look for the image editor icon in the activity bar or sidebar.`,
+                        'OK'
+                    )
                 } catch (error) {
                     console.error(
-                        '[Crater] Error opening image in editor:',
+                        '[Crater] Error opening image in image editor:',
                         error
                     )
-                    vscode.window.showErrorMessage(
-                        `[Crater] Failed to open image in editor: ${error instanceof Error ? error.message : String(error)}`
-                    )
+                    if (
+                        error instanceof Error &&
+                        error.message.includes(
+                            "command 'crater-image-editor.loadImage' not found"
+                        )
+                    ) {
+                        vscode.window.showErrorMessage(
+                            '[Crater] Image Editor extension not found or not active. Please install and activate the Crater Image Editor extension.'
+                        )
+                    } else {
+                        vscode.window.showErrorMessage(
+                            `[Crater] Failed to open image in editor: ${error instanceof Error ? error.message : String(error)}`
+                        )
+                    }
                 }
             }
         )
 
         context.subscriptions.push(openInImageEditorCommand)
-        console.log('[Crater] Open in image editor command registered')
 
         // Listen for configuration changes
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {
                 if (event.affectsConfiguration('crater-ext')) {
-                    console.log(
-                        '[Crater] Extension configuration changed, updating AI provider...'
-                    )
                     try {
                         await chatbotProvider.updateAIProvider()
-                        console.log(
-                            '[Crater] AI provider updated after configuration change'
-                        )
                     } catch (error) {
                         console.error(
-                            '[Crater] Error updating AI provider after configuration change:',
+                            '[Crater] Failed to update AI provider:',
                             error
                         )
                     }
@@ -234,14 +191,11 @@ export async function activate(context: vscode.ExtensionContext) {
         )
 
         context.subscriptions.push(configChangeListener)
-        console.log('[Crater] Configuration change listener registered')
 
-        console.log('[Crater] Extension activation completed successfully')
         vscode.window.showInformationMessage(
             '[Crater] Game Asset Assistant is now active!'
         )
     } catch (error) {
-        console.error('[Crater] Failed to activate extension:', error)
         vscode.window.showErrorMessage(
             `[Crater] Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`
         )
@@ -250,6 +204,4 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {
-    console.log('[Crater] Extension deactivated')
-}
+export function deactivate() {}

@@ -10,6 +10,15 @@
     })
   }
   
+  function openImageInImageEditor(imagePath: string) {
+    if (!$vscode || !imagePath) return
+    
+    $vscode.postMessage({
+      type: 'open-in-image-editor',
+      path: imagePath
+    })
+  }
+  
   function extractAllImages() {
     const images: { url: string, prompt: string, savedPath?: string }[] = []
     
@@ -69,13 +78,20 @@
               />
             </button>
             {#if image.savedPath}
-              <div class="absolute inset-0 bg-black/70 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+              <div class="absolute inset-0 bg-black/70 flex items-center justify-center gap-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                 <button
-                  class="bg-vscode-button text-white border-none px-4 py-2 rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-vscode-button-hover"
+                  class="bg-vscode-button text-white border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-vscode-button-hover"
                   on:click={() => openImageInEditor(image.savedPath!)}
                   title="Open in VS Code editor"
                 >
-                  📂 Open
+                  📂 VS Code
+                </button>
+                <button
+                  class="bg-vscode-button text-white border-none px-3 py-1.5 rounded cursor-pointer text-xs font-medium transition-colors duration-200 hover:bg-vscode-button-hover"
+                  on:click={() => openImageInImageEditor(image.savedPath!)}
+                  title="Open in Crater Image Editor"
+                >
+                  🎨 Image Editor
                 </button>
               </div>
             {/if}

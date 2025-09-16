@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Crater is a Turborepo monorepo consisting of:
 
 - **`apps/crater-ext/`** - VS Code extension with AI-powered game asset generation chatbot
+- **`apps/crater-image-editor/`** - VS Code extension for image editing and processing
 - **`apps/crater-web/`** - SvelteKit web application
 - **`packages/core/`** - Core shared logic and utilities
 - **`packages/ui-components/`** - React component library with shadcn/ui and Tailwind CSS
@@ -35,6 +36,17 @@ pnpm dev            # Watch mode for both extension and webview
 pnpm dev:hmr        # Development with hot module replacement
 pnpm build          # Production build
 pnpm test           # Run extension tests
+pnpm package        # Create .vsix package
+```
+
+### Image Editor Extension (`apps/crater-image-editor/`)
+
+```bash
+cd apps/crater-image-editor
+pnpm dev            # Watch mode for both extension and webview
+pnpm build          # Production build
+pnpm build:ext      # Build extension only
+pnpm build:webview  # Build webview only
 pnpm package        # Create .vsix package
 ```
 

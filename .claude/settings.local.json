@@ -12,7 +12,9 @@
       "Bash(pnpm test:*)",
       "Bash(pnpm lint:*)",
       "Bash(pnpm build:*)",
-      "Bash(pnpm type-check:*)"
+      "Bash(pnpm type-check:*)",
+      "Read(//Users/chanwaichan/workspace/**)",
+      "Bash(pnpm --filter=crater-image-editor build:webview)"
     ],
     "deny": [],
     "ask": []
