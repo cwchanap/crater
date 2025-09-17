@@ -70,6 +70,16 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(refreshWebviewCommand)
 
+        // Register a command to toggle saving for performance testing
+        const toggleSavingCommand = vscode.commands.registerCommand(
+            'crater-ext.toggleSaving',
+            () => {
+                chatbotProvider.toggleSaving()
+            }
+        )
+
+        context.subscriptions.push(toggleSavingCommand)
+
         // Register a command to browse for folder selection
         const browseFolderCommand = vscode.commands.registerCommand(
             'crater-ext.browseFolder',

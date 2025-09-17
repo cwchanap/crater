@@ -24,7 +24,7 @@
   let pendingUpdates = new Map<number, any>()
 
   function debouncedUpdateImageStates(messageIndex: number, imageStates: any) {
-    // Store the pending update
+    // Store the pending update (this will overwrite previous state for same message)
     pendingUpdates.set(messageIndex, imageStates)
 
     // Clear existing timeout
@@ -32,9 +32,11 @@
       clearTimeout(updateTimeout)
     }
 
-    // Set new timeout for 300ms delay (shorter than extension debounce)
+    // Set new timeout for 100ms delay (much shorter, just to batch rapid changes)
     updateTimeout = setTimeout(() => {
       if (!$vscode) return
+
+      // Send batched updates
 
       // Send all pending updates in batch
       for (const [msgIndex, states] of pendingUpdates) {
@@ -48,7 +50,7 @@
       // Clear pending updates
       pendingUpdates.clear()
       updateTimeout = undefined
-    }, 300)
+    }, 100)
   }
 
   function sendMessage() {
@@ -166,9 +168,9 @@
     if (confirmDialog.pendingDeleteMessageIndex === -1 || confirmDialog.pendingDeleteImageIndex === -1) return
     
     messages.update(msgs => {
-      const newMessages = [...msgs]
-      const message = newMessages[confirmDialog.pendingDeleteMessageIndex]
-      
+      // Only update the specific message to avoid triggering full re-render
+      const message = msgs[confirmDialog.pendingDeleteMessageIndex]
+
       if (message.messageType === 'image' && message.imageData) {
         // Initialize imageStates if not present
         if (!message.imageData.imageStates) {
@@ -177,12 +179,13 @@
             hidden: new Array(message.imageData.images.length).fill(false)
           }
         }
-        
-        // Mark image as deleted
+
+        // Mark image as deleted (mutate in place for performance)
         message.imageData.imageStates.deleted[confirmDialog.pendingDeleteImageIndex] = true
       }
-      
-      return newMessages
+
+      // Return same array to minimize Svelte reactivity overhead
+      return msgs
     })
 
     // Send update to extension to persist the change (immediate for deletions)
@@ -215,8 +218,8 @@
     const messageIndex = contextMenu.messageIndex
 
     messages.update(msgs => {
-      const newMessages = [...msgs]
-      const message = newMessages[messageIndex]
+      // Only update the specific message to avoid triggering full re-render
+      const message = msgs[messageIndex]
 
       if (message.messageType === 'image' && message.imageData) {
         // Initialize imageStates if not present
@@ -227,11 +230,12 @@
           }
         }
 
-        // Toggle hidden state
+        // Toggle hidden state directly (mutate in place for performance)
         message.imageData.imageStates.hidden[imageIndex] = !message.imageData.imageStates.hidden[imageIndex]
       }
 
-      return newMessages
+      // Return same array to minimize Svelte reactivity overhead
+      return msgs
     })
 
     // Use debounced update instead of immediate postMessage
@@ -251,15 +255,16 @@
     if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return
 
     messages.update(msgs => {
-      const newMessages = [...msgs]
-      const message = newMessages[messageIndex]
+      // Only update the specific message to avoid triggering full re-render
+      const message = msgs[messageIndex]
 
       if (message.messageType === 'image' && message.imageData && message.imageData.imageStates) {
-        // Show the hidden image
+        // Show the hidden image (mutate in place for performance)
         message.imageData.imageStates.hidden[imageIndex] = false
       }
 
-      return newMessages
+      // Return same array to minimize Svelte reactivity overhead
+      return msgs
     })
 
     // Use debounced update instead of immediate postMessage

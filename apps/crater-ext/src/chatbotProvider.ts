@@ -109,6 +109,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     private _fileWatcher?: vscode.FileSystemWatcher
     private _saveTimeout?: NodeJS.Timeout
     private _pendingFileDeletions: string[] = []
+    private _lastUpdateStates = new Map<number, string>()
+    private _savingDisabled = false // Set to true to test without saving
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -248,8 +250,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     dispose(): void {
         this._fileWatcher?.dispose()
+
+        // Ensure any pending saves are completed before disposal
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout)
+            // Force immediate save on disposal to prevent data loss
+            this.saveChatHistory().catch((error) => {
+                console.error(
+                    '[Crater] Error in final save during disposal:',
+                    error
+                )
+            })
         }
     }
 
@@ -275,11 +286,57 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             // If we have a current session, load its messages
             if (this._currentSessionId) {
-                const currentSession = this._chatSessions.find(
-                    (s) => s.id === this._currentSessionId
-                )
+                let currentSession: ChatSession | undefined
+
+                // Try to load from fast file-based storage first
+                try {
+                    const sessionFilePath = path.join(
+                        this._extensionContext.globalStorageUri.fsPath,
+                        `session_${this._currentSessionId}.json`
+                    )
+                    const fileContent = await vscode.workspace.fs.readFile(
+                        vscode.Uri.file(sessionFilePath)
+                    )
+                    const sessionJson =
+                        Buffer.from(fileContent).toString('utf8')
+                    currentSession = JSON.parse(sessionJson) as ChatSession
+                } catch {
+                    // Fallback to VS Code globalState storage
+                    currentSession = this._extensionContext.globalState.get<
+                        ChatSession | undefined
+                    >(`crater.session.${this._currentSessionId}`, undefined)
+                }
+
+                // Final fallback to session list if individual session not found
+                if (!currentSession) {
+                    currentSession = this._chatSessions.find(
+                        (s) => s.id === this._currentSessionId
+                    )
+                }
+
                 if (currentSession) {
-                    this._extendedChatHistory = currentSession.messages
+                    // Restore image URLs from file paths since we don't store base64 data
+                    this._extendedChatHistory = currentSession.messages.map(
+                        (msg) => {
+                            if (
+                                msg.messageType === 'image' &&
+                                msg.imageData &&
+                                msg.imageData.savedPaths
+                            ) {
+                                return {
+                                    ...msg,
+                                    imageData: {
+                                        ...msg.imageData,
+                                        // Recreate image URLs from saved file paths
+                                        images: msg.imageData.savedPaths.map(
+                                            (path) => `file://${path}`
+                                        ),
+                                    },
+                                }
+                            }
+                            return msg
+                        }
+                    )
                     console.log(
                         `[Crater] Loaded ${currentSession.messages.length} messages from current session`
                     )
@@ -373,9 +430,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     (s) => s.id === this._currentSessionId
                 )
                 if (sessionIndex >= 0) {
-                    this._chatSessions[sessionIndex].messages = [
-                        ...this._extendedChatHistory,
-                    ]
+                    // Avoid deep copy - directly assign reference for performance
+                    this._chatSessions[sessionIndex].messages =
+                        this._extendedChatHistory
                     this._chatSessions[sessionIndex].lastActivity =
                         new Date().toISOString()
 
@@ -389,31 +446,33 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         this._chatSessions[sessionIndex].title =
                             this.generateSessionTitle(this._extendedChatHistory)
                     }
+
+                    // Save only the current session for performance
+                    this.saveCurrentSessionInBackground()
                 }
             }
-
-            await this.saveChatSessions()
-            console.log(
-                `[Crater] Saved ${this._extendedChatHistory.length} messages to current session`
-            )
         } catch (error) {
             console.error('[Crater] Error saving chat history:', error)
         }
     }
 
     private debouncedSaveChatHistory(): void {
+        if (this._savingDisabled) {
+            return
+        }
+
         // Clear existing timeout
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout)
         }
 
-        // Set new timeout for 1 second delay
+        // Set new timeout for 2 seconds to reduce save frequency and prevent lag
         this._saveTimeout = setTimeout(() => {
             this.saveChatHistory().catch((error) => {
                 console.error('[Crater] Error in debounced save:', error)
             })
             this._saveTimeout = undefined
-        }, 1000)
+        }, 2000)
     }
 
     private async deleteImageFiles(filePaths: string[]): Promise<void> {
@@ -498,6 +557,83 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private saveChatSessionsInBackground(): void {
+        // Use setImmediate to defer the heavy serialization to the next tick
+        // This prevents blocking the current execution context
+        setImmediate(async () => {
+            try {
+                await this.saveChatSessions()
+            } catch (error) {
+                console.error('[Crater] Error in background save:', error)
+            }
+        })
+    }
+
+    private saveCurrentSessionInBackground(): void {
+        // Use setImmediate to save only current session data
+        setImmediate(async () => {
+            try {
+                await this.saveCurrentSession()
+            } catch (error) {
+                console.error('[Crater] Error in current session save:', error)
+            }
+        })
+    }
+
+    private async saveCurrentSession(): Promise<void> {
+        if (!this._extensionContext || !this._currentSessionId) return
+
+        try {
+            const currentSession = this._chatSessions.find(
+                (s) => s.id === this._currentSessionId
+            )
+            if (currentSession) {
+                // Create a lightweight version without ANY base64 image data
+                const lightweightSession = {
+                    ...currentSession,
+                    messages: currentSession.messages.map((msg) => {
+                        if (msg.messageType === 'image' && msg.imageData) {
+                            // Strip ALL image data, keep only essential metadata
+                            return {
+                                ...msg,
+                                imageData: {
+                                    images: [], // Completely remove base64 data
+                                    prompt: msg.imageData.prompt,
+                                    savedPaths: msg.imageData.savedPaths || [],
+                                    imageStates: msg.imageData.imageStates,
+                                    usage: msg.imageData.usage,
+                                    cost: msg.imageData.cost,
+                                },
+                            }
+                        }
+                        return msg
+                    }),
+                }
+
+                const sessionJson = JSON.stringify(lightweightSession)
+
+                // Use file-based storage instead of VS Code globalState for speed
+                const sessionFilePath = path.join(
+                    this._extensionContext.globalStorageUri.fsPath,
+                    `session_${this._currentSessionId}.json`
+                )
+
+                // Ensure directory exists
+                await vscode.workspace.fs.createDirectory(
+                    this._extensionContext.globalStorageUri
+                )
+
+                // Write directly to file (much faster than globalState)
+                await vscode.workspace.fs.writeFile(
+                    vscode.Uri.file(sessionFilePath),
+                    Buffer.from(sessionJson, 'utf8')
+                )
+            }
+        } catch (error) {
+            console.error('[Crater] Error saving current session:', error)
+        }
+    }
+
     private generateSessionId(): string {
         return (
             'session_' +
@@ -577,6 +713,45 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         return (
             Date.now().toString() + Math.random().toString(36).substring(2, 11)
         )
+    }
+
+    private convertFilePathsToWebviewUris(
+        messages: ExtendedChatMessage[]
+    ): any[] {
+        return messages.map((msg) => {
+            const convertedMsg = {
+                text: msg.text,
+                sender: msg.sender,
+                timestamp: new Date(msg.timestamp),
+                messageType: msg.messageType,
+                imageData: msg.imageData,
+            }
+
+            // Convert file paths to webview URIs for image messages
+            if (
+                msg.messageType === 'image' &&
+                msg.imageData &&
+                msg.imageData.savedPaths &&
+                this._view
+            ) {
+                convertedMsg.imageData = {
+                    ...msg.imageData,
+                    images: msg.imageData.savedPaths
+                        .map((path) => {
+                            if (path) {
+                                const fileUri = vscode.Uri.file(path)
+                                return this._view!.webview.asWebviewUri(
+                                    fileUri
+                                ).toString()
+                            }
+                            return ''
+                        })
+                        .filter(Boolean),
+                }
+            }
+
+            return convertedMsg
+        })
     }
 
     private addMessageToHistory(
@@ -802,6 +977,13 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    public toggleSaving(): void {
+        this._savingDisabled = !this._savingDisabled
+        const status = this._savingDisabled ? 'DISABLED' : 'ENABLED'
+        console.log(`[Crater] Saving ${status}`)
+        vscode.window.showInformationMessage(`[Crater] Saving ${status}`)
+    }
+
     public notifySettingsChanged(): void {
         console.log('[Crater] Notifying webview about settings change')
         if (this._view) {
@@ -953,15 +1135,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 .then(() => {
                     if (!this._view) return
 
-                    // Send chat history
-                    const messages = this._extendedChatHistory.map((msg) => ({
-                        text: msg.text,
-                        sender: msg.sender,
-                        timestamp: new Date(msg.timestamp),
-                        messageType: msg.messageType,
-                        imageData: msg.imageData,
-                    }))
-                    if (messages.length > 0) {
+                    // Send chat history with proper webview URIs
+                    if (this._extendedChatHistory.length > 0) {
+                        const messages = this.convertFilePathsToWebviewUris(
+                            this._extendedChatHistory
+                        )
                         console.log(
                             `[Crater ChatbotProvider] Proactively sending ${messages.length} messages to newly created webview`
                         )
@@ -1113,26 +1291,25 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             JSON.stringify(imageResponse, null, 2)
                         )
 
-                        // Process images and save them if enabled
-                        const imageUrls: string[] = []
+                        // Process images and save them to files immediately
                         const savedPaths: string[] = []
 
                         for (const img of imageResponse.images) {
-                            if (img.url) {
-                                imageUrls.push(img.url)
-                            } else if (img.base64) {
-                                // OpenAI provider returns raw base64 data, need to convert to data URL
-                                const dataUrl = img.base64.startsWith('data:')
-                                    ? img.base64
-                                    : `data:image/png;base64,${img.base64}`
-                                imageUrls.push(dataUrl)
+                            let base64Data: string | null = null
 
-                                // Extract just the base64 data for saving to file
-                                const base64Data = img.base64.includes(
-                                    'base64,'
-                                )
+                            if (img.url) {
+                                // Handle URL-based images (Gemini)
+                                base64Data = img.url.includes('base64,')
+                                    ? img.url.split('base64,')[1]
+                                    : null
+                            } else if (img.base64) {
+                                // Handle base64 images (OpenAI)
+                                base64Data = img.base64.includes('base64,')
                                     ? img.base64.split('base64,')[1]
                                     : img.base64
+                            }
+
+                            if (base64Data) {
                                 const savedPath = await this.saveImageToFile(
                                     base64Data,
                                     messageText
@@ -1144,15 +1321,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         }
 
                         console.log(
-                            '[Crater ChatbotProvider] Extracted URLs/Data URLs:',
-                            imageUrls
-                        )
-                        console.log(
                             '[Crater ChatbotProvider] Saved image paths:',
                             savedPaths
                         )
 
-                        if (imageUrls.length > 0) {
+                        if (savedPaths.length > 0) {
                             // Extract usage and cost data from metadata
                             const usage = imageResponse.metadata?.usage as
                                 | {
@@ -1179,13 +1352,13 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                 | undefined
 
                             // Add assistant response to extended chat history with image data
-                            const responseText = `Generated ${imageUrls.length} image(s) for: "${messageText}"`
+                            const responseText = `Generated ${savedPaths.length} image(s) for: "${messageText}"`
                             this.addMessageToHistory(
                                 responseText,
                                 'assistant',
                                 'image',
                                 {
-                                    images: imageUrls,
+                                    images: [], // Don't store image data in memory to keep it lightweight
                                     prompt: messageText,
                                     savedPaths: savedPaths,
                                     usage: usage,
@@ -1196,9 +1369,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             // Save chat history after adding both user and assistant messages
                             await this.saveChatHistory()
 
+                            // Convert file paths to proper webview URIs for immediate display
+                            const webviewImageUris = savedPaths.map((path) => {
+                                const fileUri = vscode.Uri.file(path)
+                                return this._view!.webview.asWebviewUri(
+                                    fileUri
+                                ).toString()
+                            })
+
                             this._view.webview.postMessage({
                                 type: 'image-response',
-                                images: imageUrls,
+                                images: webviewImageUris,
                                 prompt: messageText,
                                 savedPaths: savedPaths,
                                 usage: usage,
@@ -1265,14 +1446,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 // Reload chat history from storage in case webview was recreated
                 await this.loadChatHistory()
 
-                // Send extended messages with image data
-                const messages = this._extendedChatHistory.map((msg) => ({
-                    text: msg.text,
-                    sender: msg.sender,
-                    timestamp: new Date(msg.timestamp),
-                    messageType: msg.messageType,
-                    imageData: msg.imageData,
-                }))
+                // Send extended messages with proper webview URIs
+                const messages = this.convertFilePathsToWebviewUris(
+                    this._extendedChatHistory
+                )
                 console.log(
                     `[Crater ChatbotProvider] Sending ${messages.length} chat history messages to webview`
                 )
@@ -1319,14 +1496,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const sessionId = message.sessionId as string
                 if (sessionId) {
                     await this.loadChatSession(sessionId)
-                    // Send updated chat history to webview
-                    const messages = this._extendedChatHistory.map((msg) => ({
-                        text: msg.text,
-                        sender: msg.sender,
-                        timestamp: new Date(msg.timestamp),
-                        messageType: msg.messageType,
-                        imageData: msg.imageData,
-                    }))
+                    // Send updated chat history to webview with proper URIs
+                    const messages = this.convertFilePathsToWebviewUris(
+                        this._extendedChatHistory
+                    )
                     this._view.webview.postMessage({
                         type: 'chat-history',
                         messages: messages,
@@ -1465,6 +1638,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     imageStates &&
                     this._extendedChatHistory.length > messageIndex
                 ) {
+                    // Check for duplicate updates by comparing state hash
+                    const stateHash = JSON.stringify(imageStates)
+                    const lastStateHash =
+                        this._lastUpdateStates.get(messageIndex)
+
+                    if (lastStateHash === stateHash) {
+                        console.log(
+                            '[Crater ChatbotProvider] Skipping duplicate update for message',
+                            messageIndex
+                        )
+                        break
+                    }
+
+                    // Store current state hash
+                    this._lastUpdateStates.set(messageIndex, stateHash)
                     const targetMessage =
                         this._extendedChatHistory[messageIndex]
                     if (
