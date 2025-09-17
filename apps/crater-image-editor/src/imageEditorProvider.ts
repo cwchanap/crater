@@ -40,6 +40,10 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     private _fileWatcher?: vscode.FileSystemWatcher
     private _pendingMessages: any[] = []
     private _webviewReady = false
+    private _isVisible = true
+    private _onDidChangeVisibilityEmitter = new vscode.EventEmitter<boolean>()
+    public readonly onDidChangeVisibility =
+        this._onDidChangeVisibilityEmitter.event
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -47,6 +51,35 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     ) {
         this._extensionContext = extensionContext
         this.setupDevelopmentWatcher()
+        this.loadPersistedSession()
+    }
+
+    private loadPersistedSession(): void {
+        if (this._extensionContext) {
+            const persistedSession =
+                this._extensionContext.globalState.get<ImageEditSession>(
+                    'crater-image-editor.currentSession'
+                )
+            if (persistedSession) {
+                console.log(
+                    '[Crater Image Editor] Loading persisted session:',
+                    persistedSession.fileName
+                )
+                this._currentSession = persistedSession
+            }
+        }
+    }
+
+    private persistSession(): void {
+        if (this._extensionContext && this._currentSession) {
+            this._extensionContext.globalState.update(
+                'crater-image-editor.currentSession',
+                this._currentSession
+            )
+            console.log(
+                '[Crater Image Editor] Session persisted to global state'
+            )
+        }
     }
 
     private setupDevelopmentWatcher(): void {
@@ -118,6 +151,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
     dispose(): void {
         this._fileWatcher?.dispose()
+        this._onDidChangeVisibilityEmitter.dispose()
     }
 
     public forceWebviewReady(): void {
@@ -148,6 +182,40 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         }
     }
 
+    private restoreCurrentSession(): void {
+        if (!this._view || !this._currentSession) {
+            return
+        }
+
+        console.log(
+            '[Crater Image Editor] Restoring current session:',
+            this._currentSession.fileName
+        )
+
+        // Send settings first
+        const config = vscode.workspace.getConfiguration('crater-image-editor')
+        this.sendMessageToWebview({
+            type: 'settings',
+            outputDirectory: config.get<string>(
+                'outputDirectory',
+                '${workspaceFolder}/edited-images'
+            ),
+            outputFormat: config.get<string>('outputFormat', 'png'),
+            quality: config.get<number>('quality', 90),
+            preserveOriginal: config.get<boolean>('preserveOriginal', true),
+        })
+
+        // Then restore the image
+        this.sendMessageToWebview({
+            type: 'load-image',
+            imageData: this._currentSession.originalData,
+            fileName: this._currentSession.fileName,
+            originalPath: this._currentSession.originalPath,
+            format: this._currentSession.format,
+            size: this._currentSession.size,
+        })
+    }
+
     public async loadImageFromPath(imagePath: string): Promise<void> {
         try {
             if (!fs.existsSync(imagePath)) {
@@ -173,6 +241,9 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 size: fileStats.size,
                 createdAt: new Date().toISOString(),
             }
+
+            // Persist session to extension global state
+            this.persistSession()
 
             if (this._view) {
                 const message = {
@@ -277,8 +348,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     private async saveEditedImage(
         imageData: string,
         fileName: string,
-        outputFormat: string,
-        _quality: number
+        outputFormat: string
     ): Promise<string | null> {
         try {
             const config = vscode.workspace.getConfiguration(
@@ -328,15 +398,54 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
     resolveWebviewView(webviewView: vscode.WebviewView): void | Thenable<void> {
         this._view = webviewView
-        // Reset webview ready state when a new view is created
-        this._webviewReady = false
+
+        // Don't reset webview ready state if this is just a visibility change
+        const isFirstTime = !this._webviewReady
+        if (isFirstTime) {
+            this._webviewReady = false
+        }
 
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri],
+            retainContextWhenHidden: true, // Keep webview context when hidden
         }
 
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview)
+        // Only set HTML for the first time or if webview was actually disposed
+        if (isFirstTime || !webviewView.webview.html) {
+            console.log(
+                '[Crater Image Editor] Setting webview HTML (first time or after disposal)'
+            )
+            webviewView.webview.html = this._getHtmlForWebview(
+                webviewView.webview
+            )
+        } else {
+            console.log(
+                '[Crater Image Editor] Webview already has content, skipping HTML reset'
+            )
+        }
+
+        // Track visibility changes
+        webviewView.onDidChangeVisibility(() => {
+            const wasVisible = this._isVisible
+            this._isVisible = webviewView.visible
+            console.log(
+                '[Crater Image Editor] Visibility changed:',
+                wasVisible,
+                '->',
+                this._isVisible
+            )
+
+            this._onDidChangeVisibilityEmitter.fire(this._isVisible)
+
+            // If becoming visible after being hidden, restore state
+            if (!wasVisible && this._isVisible && this._currentSession) {
+                console.log(
+                    '[Crater Image Editor] Restoring state after becoming visible'
+                )
+                setTimeout(() => this.restoreCurrentSession(), 100)
+            }
+        })
 
         webviewView.webview.onDidReceiveMessage(
             (message) => {
@@ -370,6 +479,22 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 quality,
                 preserveOriginal,
             })
+
+            // Restore current session if it exists
+            if (this._currentSession) {
+                console.log(
+                    '[Crater Image Editor Provider] Restoring image session:',
+                    this._currentSession.fileName
+                )
+                this.sendMessageToWebview({
+                    type: 'load-image',
+                    imageData: this._currentSession.originalData,
+                    fileName: this._currentSession.fileName,
+                    originalPath: this._currentSession.originalPath,
+                    format: this._currentSession.format,
+                    size: this._currentSession.size,
+                })
+            }
 
             // Send test message to verify webview connection
             this.sendMessageToWebview({
@@ -420,13 +545,11 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             case 'save-image': {
                 if (message.imageData && this._currentSession) {
                     const outputFormat = message.outputFormat || 'png'
-                    const quality = message.quality || 90
 
                     const savedPath = await this.saveEditedImage(
                         message.imageData,
                         this._currentSession.fileName,
-                        outputFormat,
-                        quality
+                        outputFormat
                     )
 
                     if (savedPath) {
@@ -494,9 +617,23 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
             case 'webview-ready':
                 console.log(
-                    '[Crater Image Editor Provider] Webview ready signal received'
+                    '[Crater Image Editor Provider] Webview ready signal received, attempt:',
+                    message.attempt
                 )
                 this._webviewReady = true
+
+                // If webview was reloaded and we have a current session, restore it
+                if (
+                    message.wasReloaded &&
+                    this._currentSession &&
+                    !message.hasCurrentImage
+                ) {
+                    console.log(
+                        '[Crater Image Editor Provider] Webview was reloaded, restoring session automatically'
+                    )
+                    setTimeout(() => this.restoreCurrentSession(), 200)
+                }
+
                 this.flushPendingMessages()
                 this._view?.webview.postMessage({
                     type: 'extension-response',

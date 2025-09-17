@@ -51,14 +51,59 @@
         // Use the globally available vscode API that was acquired in the HTML
         vscode = window.vscode;
 
+        // Try to restore state from VS Code's webview state
+        const state = vscode.getState();
+        if (state && state.currentImage) {
+            console.log('[Crater Image Editor] Restoring state from VS Code storage');
+            currentImage = state.currentImage;
+            isImageLoaded = state.isImageLoaded || false;
+            settings = { ...settings, ...(state.settings || {}) };
+
+            // If we have a restored image, wait for canvas to be ready and load it
+            if (currentImage && isImageLoaded) {
+                setTimeout(() => {
+                    const restoreCanvas = () => {
+                        if (canvas) {
+                            const canvasContext = canvas.getContext('2d');
+                            if (canvasContext) {
+                                ctx = canvasContext;
+                                console.log('[Crater Image Editor] Restoring image from state');
+
+                                img = new Image();
+                                img.onload = () => {
+                                    originalAspectRatio = img.width / img.height;
+                                    newWidth = img.width;
+                                    newHeight = img.height;
+
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    ctx.drawImage(img, 0, 0);
+                                    console.log('[Crater Image Editor] Image restored from state successfully');
+                                };
+                                img.src = currentImage.data;
+                            }
+                        } else {
+                            setTimeout(restoreCanvas, 100);
+                        }
+                    };
+                    restoreCanvas();
+                }, 100);
+            }
+        }
+
         // Request settings on load
         vscode.postMessage({ type: 'get-settings' });
 
-        // Send ready signal to extension
+        // Send initialization signal to extension with state info
         let readyAttempts = 0;
         const sendReadySignal = () => {
             readyAttempts++;
-            vscode.postMessage({ type: 'webview-ready', attempt: readyAttempts });
+            vscode.postMessage({
+                type: 'webview-ready',
+                attempt: readyAttempts,
+                hasCurrentImage: !!currentImage,
+                wasReloaded: true // This indicates the webview was reloaded/reinitialized
+            });
 
             // Keep trying every 1 second until we get a response, max 10 attempts
             if (readyAttempts < 10) {
@@ -66,10 +111,10 @@
             }
         };
         setTimeout(sendReadySignal, 100);
-        
+
         // Listen for messages from extension
         window.addEventListener('message', handleExtensionMessage);
-        
+
         return () => {
             window.removeEventListener('message', handleExtensionMessage);
         };
@@ -330,8 +375,27 @@
         console.log(message);
     }
 
+    function saveState() {
+        if (vscode) {
+            vscode.setState({
+                currentImage,
+                isImageLoaded,
+                settings
+            });
+        }
+    }
+
     $: if (isImageLoaded) {
         redrawCanvas();
+    }
+
+    // Save state whenever currentImage or settings change
+    $: if (currentImage) {
+        saveState();
+    }
+
+    $: if (settings) {
+        saveState();
     }
 </script>
 
