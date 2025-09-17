@@ -19,6 +19,38 @@
     pendingDeleteMessageIndex: -1
   }
 
+  // Debouncing for image state updates
+  let updateTimeout: number | undefined
+  let pendingUpdates = new Map<number, any>()
+
+  function debouncedUpdateImageStates(messageIndex: number, imageStates: any) {
+    // Store the pending update
+    pendingUpdates.set(messageIndex, imageStates)
+
+    // Clear existing timeout
+    if (updateTimeout) {
+      clearTimeout(updateTimeout)
+    }
+
+    // Set new timeout for 300ms delay (shorter than extension debounce)
+    updateTimeout = setTimeout(() => {
+      if (!$vscode) return
+
+      // Send all pending updates in batch
+      for (const [msgIndex, states] of pendingUpdates) {
+        $vscode.postMessage({
+          type: 'update-image-states',
+          messageIndex: msgIndex,
+          imageStates: states
+        })
+      }
+
+      // Clear pending updates
+      pendingUpdates.clear()
+      updateTimeout = undefined
+    }, 300)
+  }
+
   function sendMessage() {
     if (!messageInput.trim() || !$vscode) return
     
@@ -153,13 +185,12 @@
       return newMessages
     })
 
-    // Send update to extension to persist the change
+    // Send update to extension to persist the change (immediate for deletions)
     if ($vscode) {
-      $vscode.postMessage({
-        type: 'update-image-states',
-        messageIndex: confirmDialog.pendingDeleteMessageIndex,
-        imageStates: $messages[confirmDialog.pendingDeleteMessageIndex].imageData?.imageStates
-      })
+      const message = $messages[confirmDialog.pendingDeleteMessageIndex]
+      if (message.messageType === 'image' && message.imageData?.imageStates) {
+        debouncedUpdateImageStates(confirmDialog.pendingDeleteMessageIndex, message.imageData.imageStates)
+      }
     }
 
     // Reset dialog state
@@ -180,11 +211,13 @@
 
   function handleToggleImageVisibility(imageIndex: number) {
     if (contextMenu.messageIndex === -1) return
-    
+
+    const messageIndex = contextMenu.messageIndex
+
     messages.update(msgs => {
       const newMessages = [...msgs]
-      const message = newMessages[contextMenu.messageIndex]
-      
+      const message = newMessages[messageIndex]
+
       if (message.messageType === 'image' && message.imageData) {
         // Initialize imageStates if not present
         if (!message.imageData.imageStates) {
@@ -193,21 +226,18 @@
             hidden: new Array(message.imageData.images.length).fill(false)
           }
         }
-        
+
         // Toggle hidden state
         message.imageData.imageStates.hidden[imageIndex] = !message.imageData.imageStates.hidden[imageIndex]
       }
-      
+
       return newMessages
     })
 
-    // Send update to extension to persist the change
-    if ($vscode && contextMenu.messageIndex >= 0) {
-      $vscode.postMessage({
-        type: 'update-image-states',
-        messageIndex: contextMenu.messageIndex,
-        imageStates: $messages[contextMenu.messageIndex].imageData?.imageStates
-      })
+    // Use debounced update instead of immediate postMessage
+    const message = $messages[messageIndex]
+    if (message.messageType === 'image' && message.imageData?.imageStates) {
+      debouncedUpdateImageStates(messageIndex, message.imageData.imageStates)
     }
   }
 
@@ -219,26 +249,23 @@
     // Only handle left clicks or Enter/Space keys
     if (event instanceof MouseEvent && event.button !== 0) return
     if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== ' ') return
-    
+
     messages.update(msgs => {
       const newMessages = [...msgs]
       const message = newMessages[messageIndex]
-      
+
       if (message.messageType === 'image' && message.imageData && message.imageData.imageStates) {
         // Show the hidden image
         message.imageData.imageStates.hidden[imageIndex] = false
       }
-      
+
       return newMessages
     })
 
-    // Send update to extension to persist the change
-    if ($vscode) {
-      $vscode.postMessage({
-        type: 'update-image-states',
-        messageIndex: messageIndex,
-        imageStates: $messages[messageIndex].imageData?.imageStates
-      })
+    // Use debounced update instead of immediate postMessage
+    const message = $messages[messageIndex]
+    if (message.messageType === 'image' && message.imageData?.imageStates) {
+      debouncedUpdateImageStates(messageIndex, message.imageData.imageStates)
     }
   }
 

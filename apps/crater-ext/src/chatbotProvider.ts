@@ -107,6 +107,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     private _chatSessions: ChatSession[] = []
     private _currentSessionId: string | null = null
     private _fileWatcher?: vscode.FileSystemWatcher
+    private _saveTimeout?: NodeJS.Timeout
+    private _pendingFileDeletions: string[] = []
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -246,6 +248,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     dispose(): void {
         this._fileWatcher?.dispose()
+        if (this._saveTimeout) {
+            clearTimeout(this._saveTimeout)
+        }
     }
 
     private async loadChatHistory(): Promise<void> {
@@ -393,6 +398,83 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             )
         } catch (error) {
             console.error('[Crater] Error saving chat history:', error)
+        }
+    }
+
+    private debouncedSaveChatHistory(): void {
+        // Clear existing timeout
+        if (this._saveTimeout) {
+            clearTimeout(this._saveTimeout)
+        }
+
+        // Set new timeout for 1 second delay
+        this._saveTimeout = setTimeout(() => {
+            this.saveChatHistory().catch((error) => {
+                console.error('[Crater] Error in debounced save:', error)
+            })
+            this._saveTimeout = undefined
+        }, 1000)
+    }
+
+    private async deleteImageFiles(filePaths: string[]): Promise<void> {
+        // Delete files asynchronously to avoid blocking the UI
+        const deletionPromises = filePaths.map(async (filePath) => {
+            try {
+                if (fs.existsSync(filePath)) {
+                    await fs.promises.unlink(filePath)
+                    console.log(
+                        '[Crater ChatbotProvider] Deleted image file:',
+                        filePath
+                    )
+                    return { success: true, path: filePath }
+                }
+                return {
+                    success: false,
+                    path: filePath,
+                    reason: 'File not found',
+                }
+            } catch (error) {
+                console.error(
+                    '[Crater ChatbotProvider] Error deleting image file:',
+                    filePath,
+                    error
+                )
+                return { success: false, path: filePath, error }
+            }
+        })
+
+        const results = await Promise.allSettled(deletionPromises)
+        const deletedCount = results.filter(
+            (r) => r.status === 'fulfilled' && r.value.success
+        ).length
+        const failedCount = results.filter(
+            (r) =>
+                r.status === 'rejected' ||
+                (r.status === 'fulfilled' && !r.value.success)
+        ).length
+
+        if (deletedCount > 0) {
+            vscode.window.showInformationMessage(
+                `Deleted ${deletedCount} image file${deletedCount > 1 ? 's' : ''} from directory.`
+            )
+        }
+
+        if (failedCount > 0) {
+            const failedPaths = results
+                .filter(
+                    (r) =>
+                        r.status === 'rejected' ||
+                        (r.status === 'fulfilled' && !r.value.success)
+                )
+                .map((r) =>
+                    r.status === 'fulfilled'
+                        ? path.basename(r.value.path)
+                        : 'unknown'
+                )
+                .join(', ')
+            vscode.window.showWarningMessage(
+                `Failed to delete ${failedCount} image file${failedCount > 1 ? 's' : ''}: ${failedPaths}. Files may have been moved or deleted manually.`
+            )
         }
     }
 
@@ -1391,10 +1473,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     ) {
                         const oldStates = targetMessage.imageData.imageStates
 
-                        // Update the image states in the current chat history
+                        // Update the image states in the current chat history immediately for UI responsiveness
                         targetMessage.imageData.imageStates = imageStates
 
-                        // Delete actual files for newly deleted images
+                        // Collect files to delete for batch processing
+                        const filesToDelete: string[] = []
                         if (targetMessage.imageData.savedPaths && oldStates) {
                             for (
                                 let i = 0;
@@ -1408,24 +1491,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                 ) {
                                     const filePath =
                                         targetMessage.imageData.savedPaths[i]
-                                    if (filePath && fs.existsSync(filePath)) {
-                                        try {
-                                            fs.unlinkSync(filePath)
-                                            console.log(
-                                                '[Crater ChatbotProvider] Deleted image file:',
-                                                filePath
-                                            )
-                                        } catch (error) {
-                                            console.error(
-                                                '[Crater ChatbotProvider] Error deleting image file:',
-                                                filePath,
-                                                error
-                                            )
-                                            // Show user notification for file deletion errors
-                                            vscode.window.showWarningMessage(
-                                                `Failed to delete image file: ${path.basename(filePath)}. File may have been moved or deleted manually.`
-                                            )
-                                        }
+                                    if (filePath) {
+                                        filesToDelete.push(filePath)
                                     }
                                 }
                             }
@@ -1439,47 +1506,37 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                 if (imageStates.deleted[i]) {
                                     const filePath =
                                         targetMessage.imageData.savedPaths[i]
-                                    if (filePath && fs.existsSync(filePath)) {
-                                        try {
-                                            fs.unlinkSync(filePath)
-                                            console.log(
-                                                '[Crater ChatbotProvider] Deleted image file:',
-                                                filePath
-                                            )
-                                        } catch (error) {
-                                            console.error(
-                                                '[Crater ChatbotProvider] Error deleting image file:',
-                                                filePath,
-                                                error
-                                            )
-                                            // Show user notification for file deletion errors
-                                            vscode.window.showWarningMessage(
-                                                `Failed to delete image file: ${path.basename(filePath)}. File may have been moved or deleted manually.`
-                                            )
-                                        }
+                                    if (filePath) {
+                                        filesToDelete.push(filePath)
                                     }
                                 }
                             }
                         }
 
-                        // Save the updated chat history
-                        await this.saveChatHistory()
+                        // Queue file deletions for asynchronous processing
+                        if (filesToDelete.length > 0) {
+                            this._pendingFileDeletions.push(...filesToDelete)
+                            // Process deletions asynchronously without blocking
+                            setImmediate(() => {
+                                const toDelete = [...this._pendingFileDeletions]
+                                this._pendingFileDeletions = []
+                                this.deleteImageFiles(toDelete).catch(
+                                    (error) => {
+                                        console.error(
+                                            '[Crater] Error in batch file deletion:',
+                                            error
+                                        )
+                                    }
+                                )
+                            })
+                        }
+
+                        // Use debounced save instead of immediate save
+                        this.debouncedSaveChatHistory()
                         console.log(
-                            '[Crater ChatbotProvider] Image states updated and saved for message',
+                            '[Crater ChatbotProvider] Image states updated and queued for save for message',
                             messageIndex
                         )
-
-                        // Show success notification if files were deleted
-                        const deletedCount =
-                            imageStates.deleted.filter(Boolean).length
-                        if (
-                            deletedCount > 0 &&
-                            targetMessage.imageData.savedPaths
-                        ) {
-                            vscode.window.showInformationMessage(
-                                `Deleted ${deletedCount} image file${deletedCount > 1 ? 's' : ''} from directory.`
-                            )
-                        }
                     }
                 }
                 break
