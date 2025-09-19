@@ -41,6 +41,9 @@ export const imageSettings = writable<{ size: string; quality: string }>({
     quality: 'auto',
 })
 
+// UI state
+export const isUsageInfoCollapsed = writable<boolean>(false)
+
 // Initialize VS Code API safely
 if (typeof acquireVsCodeApi !== 'undefined') {
     try {

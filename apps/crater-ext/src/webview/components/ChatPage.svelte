@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider, currentView, totalUsage } from '../stores'
+  import { messages, isLoading, vscode, showChatHistoryModal, currentProvider, currentView, totalUsage, isUsageInfoCollapsed } from '../stores'
   import type { ChatMessage } from '../types'
   import ImageContextMenu from './ImageContextMenu.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
@@ -249,6 +249,17 @@
     contextMenu.show = false
   }
 
+  function toggleUsageInfo() {
+    isUsageInfoCollapsed.update(collapsed => !collapsed)
+  }
+
+  function handleUsageToggleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggleUsageInfo()
+    }
+  }
+
   function handleShowHiddenImage(event: MouseEvent | KeyboardEvent, messageIndex: number, imageIndex: number) {
     // Only handle left clicks or Enter/Space keys
     if (event instanceof MouseEvent && event.button !== 0) return
@@ -277,19 +288,39 @@
 </script>
 
 <div class="flex flex-col h-full">
-  {#if $currentView === 'chat'}
-    <div class="flex flex-col h-full border rounded card">
-      <!-- Total Usage Header -->
-      {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
-        <div class="px-3 py-2 bg-vscode-input border-b border-vscode-border text-xs text-vscode-foreground">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
-              <span><strong>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
-            </div>
+  <!-- Usage Information Card - Moved to top and made collapsible -->
+  {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
+    <div class="bg-vscode-input border border-vscode-border rounded-md mb-2 overflow-hidden">
+      <div
+        class="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-vscode-background transition-colors"
+        role="button"
+        tabindex="0"
+        aria-expanded={!$isUsageInfoCollapsed}
+        aria-controls="usage-details"
+        on:click={toggleUsageInfo}
+        on:keydown={handleUsageToggleKeydown}
+      >
+        <div class="flex items-center gap-2">
+          <span class="text-xs transform transition-transform {$isUsageInfoCollapsed ? 'rotate-0' : 'rotate-90'}">▶</span>
+          <span class="text-xs font-medium text-vscode-foreground">Usage Information</span>
+        </div>
+        <div class="text-xs text-vscode-foreground">
+          <span>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</span>
+        </div>
+      </div>
+      {#if !$isUsageInfoCollapsed}
+        <div id="usage-details" class="px-3 py-2 border-t border-vscode-border text-xs text-vscode-foreground bg-vscode-editor-background">
+          <div class="flex items-center gap-4">
+            <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
+            <span><strong>Total Cost: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
           </div>
         </div>
       {/if}
+    </div>
+  {/if}
+
+  {#if $currentView === 'chat'}
+    <div class="flex flex-col h-full border rounded card">
       <!-- Messages area -->
       <div class="flex-1 overflow-y-auto p-2 min-h-0">
           {#if $messages.length === 0}
@@ -403,17 +434,6 @@
     </div>
   {:else}
     <div class="flex flex-col h-full">
-      <!-- Total Usage Header for Gallery -->
-      {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
-        <div class="px-3 py-2 bg-vscode-input border-b border-vscode-border text-xs text-vscode-foreground">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
-              <span><strong>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
-            </div>
-          </div>
-        </div>
-      {/if}
       <!-- Gallery content -->
       <div class="flex-1 min-h-0">
         <GalleryView />

@@ -39,8 +39,8 @@
 <header class="flex justify-between items-center p-3 rounded-md card flex-shrink-0">
   <div class="flex items-center gap-2">
     {#if $currentPage === 'settings'}
-      <button 
-        class="btn-secondary text-xs px-2 py-1" 
+      <button
+        class="btn-secondary text-xs px-2 py-1"
         on:click={goBack}
       >
         ← Back
@@ -57,11 +57,12 @@
       {/if}
     </div>
   </div>
-  
+
   {#if $currentPage !== 'settings'}
-    <button 
-      class="btn-primary text-xs px-2 py-1" 
+    <button
+      class="bg-vscode-input text-vscode-foreground border border-vscode-border rounded cursor-pointer transition-all duration-200 hover:bg-vscode-background text-sm px-3 py-2 flex items-center gap-2 font-medium"
       on:click={openSettings}
+      title="Open Settings"
     >
       ⚙️ Settings
     </button>

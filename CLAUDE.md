@@ -205,6 +205,16 @@ Extension supports configurable AI providers (Gemini, OpenAI), image settings, a
 - `src/webview.ts` - WebView entry point and Svelte app mounting
 - `vite.config.mjs` - Svelte + Tailwind build configuration
 
+## GitHub Copilot Instructions Integration
+
+This repository includes specific AI development guidance in `.github/copilot-instructions.md` covering:
+
+- VS Code extension WebView patterns and message passing
+- Monorepo dependency management with pnpm workspaces
+- shadcn/ui component library conventions
+- Extension development workflow and testing
+- Build system architecture with Turborepo
+
 ## Import Guidelines
 
 NEVER use `import * as` syntax. Always use exact imports instead.
