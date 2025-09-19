@@ -3,6 +3,7 @@
   "displayName": "Crater - Game Asset Generator",
   "description": "AI-powered chatbot for generating game assets",
   "version": "0.0.1",
+  "publisher": "crater",
   "engines": {
     "vscode": "^1.103.0"
   },

@@ -204,3 +204,25 @@ Extension supports configurable AI providers (Gemini, OpenAI), image settings, a
 - `src/App.svelte` - Main Svelte component with canvas operations
 - `src/webview.ts` - WebView entry point and Svelte app mounting
 - `vite.config.mjs` - Svelte + Tailwind build configuration
+
+## Import Guidelines
+
+NEVER use `import * as` syntax. Always use exact imports instead.
+
+**Examples:**
+
+- ❌ Bad: `import * as vscode from 'vscode'`
+- ✅ Good: `import { workspace, commands, Uri } from 'vscode'`
+- ❌ Bad: `import * as assert from 'assert'`
+- ✅ Good: `import { strict as assert } from 'assert'`
+- ❌ Bad: `import * as path from 'path'`
+- ✅ Good: `import { join, resolve } from 'path'`
+
+This improves tree-shaking, reduces bundle size, and makes dependencies explicit.
+
+# important-instruction-reminders
+
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (\*.md) or README files. Only create documentation files if explicitly requested by the User.
