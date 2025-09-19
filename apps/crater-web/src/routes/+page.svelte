@@ -4,6 +4,7 @@ import GameAssetChatbot from '$lib/components/GameAssetChatbot.svelte'
 
 let sessionId = ''
 let currentTime = ''
+let showSettings = false
 
 onMount(() => {
     sessionId = `web-session-${Date.now()}`
@@ -15,43 +16,27 @@ onMount(() => {
 
 <div class="page-container">
     <header class="page-header">
-        <h1>🌋 Crater Web</h1>
-        <p class="subtitle">AI-Powered Game Asset Generation Platform</p>
+        <div class="header-content">
+            <div class="title-section">
+                <h1>🌋 Crater Web</h1>
+                <p class="subtitle">AI-Powered Game Asset Generation Platform</p>
+            </div>
+            <div class="header-controls">
+                <button
+                    on:click={() => showSettings = !showSettings}
+                    class="settings-nav-btn"
+                    class:active={showSettings}
+                >
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
     </header>
 
     <main class="main-content">
         <div class="chatbot-section">
-            <GameAssetChatbot />
+            <GameAssetChatbot {sessionId} {currentTime} bind:showSettings />
         </div>
-
-        <aside class="info-section">
-            <div class="info-card">
-                <h2>🎯 What is Crater?</h2>
-                <p>Crater is a powerful game development platform that helps you create amazing game assets using AI technology.</p>
-
-                <h3>✨ Features</h3>
-                <ul>
-                    <li>AI-powered image generation for game assets</li>
-                    <li>Support for multiple AI providers (Gemini, OpenAI)</li>
-                    <li>Interactive chatbot assistant</li>
-                    <li>Web and VS Code extension support</li>
-                </ul>
-
-                <h3>🚀 Getting Started</h3>
-                <ol>
-                    <li>Click the "Settings" button in the chatbot</li>
-                    <li>Choose an AI provider (Gemini or OpenAI)</li>
-                    <li>Enter your API key</li>
-                    <li>Start generating amazing game assets!</li>
-                </ol>
-
-                <div class="core-demo">
-                    <h3>📊 Session Info</h3>
-                    <p>Session ID: <code>{sessionId}</code></p>
-                    <p>Current Time: <code>{currentTime}</code></p>
-                </div>
-            </div>
-        </aside>
     </main>
 
     <footer class="page-footer">
@@ -63,171 +48,266 @@ onMount(() => {
 </div>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+:global(body) {
+    font-family: 'Orbitron', monospace;
+    background: #020617;
+    overflow-x: hidden;
+}
+
+:global(body::before) {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+        linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e293b 100%);
+    background-size: 40px 40px, 40px 40px, 100% 100%;
+    pointer-events: none;
+    z-index: -1;
+}
+
 .page-container {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #1f2937;
+    background: transparent;
+    color: #e2e8f0;
+    position: relative;
+}
+
+.page-container::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #06b6d4, transparent);
+    animation: scan-line 4s linear infinite;
+    z-index: 1;
+    pointer-events: none;
 }
 
 .page-header {
     text-align: center;
-    padding: 2rem 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
+    padding: 3rem 1rem;
+    background: rgba(6, 182, 212, 0.05);
+    backdrop-filter: blur(20px);
+    border-bottom: 2px solid rgba(6, 182, 212, 0.3);
+    border-image: linear-gradient(90deg, transparent, #06b6d4, transparent) 1;
+    color: #f0f9ff;
+    position: relative;
+    overflow: hidden;
+}
+
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(ellipse at center top, rgba(6, 182, 212, 0.1), transparent 70%);
+    pointer-events: none;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+}
+
+.title-section {
+    text-align: center;
+    flex: 1;
+}
+
+.header-controls {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    pointer-events: auto;
 }
 
 .page-header h1 {
     margin: 0;
-    font-size: 3rem;
-    font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    font-size: 4rem;
+    font-weight: 900;
+    font-family: 'Orbitron', monospace;
+    text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4;
+    color: #f0f9ff;
+    animation: glow 2s ease-in-out infinite alternate;
+    position: relative;
+    z-index: 2;
 }
 
 .subtitle {
-    margin: 0.5rem 0 0 0;
-    font-size: 1.25rem;
+    margin: 1rem 0 0 0;
+    font-size: 1.5rem;
     opacity: 0.9;
-    font-weight: 300;
+    font-weight: 400;
+    color: #06b6d4;
+    text-shadow: 0 0 5px #06b6d4;
+    animation: neon-flicker 3s infinite linear;
+    position: relative;
+    z-index: 2;
 }
 
 .main-content {
     flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 2rem;
-    padding: 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
+    display: flex;
+    padding: 0;
     width: 100%;
+    position: relative;
+    z-index: 2;
+    min-height: 0; /* Allow flex child to shrink */
 }
 
 .chatbot-section {
-    background: white;
-    border-radius: 1rem;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    background: transparent;
     overflow: hidden;
-    height: 700px;
-}
-
-.info-section {
+    position: relative;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    flex: 1;
 }
 
-.info-card {
-    background: white;
-    border-radius: 1rem;
-    padding: 2rem;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-}
 
-.info-card h2 {
-    margin: 0 0 1rem 0;
-    color: #2563eb;
-    font-size: 1.5rem;
-}
-
-.info-card h3 {
-    margin: 1.5rem 0 0.75rem 0;
-    color: #374151;
-    font-size: 1.125rem;
-}
-
-.info-card p {
-    margin: 0 0 1rem 0;
-    line-height: 1.6;
-    color: #6b7280;
-}
-
-.info-card ul, .info-card ol {
-    margin: 0 0 1rem 0;
-    padding-left: 1.5rem;
-}
-
-.info-card li {
-    margin-bottom: 0.5rem;
-    line-height: 1.5;
-    color: #6b7280;
-}
-
-.core-demo {
-    margin: 1.5rem 0 0 0;
-    padding: 1rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
-}
-
-.core-demo h3 {
-    margin: 0 0 0.75rem 0;
-}
-
-code {
-    background: #f1f5f9;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 0.875rem;
-    color: #1e293b;
-}
 
 .page-footer {
     text-align: center;
     padding: 2rem;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
+    background: rgba(6, 182, 212, 0.05);
+    backdrop-filter: blur(20px);
+    border-top: 2px solid rgba(6, 182, 212, 0.3);
+    border-image: linear-gradient(90deg, transparent, #06b6d4, transparent) 1;
+    color: #cbd5e1;
+    position: relative;
+    font-family: 'Share Tech Mono', monospace;
 }
 
 .page-footer a {
-    color: #93c5fd;
+    color: #22d3ee;
     text-decoration: none;
     font-weight: 500;
+    text-shadow: 0 0 5px #22d3ee;
+    transition: all 0.3s ease;
 }
 
 .page-footer a:hover {
+    color: #06b6d4;
+    text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4;
     text-decoration: underline;
 }
 
-/* Responsive design */
-@media (max-width: 1024px) {
-    .main-content {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-        padding: 1rem;
+@keyframes glow {
+    0% {
+        text-shadow: 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4;
     }
-
-    .chatbot-section {
-        height: 600px;
+    100% {
+        text-shadow: 0 0 15px #06b6d4, 0 0 25px #06b6d4, 0 0 35px #06b6d4;
     }
 }
 
+@keyframes pulse-glow {
+    0%, 100% {
+        text-shadow: 0 0 10px #a855f7;
+    }
+    50% {
+        text-shadow: 0 0 15px #a855f7, 0 0 25px #a855f7;
+    }
+}
+
+@keyframes neon-flicker {
+    0%, 100% { opacity: 1; }
+    2% { opacity: 0.8; }
+    4% { opacity: 1; }
+    8% { opacity: 0.8; }
+    10% { opacity: 1; }
+    15% { opacity: 0.9; }
+    20% { opacity: 1; }
+}
+
+.settings-nav-btn {
+    background: rgba(168, 85, 247, 0.2);
+    color: #a855f7;
+    border: 2px solid rgba(168, 85, 247, 0.3);
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: 'Orbitron', monospace;
+    font-weight: 600;
+    text-shadow: 0 0 5px #a855f7;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.settings-nav-btn:hover, .settings-nav-btn.active {
+    background: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    text-shadow: 0 0 10px #a855f7;
+}
+
+.settings-nav-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.2), transparent);
+    transition: transform 0.5s ease;
+}
+
+.settings-nav-btn:hover::before {
+    transform: translateX(200%);
+}
+
+@keyframes scan-line {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100vw); }
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
     .page-header h1 {
-        font-size: 2rem;
+        font-size: 2.5rem;
     }
 
     .subtitle {
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
-    .main-content {
-        padding: 0.5rem;
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
     }
 
-    .info-card {
-        padding: 1.5rem;
+    .header-controls {
+        position: static;
+        transform: none;
     }
 
-    .chatbot-section {
-        height: 500px;
+    .settings-nav-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
     }
 }
 </style>
