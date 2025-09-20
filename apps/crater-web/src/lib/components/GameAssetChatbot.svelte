@@ -33,9 +33,14 @@ import { browser } from '$app/environment'
 
   // AI provider configuration
   let aiProvider: 'gemini' | 'openai' | 'none' = 'none'
+  let aiModel = ''
   let apiKey = ''
   let currentProvider: BaseImageModelProvider | null = null
   let isConfigured = false
+
+  // Image generation options
+  let imageSize = '1024x1024'
+  let imageQuality = 'standard'
 
   // Info card state
   let infoCardExpanded = false
@@ -103,7 +108,16 @@ import { browser } from '$app/environment'
       if (saved) {
         const settings = JSON.parse(saved)
         aiProvider = settings.aiProvider || 'none'
+        aiModel = settings.aiModel || ''
         apiKey = settings.apiKey || ''
+        imageSize = settings.imageSize || '1024x1024'
+        imageQuality = settings.imageQuality || 'standard'
+
+        // Set default model if not saved but provider is set
+        if (aiProvider !== 'none' && !aiModel) {
+          setDefaultModel()
+        }
+
         updateAIProvider()
       }
     } catch (error) {
@@ -114,12 +128,33 @@ import { browser } from '$app/environment'
   function saveSettings() {
     if (!browser) return
     try {
-      const settings = { aiProvider, apiKey }
+      const settings = {
+        aiProvider,
+        aiModel,
+        apiKey,
+        imageSize,
+        imageQuality
+      }
       localStorage.setItem('crater-web-ai-settings', JSON.stringify(settings))
       updateAIProvider()
       showSettings = false
     } catch (error) {
       console.error('Failed to save settings:', error)
+    }
+  }
+
+  function setDefaultModel() {
+    if (aiProvider === 'gemini') {
+      aiModel = 'gemini-2.5-flash-image-preview'
+    } else if (aiProvider === 'openai') {
+      aiModel = 'gpt-image-1'
+    }
+  }
+
+  // Watch for provider changes to set default model
+  $: {
+    if (aiProvider !== 'none' && (!aiModel || aiModel === '')) {
+      setDefaultModel()
     }
   }
 
@@ -150,7 +185,51 @@ import { browser } from '$app/environment'
     isLoading = true
 
     try {
-      if (isConfigured && coreService && (messageToSend.toLowerCase().includes('generate') || messageToSend.toLowerCase().includes('create') || messageToSend.toLowerCase().includes('image'))) {
+      // Check if user is trying to generate images without AI provider configured
+      if (!isConfigured && (messageToSend.toLowerCase().includes('generate') || messageToSend.toLowerCase().includes('create') || messageToSend.toLowerCase().includes('image'))) {
+        // Show warning message for image generation requests without AI provider
+        const warningMsg: EnhancedMessage = {
+          id: Date.now().toString(),
+          text: `⚠️ **AI Provider Required**
+
+To generate images, you need to configure an AI provider first.
+
+**How to set it up:**
+1. Click the ⚙️ **Settings** button in the navigation bar
+2. Choose an AI provider (Google Gemini or OpenAI)
+3. Enter your API key
+4. Save settings
+
+Once configured, you can ask me to generate amazing game assets like:
+• "Create a pixel art warrior sprite"
+• "Generate a fantasy forest background"
+• "Make a sci-fi spaceship texture"`,
+          sender: 'assistant',
+          timestamp: new Date(),
+          messageType: 'text'
+        }
+        enhancedMessages = [...enhancedMessages, warningMsg]
+      } else if (!isConfigured) {
+        // Show general warning for any request without AI provider
+        const warningMsg: EnhancedMessage = {
+          id: Date.now().toString(),
+          text: `⚠️ **Limited Functionality**
+
+I'm currently in basic mode. To unlock full AI-powered image generation capabilities:
+
+**Configure an AI Provider:**
+1. Click ⚙️ **Settings** in the navigation bar
+2. Select Google Gemini or OpenAI
+3. Add your API key
+4. Save settings
+
+With AI configured, I can generate custom game assets, sprites, backgrounds, and more!`,
+          sender: 'assistant',
+          timestamp: new Date(),
+          messageType: 'text'
+        }
+        enhancedMessages = [...enhancedMessages, warningMsg]
+      } else if (isConfigured && coreService && (messageToSend.toLowerCase().includes('generate') || messageToSend.toLowerCase().includes('create') || messageToSend.toLowerCase().includes('image'))) {
         // Use AI provider for image generation
         await generateImage(messageToSend)
       } else {
@@ -191,8 +270,8 @@ import { browser } from '$app/environment'
     try {
       // Generate image
       const response = await coreService.generateImage(prompt, {
-        size: '1024x1024',
-        quality: 'standard',
+        size: imageSize,
+        quality: imageQuality,
         n: 1
       })
 
@@ -333,12 +412,25 @@ import { browser } from '$app/environment'
       <div class="welcome-message">
         <span class="emoji">🎯</span>
         <p>Welcome to the Game Asset Assistant!</p>
-        <p>I'm here to help you brainstorm and plan amazing game assets.</p>
-        <p>Ask me about sprites, backgrounds, textures, UI elements, and more!</p>
         {#if isConfigured}
-          <p class="ai-notice">✨ AI image generation is enabled! Try: "Create a fantasy forest background"</p>
+          <p>✨ **AI Image Generation Ready!**</p>
+          <p>I can now generate custom game assets for you. Try asking me to:</p>
+          <ul class="example-list">
+            <li>• "Create a pixel art warrior sprite"</li>
+            <li>• "Generate a fantasy forest background"</li>
+            <li>• "Make a sci-fi spaceship texture"</li>
+            <li>• "Design a medieval castle tileset"</li>
+          </ul>
         {:else}
-          <p class="setup-notice">💡 Configure an AI provider in settings to enable image generation</p>
+          <p>🚀 **Ready to Generate Amazing Game Assets?**</p>
+          <p>To unlock AI-powered image generation:</p>
+          <ol class="setup-steps">
+            <li>1. Click ⚙️ **Settings** in the navigation bar</li>
+            <li>2. Choose Google Gemini or OpenAI</li>
+            <li>3. Enter your API key</li>
+            <li>4. Start creating!</li>
+          </ol>
+          <p class="feature-hint">Once configured, I can generate sprites, backgrounds, textures, UI elements, and more!</p>
         {/if}
       </div>
     {:else}
@@ -432,6 +524,26 @@ import { browser } from '$app/environment'
 
         {#if aiProvider !== 'none'}
           <div class="setting-group">
+            <label for="model-select">AI Model:</label>
+            <select id="model-select" bind:value={aiModel}>
+              {#if aiProvider === 'gemini'}
+                <option value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash (Image Preview)</option>
+                <option value="imagen-4.0-generate-001">Imagen 4.0 (High Quality)</option>
+                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash (Experimental)</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+              {:else if aiProvider === 'openai'}
+                <option value="gpt-image-1">GPT Image 1 (Latest)</option>
+              {/if}
+            </select>
+            <div class="setting-info">
+              <p>Select the specific model to use for generation</p>
+            </div>
+          </div>
+        {/if}
+
+        {#if aiProvider !== 'none'}
+          <div class="setting-group">
             <label for="api-key">API Key:</label>
             <input
               id="api-key"
@@ -447,6 +559,33 @@ import { browser } from '$app/environment'
             {:else if aiProvider === 'openai'}
               <p>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></p>
             {/if}
+          </div>
+        {/if}
+
+        {#if aiProvider === 'openai'}
+          <div class="setting-group">
+            <label for="image-size">Image Size:</label>
+            <select id="image-size" bind:value={imageSize}>
+              <option value="1024x1024">1024×1024 (Square)</option>
+              <option value="1024x1792">1024×1792 (Portrait)</option>
+              <option value="1792x1024">1792×1024 (Landscape)</option>
+              <option value="512x512">512×512 (Small)</option>
+              <option value="256x256">256×256 (Tiny)</option>
+            </select>
+            <div class="setting-info">
+              <p>Generated image dimensions</p>
+            </div>
+          </div>
+
+          <div class="setting-group">
+            <label for="image-quality">Image Quality:</label>
+            <select id="image-quality" bind:value={imageQuality}>
+              <option value="standard">Standard</option>
+              <option value="hd">HD (Higher cost)</option>
+            </select>
+            <div class="setting-info">
+              <p>Image generation quality level</p>
+            </div>
           </div>
         {/if}
       </div>
@@ -825,6 +964,40 @@ import { browser } from '$app/environment'
     color: #f59e0b !important;
     font-weight: 500;
     margin-top: 1rem;
+  }
+
+  .example-list {
+    text-align: left;
+    margin: 1rem 0;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .example-list li {
+    margin: 0.5rem 0;
+    color: #10b981;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+  }
+
+  .setup-steps {
+    text-align: left;
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+  }
+
+  .setup-steps li {
+    margin: 0.5rem 0;
+    color: #06b6d4;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+  }
+
+  .feature-hint {
+    color: #a855f7 !important;
+    font-weight: 500;
+    margin-top: 1rem;
+    font-style: italic;
   }
 
   .message {
