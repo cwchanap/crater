@@ -2,6 +2,13 @@ import { mount } from 'svelte'
 import App from './App.svelte'
 import './app.css'
 
+// Make app globally accessible for debugging
+declare global {
+    interface Window {
+        svelteApp?: ReturnType<typeof mount>
+    }
+}
+
 function initializeApp() {
     const appElement = document.getElementById('app')
     if (!appElement) {
@@ -16,12 +23,6 @@ function initializeApp() {
         target: appElement,
     })
 
-    // Make app globally accessible for debugging
-    declare global {
-        interface Window {
-            svelteApp?: typeof app
-        }
-    }
     window.svelteApp = app
 
     return app

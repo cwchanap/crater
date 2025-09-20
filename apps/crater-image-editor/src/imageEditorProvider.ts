@@ -408,7 +408,6 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri],
-            retainContextWhenHidden: true, // Keep webview context when hidden
         }
 
         // Only set HTML for the first time or if webview was actually disposed

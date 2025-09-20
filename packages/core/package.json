@@ -23,7 +23,7 @@
     "format": "prettier --write .",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
-    "test": "vitest",
+    "test": "vitest run",
     "test:watch": "vitest --watch"
   },
   "devDependencies": {
