@@ -288,11 +288,11 @@
 </script>
 
 <div class="flex flex-col h-full">
-  <!-- Usage Information Card - Moved to top and made collapsible -->
+  <!-- Usage Information Card - Improved design -->
   {#if $totalUsage.totalTokens > 0 || $totalUsage.totalCost > 0}
-    <div class="bg-vscode-input border border-vscode-border rounded-md mb-2 overflow-hidden">
+    <div class="usage-card mb-3">
       <div
-        class="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-vscode-background transition-colors"
+        class="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-vscode-background transition-all duration-200"
         role="button"
         tabindex="0"
         aria-expanded={!$isUsageInfoCollapsed}
@@ -300,19 +300,25 @@
         on:click={toggleUsageInfo}
         on:keydown={handleUsageToggleKeydown}
       >
-        <div class="flex items-center gap-2">
-          <span class="text-xs transform transition-transform {$isUsageInfoCollapsed ? 'rotate-0' : 'rotate-90'}">▶</span>
-          <span class="text-xs font-medium text-vscode-foreground">Usage Information</span>
+        <div class="flex items-center gap-2.5">
+          <span class="text-sm transform transition-transform duration-200 {$isUsageInfoCollapsed ? 'rotate-0' : 'rotate-90'} text-vscode-foreground opacity-75">▶</span>
+          <span class="text-sm font-medium text-vscode-foreground">Usage Summary</span>
         </div>
-        <div class="text-xs text-vscode-foreground">
-          <span>Total: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</span>
+        <div class="text-sm text-vscode-foreground font-mono">
+          <span class="status-badge bg-blue-100 text-blue-800">${$totalUsage.totalCost.toFixed(4)} {$totalUsage.currency}</span>
         </div>
       </div>
       {#if !$isUsageInfoCollapsed}
-        <div id="usage-details" class="px-3 py-2 border-t border-vscode-border text-xs text-vscode-foreground bg-vscode-editor-background">
-          <div class="flex items-center gap-4">
-            <span>💰 <strong>Tokens:</strong> {$totalUsage.totalInputTokens.toLocaleString()} input | {$totalUsage.totalOutputTokens.toLocaleString()} output</span>
-            <span><strong>Total Cost: ${$totalUsage.totalCost.toFixed(6)} {$totalUsage.currency}</strong></span>
+        <div id="usage-details" class="px-4 py-3 border-t border-vscode-border bg-vscode-editor-background">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-vscode-foreground">
+            <div class="flex items-center gap-2">
+              <span>💰</span>
+              <span><strong>Input:</strong> {$totalUsage.totalInputTokens.toLocaleString()} tokens</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span>📊</span>
+              <span><strong>Output:</strong> {$totalUsage.totalOutputTokens.toLocaleString()} tokens</span>
+            </div>
           </div>
         </div>
       {/if}
@@ -320,18 +326,23 @@
   {/if}
 
   {#if $currentView === 'chat'}
-    <div class="flex flex-col h-full border rounded card">
+    <div class="flex flex-col h-full card">
       <!-- Messages area -->
-      <div class="flex-1 overflow-y-auto p-2 min-h-0">
+      <div class="flex-1 overflow-y-auto px-4 py-3 min-h-0 space-y-4">
           {#if $messages.length === 0}
-            <div class="text-center italic my-5" style="color: var(--vscode-descriptionForeground);">
-              👋 Hi! I'm your game asset assistant. Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
+            <div class="text-center py-12">
+              <div class="text-4xl mb-4">🎮</div>
+              <div class="text-lg font-medium text-vscode-foreground mb-2">
+                Welcome to Game Asset Assistant!
+              </div>
+              <div class="text-sm text-vscode-foreground opacity-75 max-w-sm mx-auto">
+                Ask me about characters, backgrounds, textures, UI elements, sounds, animations, and more!
+              </div>
             </div>
           {/if}
-          
+
           {#each $messages as message, messageIndex}
-        <div class="mb-3 p-2 rounded max-w-full break-words {message.sender === 'user' ? 'ml-5' : 'mr-5'}" 
-             style="background-color: {message.sender === 'user' ? 'var(--vscode-button-background)' : 'var(--vscode-badge-background)'}; color: {message.sender === 'user' ? 'var(--vscode-button-foreground)' : 'var(--vscode-badge-foreground)'};">
+        <div class="message-bubble {message.sender === 'user' ? 'message-user' : 'message-assistant'}">
           {#if message.messageType === 'image' && message.imageData && typeof message.imageData === 'object' && 'images' in message.imageData && Array.isArray(message.imageData.images)}
             {@const imageData = message.imageData}
             <div style="margin-bottom: 8px; font-style: italic;">
@@ -372,63 +383,89 @@
           {:else}
             <div>{message.text}</div>
           {/if}
-          <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
+          <div class="text-xs mt-2 text-vscode-foreground opacity-60">
             {formatTime(message.timestamp)}
           </div>
         </div>
       {/each}
-      
+
         {#if $isLoading}
-          <div class="mb-3 p-2 rounded max-w-full break-words mr-5 bg-vscode-input text-vscode-foreground">
-            🎨 Generating your game asset...
+          <div class="message-bubble message-assistant animate-pulse">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+              <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+              <span class="ml-2 text-sm">🎨 Generating your game asset...</span>
+            </div>
           </div>
         {/if}
       </div>
       
-      <!-- Button row between messages and input -->
-      <div class="flex gap-1 px-2 py-1 border-t border-vscode-border flex-shrink-0">
-        <button 
-          class="bg-vscode-input text-vscode-foreground border border-vscode-border rounded cursor-pointer transition-all duration-200 hover:bg-vscode-background text-xs px-2 py-1 flex items-center gap-1" 
+      <!-- Action buttons -->
+      <div class="flex justify-between items-center px-4 py-3 border-t border-vscode-border bg-vscode-background">
+        <button
+          class="btn-ghost text-sm px-3 py-2 flex items-center gap-2"
           on:click={() => currentView.set($currentView === 'chat' ? 'gallery' : 'chat')}
         >
           {#if $currentView === 'chat'}
-            🖼️ Gallery
+            <span>🖼️</span>
+            <span>Gallery</span>
           {:else}
-            💬 Chat
+            <span>💬</span>
+            <span>Chat</span>
           {/if}
         </button>
-        <div class="flex-1"></div>
-        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView !== 'chat'}>
-          ✨ New Chat
-        </button>
-        <button class="btn-secondary text-xs px-1.5 py-1 flex items-center gap-1" on:click={showHistory}>
-          📂 History
-        </button>
+
+        <div class="flex gap-2">
+          <button class="btn-primary text-sm px-3 py-2 flex items-center gap-2" on:click={newChat} disabled={$currentView !== 'chat'}>
+            <span>✨</span>
+            <span>New Chat</span>
+          </button>
+          <button class="btn-secondary text-sm px-3 py-2 flex items-center gap-2" on:click={showHistory}>
+            <span>📂</span>
+            <span>History</span>
+          </button>
+        </div>
       </div>
       
-      <!-- Input field at bottom of chat -->
-      <div class="p-2 border-t border-vscode-border flex-shrink-0">
-        <div class="flex gap-2 mb-2">
-          <input 
-            type="text" 
-            class="input-field flex-1" 
-            placeholder="Ask about game assets..." 
-            bind:value={messageInput}
-            on:keypress={handleKeyPress}
-          />
-          <button class="btn-primary px-3 py-2" on:click={sendMessage}>Send</button>
-        </div>
-        <!-- Provider dropdown below input -->
-        <div class="flex justify-start">
-          <select 
-            class="input-field text-xs px-2 py-1" 
-            style="width: max(60px, 20%);"
-            value={$currentProvider} 
+      <!-- Input section -->
+      <div class="px-4 py-4 border-t border-vscode-border bg-vscode-background space-y-3">
+        <!-- Provider selection -->
+        <div class="flex items-center gap-3">
+          <label for="provider-select" class="text-sm font-medium text-vscode-foreground">Provider:</label>
+          <select
+            id="provider-select"
+            class="input-field text-sm max-w-xs"
+            value={$currentProvider}
             on:change={handleProviderChange}
           >
             <option value="gemini">🤖 Google Gemini</option>
             <option value="openai">🔮 OpenAI DALL-E</option>
           </select>
+        </div>
+
+        <!-- Message input -->
+        <div class="flex gap-3">
+          <input
+            type="text"
+            class="input-field flex-1 text-sm"
+            placeholder="Describe the game asset you need..."
+            bind:value={messageInput}
+            on:keypress={handleKeyPress}
+            disabled={$isLoading}
+          />
+          <button
+            class="btn-primary px-4 py-2.5 flex items-center gap-2 min-w-fit"
+            on:click={sendMessage}
+            disabled={!messageInput.trim() || $isLoading}
+          >
+            {#if $isLoading}
+              <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            {:else}
+              <span>➤</span>
+            {/if}
+            <span>Send</span>
+          </button>
         </div>
       </div>
     </div>
@@ -439,25 +476,31 @@
         <GalleryView />
       </div>
       
-      <!-- Button row for gallery -->
-      <div class="flex gap-1 px-2 py-1 border-t border-vscode-border flex-shrink-0">
-        <button 
-          class="bg-vscode-input text-vscode-foreground border border-vscode-border rounded cursor-pointer transition-all duration-200 hover:bg-vscode-background text-xs px-2 py-1 flex items-center gap-1" 
+      <!-- Gallery action buttons -->
+      <div class="flex justify-between items-center px-4 py-3 border-t border-vscode-border bg-vscode-background">
+        <button
+          class="btn-ghost text-sm px-3 py-2 flex items-center gap-2"
           on:click={() => currentView.set($currentView === 'chat' ? 'gallery' : 'chat')}
         >
           {#if $currentView === 'chat'}
-            🖼️ Gallery
+            <span>🖼️</span>
+            <span>Gallery</span>
           {:else}
-            💬 Chat
+            <span>💬</span>
+            <span>Chat</span>
           {/if}
         </button>
-        <div class="flex-1"></div>
-        <button class="btn-primary text-xs px-1.5 py-1 flex items-center gap-1" on:click={newChat} disabled={$currentView !== 'chat'}>
-          ✨ New Chat
-        </button>
-        <button class="btn-secondary text-xs px-1.5 py-1 flex items-center gap-1" on:click={showHistory}>
-          📂 History
-        </button>
+
+        <div class="flex gap-2">
+          <button class="btn-primary text-sm px-3 py-2 flex items-center gap-2" on:click={newChat} disabled={$currentView !== 'chat'}>
+            <span>✨</span>
+            <span>New Chat</span>
+          </button>
+          <button class="btn-secondary text-sm px-3 py-2 flex items-center gap-2" on:click={showHistory}>
+            <span>📂</span>
+            <span>History</span>
+          </button>
+        </div>
       </div>
     </div>
   {/if}

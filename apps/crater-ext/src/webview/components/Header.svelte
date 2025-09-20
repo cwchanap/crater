@@ -36,23 +36,25 @@
   }
 </script>
 
-<header class="flex justify-between items-center p-3 rounded-md card flex-shrink-0">
-  <div class="flex items-center gap-2">
+<header class="header-section flex-shrink-0">
+  <div class="flex items-center gap-3">
     {#if $currentPage === 'settings'}
       <button
-        class="btn-secondary text-xs px-2 py-1"
+        class="btn-ghost text-sm px-2 py-1.5 flex items-center gap-1.5"
         on:click={goBack}
+        title="Go back to chat"
       >
-        ← Back
+        <span class="text-lg">←</span>
+        <span>Back</span>
       </button>
     {/if}
-    <div>
-      <h2 class="m-0 text-base font-medium" style="color: var(--vscode-badge-foreground);">
+    <div class="flex flex-col">
+      <h2 class="text-lg font-semibold text-vscode-foreground m-0">
         {pageTitle}
       </h2>
       {#if $currentPage === 'chat'}
-        <div class="text-xs mt-1" style="color: var(--vscode-descriptionForeground);">
-          AI Provider: {getProviderName($currentProvider)}
+        <div class="text-xs text-vscode-foreground opacity-75 mt-0.5">
+          Provider: {getProviderName($currentProvider)}
         </div>
       {/if}
     </div>
@@ -60,11 +62,12 @@
 
   {#if $currentPage !== 'settings'}
     <button
-      class="bg-vscode-input text-vscode-foreground border border-vscode-border rounded cursor-pointer transition-all duration-200 hover:bg-vscode-background text-sm px-3 py-2 flex items-center gap-2 font-medium"
+      class="btn-secondary text-sm px-3 py-2 flex items-center gap-2"
       on:click={openSettings}
       title="Open Settings"
     >
-      ⚙️ Settings
+      <span>⚙️</span>
+      <span>Settings</span>
     </button>
   {/if}
 </header>

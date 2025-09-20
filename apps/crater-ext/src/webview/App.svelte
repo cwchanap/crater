@@ -118,10 +118,10 @@
   }
 </script>
 
-<main class="h-screen flex flex-col">
+<main class="h-screen flex flex-col bg-vscode-background">
   <Header />
-  
-  <div class="flex-1 min-h-0">
+
+  <div class="flex-1 min-h-0 overflow-hidden">
     {#if $currentPage === 'chat'}
       <ChatPage />
     {:else if $currentPage === 'config'}
@@ -130,7 +130,7 @@
       <SettingsPage />
     {/if}
   </div>
-  
+
   <ChatHistoryModal />
 </main>
 

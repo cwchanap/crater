@@ -6,16 +6,22 @@
   }
 </script>
 
-<div class="flex flex-col items-center justify-center min-h-[60vh]">
-  <div class="text-center text-vscode-foreground italic my-5 text-lg">
-    ⚙️ Configuration Required
-  </div>
-  <div class="text-center p-5">
-    <p class="mb-5 text-vscode-foreground">
-      To use the Game Asset Assistant, you need to configure an AI provider with a valid API key.
-    </p>
-    <button class="btn-primary" on:click={goToSettings}>
-      Go to Settings
+<div class="flex flex-col items-center justify-center min-h-[60vh] p-8">
+  <div class="text-center max-w-md space-y-6">
+    <div class="text-6xl mb-4">⚙️</div>
+
+    <div class="space-y-3">
+      <h2 class="text-xl font-semibold text-vscode-foreground">
+        Configuration Required
+      </h2>
+      <p class="text-vscode-foreground opacity-75 leading-relaxed">
+        To use the Game Asset Assistant, you need to configure an AI provider with a valid API key.
+      </p>
+    </div>
+
+    <button class="btn-primary px-6 py-3 text-sm flex items-center gap-2 mx-auto" on:click={goToSettings}>
+      <span>→</span>
+      <span>Go to Settings</span>
     </button>
   </div>
 </div>

@@ -7,27 +7,104 @@
   color-scheme: var(--vscode-ui-kind, dark);
 }
 
+/* Base scrollbar styling for VS Code consistency */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--vscode-scrollbarSlider-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vscode-scrollbarSlider-background);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vscode-scrollbarSlider-hoverBackground);
+}
+
 /* Custom component styles */
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply px-3 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1;
+    @apply border border-transparent;
   }
 
   .btn-primary {
     @apply bg-vscode-button text-white hover:bg-vscode-button-hover focus:ring-blue-500;
+    @apply active:scale-95 shadow-sm;
   }
 
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500;
-    @apply dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600;
+    @apply bg-vscode-input text-vscode-foreground border-vscode-border hover:bg-vscode-background focus:ring-gray-500;
+    @apply active:scale-95 shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-vscode-foreground hover:bg-vscode-input border-transparent focus:ring-blue-500;
+    @apply active:scale-95;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md;
-    @apply text-vscode-foreground focus:outline-none focus:ring-2 focus:ring-blue-500;
+    @apply w-full px-3 py-2.5 bg-vscode-input border border-vscode-border rounded-md;
+    @apply text-vscode-foreground placeholder-opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    @apply transition-all duration-200;
   }
 
   .card {
-    @apply bg-vscode-background border border-vscode-border rounded-lg p-4 shadow-sm;
+    @apply bg-vscode-background border border-vscode-border rounded-lg shadow-sm;
+  }
+
+  .card-content {
+    @apply p-4;
+  }
+
+  .message-bubble {
+    @apply max-w-full rounded-lg p-3 shadow-sm break-words;
+    @apply transition-all duration-200 hover:shadow-md;
+  }
+
+  .message-user {
+    @apply bg-vscode-button text-white ml-8;
+  }
+
+  .message-assistant {
+    @apply bg-vscode-input text-vscode-foreground mr-8;
+  }
+
+  .header-section {
+    @apply flex items-center justify-between p-3 border-b border-vscode-border;
+    @apply bg-vscode-background backdrop-blur-sm;
+  }
+
+  .form-group {
+    @apply mb-6;
+  }
+
+  .form-label {
+    @apply block mb-2 text-sm font-medium text-vscode-foreground;
+  }
+
+  .form-help {
+    @apply text-xs text-vscode-foreground opacity-75 mt-1.5;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-green-100 text-green-800;
+  }
+
+  .status-error {
+    @apply bg-red-100 text-red-800;
+  }
+
+  .usage-card {
+    @apply bg-vscode-input border border-vscode-border rounded-lg mb-3 overflow-hidden;
+    @apply transition-all duration-200 hover:shadow-sm;
   }
 }
