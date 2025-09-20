@@ -56,11 +56,12 @@
         if (state && state.currentImage) {
             console.log('[Crater Image Editor] Restoring state from VS Code storage');
             currentImage = state.currentImage;
-            isImageLoaded = state.isImageLoaded || false;
+            // Reset isImageLoaded to false during restoration to ensure proper loading
+            isImageLoaded = false;
             settings = { ...settings, ...(state.settings || {}) };
 
             // If we have a restored image, wait for canvas to be ready and load it
-            if (currentImage && isImageLoaded) {
+            if (currentImage) {
                 setTimeout(() => {
                     const restoreCanvas = () => {
                         if (canvas) {
@@ -78,6 +79,9 @@
                                     canvas.width = img.width;
                                     canvas.height = img.height;
                                     ctx.drawImage(img, 0, 0);
+
+                                    // Set isImageLoaded to true only after canvas is drawn
+                                    isImageLoaded = true;
                                     console.log('[Crater Image Editor] Image restored from state successfully');
                                 };
                                 img.src = currentImage.data;
@@ -399,165 +403,211 @@
     }
 </script>
 
-<div class="h-full flex flex-col p-4 bg-vscode-background text-vscode-foreground">
-    <div class="mb-4">
-        <h1 class="text-xl font-bold mb-2">Crater Image Editor</h1>
-        
-        
-        {#if !currentImage}
-            <div class="text-center py-8">
-                <p class="mb-4 text-gray-400">No image loaded</p>
-                <button 
+<div class="h-full flex flex-col bg-vscode-background text-vscode-foreground">
+    <!-- Header Section -->
+    <div class="flex-shrink-0 border-b border-vscode-border p-4">
+        <h1 class="text-lg font-semibold mb-3">Crater Image Editor</h1>
+
+        {#if !currentImage || !isImageLoaded}
+            <div class="text-center py-6">
+                <div class="mb-4">
+                    <div class="w-16 h-16 mx-auto mb-3 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4">
+                        {#if currentImage && !isImageLoaded}
+                            Loading image...
+                        {:else}
+                            No image loaded
+                        {/if}
+                    </p>
+                </div>
+                <button
                     on:click={selectImage}
-                    class="px-4 py-2 bg-vscode-button text-white rounded hover:bg-vscode-button-hover"
+                    class="px-6 py-2 bg-vscode-button text-white rounded-md hover:bg-vscode-button-hover transition-colors font-medium"
+                    disabled={currentImage && !isImageLoaded}
                 >
                     Select Image
                 </button>
             </div>
         {:else}
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button 
-                    on:click={selectImage}
-                    class="px-3 py-1 text-sm bg-vscode-button text-white rounded hover:bg-vscode-button-hover"
-                >
-                    Load Different Image
-                </button>
-                <button 
-                    on:click={startCrop}
-                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
-                    disabled={isCropping}
-                >
-                    {isCropping ? 'Cropping...' : 'Crop'}
-                </button>
-                <button 
-                    on:click={startResize}
-                    class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
-                    disabled={isResizing}
-                >
-                    {isResizing ? 'Resizing...' : 'Resize'}
-                </button>
-                <button 
-                    on:click={resetImage}
-                    class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
-                >
-                    Reset
-                </button>
-                <button 
-                    on:click={saveImage}
-                    class="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
-                >
-                    Save
-                </button>
-            </div>
-            
-            {#if currentImage}
-                <div class="mb-4 p-3 bg-gray-800 rounded text-sm">
-                    <p><strong>File:</strong> {currentImage.fileName}</p>
-                    <p><strong>Format:</strong> {currentImage.format.toUpperCase()}</p>
-                    <p><strong>Size:</strong> {Math.round(currentImage.size / 1024)} KB</p>
-                    {#if isImageLoaded}
-                        <p><strong>Dimensions:</strong> {canvas.width} × {canvas.height}</p>
-                    {/if}
+            <!-- Action Buttons -->
+            <div class="space-y-3">
+                <!-- Primary Actions -->
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        on:click={selectImage}
+                        class="px-4 py-2 text-sm bg-vscode-button text-white rounded-md hover:bg-vscode-button-hover transition-colors font-medium"
+                    >
+                        Load Different Image
+                    </button>
                 </div>
-            {/if}
+
+                <!-- Tool Actions -->
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        on:click={startCrop}
+                        class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isCropping}
+                    >
+                        {isCropping ? 'Cropping...' : 'Crop'}
+                    </button>
+                    <button
+                        on:click={startResize}
+                        class="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isResizing}
+                    >
+                        {isResizing ? 'Resizing...' : 'Resize'}
+                    </button>
+                    <button
+                        on:click={resetImage}
+                        class="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
+                    >
+                        Reset
+                    </button>
+                    <button
+                        on:click={saveImage}
+                        class="px-4 py-2 text-sm bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors font-medium"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
         {/if}
     </div>
-    
+
+    <!-- File Information -->
+    {#if currentImage}
+        <div class="flex-shrink-0 border-b border-vscode-border px-4 py-3">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div class="text-gray-400">File:</div>
+                <div class="font-medium truncate">{currentImage.fileName}</div>
+                <div class="text-gray-400">Format:</div>
+                <div class="font-medium">{currentImage.format.toUpperCase()}</div>
+                <div class="text-gray-400">Size:</div>
+                <div class="font-medium">{Math.round(currentImage.size / 1024)} KB</div>
+                {#if isImageLoaded}
+                    <div class="text-gray-400">Dimensions:</div>
+                    <div class="font-medium">{canvas.width} × {canvas.height}</div>
+                {/if}
+            </div>
+        </div>
+    {/if}
+
+    <!-- Mode Panels -->
     {#if isCropping}
-        <div class="mb-4 p-3 bg-blue-900 rounded">
-            <h3 class="font-semibold mb-2">Crop Mode</h3>
-            <p class="text-sm mb-2">Click and drag the blue rectangle to position your crop area.</p>
+        <div class="flex-shrink-0 border-b border-vscode-border bg-blue-950/30 px-4 py-3">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <h3 class="font-medium text-blue-300">Crop Mode</h3>
+                </div>
+            </div>
+            <p class="text-sm text-gray-300 mb-3">Click and drag the blue rectangle to position your crop area.</p>
             <div class="flex gap-2">
-                <button 
+                <button
                     on:click={applyCrop}
-                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                    class="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-medium"
                 >
                     Apply Crop
                 </button>
-                <button 
+                <button
                     on:click={() => { isCropping = false; redrawCanvas(); }}
-                    class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                    class="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
                 >
                     Cancel
                 </button>
             </div>
         </div>
     {/if}
-    
+
     {#if isResizing}
-        <div class="mb-4 p-3 bg-green-900 rounded">
-            <h3 class="font-semibold mb-2">Resize Mode</h3>
-            <div class="flex flex-col gap-2 mb-2">
-                <label class="flex items-center gap-2">
-                    <input 
-                        type="checkbox" 
+        <div class="flex-shrink-0 border-b border-vscode-border bg-green-950/30 px-4 py-3">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <h3 class="font-medium text-green-300">Resize Mode</h3>
+                </div>
+            </div>
+            <div class="space-y-3 mb-3">
+                <label class="flex items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
                         bind:checked={maintainAspectRatio}
-                        class="rounded"
+                        class="rounded border-vscode-border"
                     />
-                    Maintain aspect ratio
+                    <span class="text-gray-300">Maintain aspect ratio</span>
                 </label>
-                <div class="flex gap-4">
-                    <label class="flex flex-col">
-                        Width:
-                        <input 
-                            type="number" 
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="space-y-1">
+                        <span class="text-sm text-gray-400">Width</span>
+                        <input
+                            type="number"
                             bind:value={newWidth}
                             on:input={handleWidthChange}
                             min="1"
-                            class="w-20 px-2 py-1 bg-vscode-input border border-vscode-border rounded"
+                            class="w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md text-sm"
                         />
                     </label>
-                    <label class="flex flex-col">
-                        Height:
-                        <input 
-                            type="number" 
+                    <label class="space-y-1">
+                        <span class="text-sm text-gray-400">Height</span>
+                        <input
+                            type="number"
                             bind:value={newHeight}
                             on:input={handleHeightChange}
                             min="1"
-                            class="w-20 px-2 py-1 bg-vscode-input border border-vscode-border rounded"
+                            class="w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md text-sm"
                         />
                     </label>
                 </div>
             </div>
             <div class="flex gap-2">
-                <button 
+                <button
                     on:click={applyResize}
-                    class="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                    class="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-medium"
                 >
                     Apply Resize
                 </button>
-                <button 
+                <button
                     on:click={() => { isResizing = false; redrawCanvas(); }}
-                    class="px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700"
+                    class="px-4 py-2 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors font-medium"
                 >
                     Cancel
                 </button>
             </div>
         </div>
     {/if}
-    
+
+    <!-- Canvas Area -->
     {#if currentImage}
-        <div class="flex-1 overflow-auto">
-            <div class="flex justify-center">
-                <canvas 
-                    bind:this={canvas}
-                    on:mousedown={handleCanvasMouseDown}
-                    on:mousemove={handleCanvasMouseMove}
-                    on:mouseup={handleCanvasMouseUp}
-                    class="border border-vscode-border max-w-full max-h-96 object-contain"
-                    style="cursor: {isCropping ? 'crosshair' : 'default'}"
-                ></canvas>
+        <div class="flex-1 overflow-hidden flex flex-col">
+            <div class="flex-1 overflow-auto p-4">
+                <div class="flex justify-center items-center min-h-full">
+                    <div class="relative">
+                        <canvas
+                            bind:this={canvas}
+                            on:mousedown={handleCanvasMouseDown}
+                            on:mousemove={handleCanvasMouseMove}
+                            on:mouseup={handleCanvasMouseUp}
+                            class="border border-vscode-border shadow-lg max-w-full max-h-[calc(100vh-400px)] object-contain"
+                            style="cursor: {isCropping ? 'crosshair' : 'default'}"
+                        ></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="mt-4 p-3 bg-gray-800 rounded">
-            <h3 class="font-semibold mb-2">Export Settings</h3>
-            <div class="flex flex-wrap gap-4">
-                <label class="flex flex-col">
-                    Format:
-                    <select 
+
+        <!-- Export Settings Panel -->
+        <div class="flex-shrink-0 border-t border-vscode-border p-4">
+            <h3 class="font-medium mb-3 text-sm">Export Settings</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label class="space-y-1">
+                    <span class="text-sm text-gray-400">Format</span>
+                    <select
                         bind:value={settings.outputFormat}
-                        class="px-2 py-1 bg-vscode-input border border-vscode-border rounded"
+                        class="w-full px-3 py-2 bg-vscode-input border border-vscode-border rounded-md text-sm"
                     >
                         <option value="png">PNG</option>
                         <option value="jpg">JPG</option>
@@ -566,16 +616,18 @@
                     </select>
                 </label>
                 {#if settings.outputFormat !== 'png'}
-                    <label class="flex flex-col">
-                        Quality:
-                        <input 
-                            type="range" 
-                            bind:value={settings.quality}
-                            min="1" 
-                            max="100"
-                            class="w-20"
-                        />
-                        <span class="text-xs text-gray-400">{settings.quality}%</span>
+                    <label class="space-y-1">
+                        <span class="text-sm text-gray-400">Quality</span>
+                        <div class="flex items-center gap-3">
+                            <input
+                                type="range"
+                                bind:value={settings.quality}
+                                min="1"
+                                max="100"
+                                class="flex-1"
+                            />
+                            <span class="text-sm font-medium w-12 text-right">{settings.quality}%</span>
+                        </div>
                     </label>
                 {/if}
             </div>
