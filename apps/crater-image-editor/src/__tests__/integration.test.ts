@@ -111,6 +111,9 @@ describe('Extension-WebView Integration', () => {
                     }
                     return config[key]
                 }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
             })
 
             // Trigger settings notification
@@ -181,7 +184,9 @@ describe('Extension-WebView Integration', () => {
         it('should handle image selection workflow', async () => {
             // Mock file dialog
             const mockResult = [{ fsPath: '/selected/image.jpg' }]
-            mockVSCode.window.showOpenDialog.mockResolvedValue(mockResult)
+            mockVSCode.window.showOpenDialog.mockResolvedValue(
+                mockResult as any
+            )
 
             // Mock file operations for the selected image
             mockedPath.basename.mockReturnValue('image.jpg')
@@ -271,6 +276,9 @@ describe('Extension-WebView Integration', () => {
                     }
                     return config[key]
                 }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
             })
 
             // Simulate configuration change

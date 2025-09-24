@@ -57,7 +57,7 @@ describe('ImageEditorProvider', () => {
                 createdAt: new Date().toISOString(),
             }
 
-            mockContext.globalState.get.mockReturnValue(mockSession)
+            ;(mockContext.globalState.get as any).mockReturnValue(mockSession)
 
             const newProvider = new ImageEditorProvider(
                 mockVSCode.Uri.file('/test/extension'),
@@ -68,7 +68,9 @@ describe('ImageEditorProvider', () => {
             expect(mockContext.globalState.get).toHaveBeenCalledWith(
                 'crater-image-editor.currentSession'
             )
-            expect(newProviderInternals._currentSession).toEqual(mockSession)
+            expect((newProviderInternals as any)._currentSession).toEqual(
+                mockSession
+            )
 
             newProvider.dispose()
         })
@@ -85,19 +87,16 @@ describe('ImageEditorProvider', () => {
         })
 
         it('should set HTML content on first resolution', () => {
-            const originalGetHtml = providerInternals._getHtmlForWebview
-            providerInternals._getHtmlForWebview = vi
-                .fn()
-                .mockReturnValue('<html>Test</html>')
+            const originalGetHtml = (providerInternals as any)
+                ._getHtmlForWebview
+            const mockGetHtml = vi.fn().mockReturnValue('<html>Test</html>')
+            ;(providerInternals as any)._getHtmlForWebview = mockGetHtml
 
             provider.resolveWebviewView(mockWebviewView)
 
-            expect(providerInternals._getHtmlForWebview).toHaveBeenCalledWith(
-                mockWebviewView.webview
-            )
+            expect(mockGetHtml).toHaveBeenCalledWith(mockWebviewView.webview)
             expect(mockWebviewView.webview.html).toBe('<html>Test</html>')
-
-            providerInternals._getHtmlForWebview = originalGetHtml
+            ;(providerInternals as any)._getHtmlForWebview = originalGetHtml
         })
 
         it('should send settings on webview resolution', () => {
@@ -112,6 +111,9 @@ describe('ImageEditorProvider', () => {
                         }
                     return defaults[key]
                 }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
             })
 
             provider.resolveWebviewView(mockWebviewView)
@@ -150,9 +152,9 @@ describe('ImageEditorProvider', () => {
 
             expect(mockedFs.existsSync).toHaveBeenCalledWith(imagePath)
             expect(mockedFs.readFileSync).toHaveBeenCalledWith(imagePath)
-            expect(provider['_currentSession']).toBeDefined()
-            expect(provider['_currentSession']?.fileName).toBe('test.png')
-            expect(provider['_currentSession']?.format).toBe('png')
+            expect((provider as any)._currentSession).toBeDefined()
+            expect((provider as any)._currentSession?.fileName).toBe('test.png')
+            expect((provider as any)._currentSession?.format).toBe('png')
         })
 
         it('should handle non-existent image file', async () => {
@@ -229,6 +231,9 @@ describe('ImageEditorProvider', () => {
                     }
                     return defaults[key]
                 }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
             })
 
             provider.notifySettingsChanged()
@@ -270,7 +275,7 @@ describe('ImageEditorProvider', () => {
         })
 
         it('should handle select-image message', async () => {
-            const mockResult = [{ fsPath: '/selected/image.png' }]
+            const mockResult = [{ fsPath: '/selected/image.png' }] as any
             mockVSCode.window.showOpenDialog.mockResolvedValue(mockResult)
 
             const message = { type: 'select-image' }
@@ -292,7 +297,7 @@ describe('ImageEditorProvider', () => {
                 outputFormat: 'png',
             }
 
-            provider['_currentSession'] = {
+            ;(provider as any)._currentSession = {
                 id: 'test',
                 originalPath: '/test/image.png',
                 originalData: 'data:image/png;base64,original',
@@ -330,6 +335,9 @@ describe('ImageEditorProvider', () => {
                     }
                     return defaults[key]
                 }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
             })
 
             const message = { type: 'get-settings' }
@@ -352,7 +360,7 @@ describe('ImageEditorProvider', () => {
 
             ;(provider as any)._handleMessage(message)
 
-            expect(provider['_webviewReady']).toBe(true)
+            expect((provider as any)._webviewReady).toBe(true)
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
                     type: 'extension-response',
@@ -372,7 +380,7 @@ describe('ImageEditorProvider', () => {
 
     describe('Session Management', () => {
         it('should persist session to global state', () => {
-            provider['_currentSession'] = {
+            ;(provider as any)._currentSession = {
                 id: 'test',
                 originalPath: '/test/image.png',
                 originalData: 'data:image/png;base64,test',
@@ -386,12 +394,12 @@ describe('ImageEditorProvider', () => {
 
             expect(mockContext.globalState.update).toHaveBeenCalledWith(
                 'crater-image-editor.currentSession',
-                provider['_currentSession']
+                (provider as any)._currentSession
             )
         })
 
         it('should restore current session when webview becomes visible', () => {
-            provider['_currentSession'] = {
+            ;(provider as any)._currentSession = {
                 id: 'test',
                 originalPath: '/test/image.png',
                 originalData: 'data:image/png;base64,test',

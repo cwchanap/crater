@@ -36,24 +36,10 @@ export { fsMock, pathMock }
 // Re-export everything from mocks for convenience
 export * from './mocks/vscode'
 
-type WebviewMessagePayload = {
-    type: string
-    [key: string]: unknown
-}
-
 export type ProviderInternals = ImageEditorProvider & {
-    _handleMessage: (message: WebviewMessagePayload) => Promise<void>
-    _webviewReady: boolean
-    _pendingMessages: WebviewMessagePayload[]
-    getMimeType: (extension: string) => string
-    persistSession: () => void
-    saveEditedImage: (
-        imageData: string,
-        fileName: string,
-        outputFormat?: string
-    ) => Promise<string | null>
+    [key: string]: unknown
 }
 
 export const asProviderInternals = (
     provider: ImageEditorProvider
-): ProviderInternals => provider as ProviderInternals
+): ProviderInternals => provider as unknown as ProviderInternals

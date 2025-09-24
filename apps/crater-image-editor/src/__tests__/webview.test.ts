@@ -14,9 +14,18 @@ vi.mock('../App.svelte', () => ({
 // Mock DOM elements
 type MockFunction = ReturnType<typeof vi.fn>
 
-const mockGetElementById = vi.fn<HTMLElement | null, [string]>()
-const mockAddEventListener = vi.fn<void, [string, () => void]>()
-const mockRemoveEventListener = vi.fn<void, [string, () => void]>()
+const mockGetElementById = vi.fn((id: string) => {
+    void id
+    return null as HTMLElement | null
+})
+const mockAddEventListener = vi.fn((event: string, callback: () => void) => {
+    void event
+    void callback
+})
+const mockRemoveEventListener = vi.fn((event: string, callback: () => void) => {
+    void event
+    void callback
+})
 
 const mockedMount = vi.mocked(mount)
 

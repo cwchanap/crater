@@ -59,6 +59,12 @@ export default [
         },
     },
     {
-        ignores: ['dist/', 'out/', 'node_modules/', '**/*.svelte'],
+        ignores: [
+            'dist/',
+            'out/',
+            'node_modules/',
+            '.vscode-test/',
+            '**/*.svelte',
+        ],
     },
 ]

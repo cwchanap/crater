@@ -1,4 +1,3 @@
-import type { SpyInstance } from 'vitest'
 import { vi, beforeAll, afterAll } from 'vitest'
 
 // Vitest setup file for crater-image-editor tests
@@ -28,7 +27,9 @@ testGlobal.vscode = {
 testGlobal.acquireVsCodeApi = vi.fn(() => testGlobal.vscode as VSCodeApi)
 
 // Mock console methods for cleaner test output
-let consoleSpies: SpyInstance[] = []
+type ConsoleSpy = { mockRestore: () => void }
+
+let consoleSpies: ConsoleSpy[] = []
 
 beforeAll(() => {
     consoleSpies = [
