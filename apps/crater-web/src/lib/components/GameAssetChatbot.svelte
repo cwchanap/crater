@@ -38,8 +38,8 @@
     let infoCardExpanded = false
     let newChatMenuOpen = false
 
-    let aiProvider: ProviderKind | 'none' = 'none'
-    let previousProvider: ProviderKind | 'none' = 'none'
+    let aiProvider: ProviderKind = 'gemini'
+    let previousProvider: ProviderKind = 'gemini'
     let apiKey = ''
     let imageModel = ''
     let chatModel = ''
@@ -50,6 +50,31 @@
     let chatProvider: BaseImageModelProvider | null = null
     let isImageConfigured = false
     let isChatConfigured = false
+    let usageCollapsed = true
+    type ProviderStatus = {
+        indicator: 'active' | 'inactive'
+        text: string
+    }
+    interface UsageSummary {
+        inputTokens: number
+        outputTokens: number
+        totalTokens: number
+        cost: number
+        currency: string | null
+        hasData: boolean
+    }
+    let providerStatus: ProviderStatus = {
+        indicator: 'inactive',
+        text: 'Add GEMINI API Key',
+    }
+    let usageSummary: UsageSummary = {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        cost: 0,
+        currency: null,
+        hasData: false,
+    }
 
     $: activeSession =
         sessions.find((session) => session.id === activeSessionId) ?? null
@@ -61,17 +86,30 @@
 
     $: placeholderText = getPlaceholderText()
 
-    $: if (aiProvider !== 'none') {
-        imageModel = normalizeModel(aiProvider, 'image', imageModel)
-        chatModel = normalizeModel(aiProvider, 'chat', chatModel)
-    }
+    $: providerStatus = (() => {
+        if (isConfiguredForActiveMode) {
+            return {
+                indicator: 'active' as const,
+                text: `${aiProvider.toUpperCase()} Ready`,
+            }
+        }
 
-    $: if (aiProvider === 'none') {
-        imageProvider = null
-        chatProvider = null
-        isImageConfigured = false
-        isChatConfigured = false
-    }
+        if (!apiKey) {
+            return {
+                indicator: 'inactive' as const,
+                text: `Add ${aiProvider.toUpperCase()} API Key`,
+            }
+        }
+
+        return {
+            indicator: 'inactive' as const,
+            text: `Check ${aiProvider.toUpperCase()} Settings`,
+        }
+    })()
+
+    $: imageModel = normalizeModel(aiProvider, 'image', imageModel)
+    $: chatModel = normalizeModel(aiProvider, 'chat', chatModel)
+    $: usageSummary = computeUsageSummary(activeSession)
 
     onMount(() => {
         loadSettings()
@@ -112,12 +150,14 @@
         activeSessionId = session.id
         currentMessage = ''
         newChatMenuOpen = false
+        usageCollapsed = true
     }
 
     function setActiveSession(sessionId: string): void {
         activeSessionId = sessionId
         currentMessage = ''
         newChatMenuOpen = false
+        usageCollapsed = true
     }
 
     function updateSession(
@@ -180,6 +220,18 @@
         }
     }
 
+    function createMissingApiKeyMessage(mode: SessionMode): EnhancedMessage {
+        const title = mode === 'chat' ? 'Chat responses' : 'AI features'
+        const directive =
+            mode === 'chat'
+                ? 'Add your API key in Settings to unlock chat replies.'
+                : 'Add your API key in Settings to enable AI image generation and responses.'
+
+        return createAssistantTextMessage(
+            `⚠️ ${title} require a valid API key. ${directive}`
+        )
+    }
+
     function createErrorMessage(error: unknown): EnhancedMessage {
         const message =
             error instanceof Error ? error.message : 'Unknown error occurred'
@@ -188,7 +240,7 @@
 
     function createImageProviderWarning(): EnhancedMessage {
         return createAssistantTextMessage(
-            '⚠️ Image generation requires a configured AI provider. Open Settings to add your API key and enable Gemini or OpenAI image models.'
+            '⚠️ Image generation requires a valid AI provider API key. Open Settings to add your Gemini or OpenAI key and try again.'
         )
     }
 
@@ -219,6 +271,11 @@
         sessionId: string,
         prompt: string
     ): Promise<void> {
+        if (!isChatConfigured) {
+            appendMessage(sessionId, createMissingApiKeyMessage('chat'))
+            return
+        }
+
         if (wantsImage(prompt)) {
             appendMessage(sessionId, createChatModeImageWarning())
             return
@@ -233,60 +290,54 @@
         sessionId: string,
         prompt: string
     ): Promise<void> {
-        const wantsImageGeneration = wantsImage(prompt)
-
-        if (wantsImageGeneration) {
-            if (!imageProvider || !imageProvider.isConfigured()) {
-                appendMessage(sessionId, createImageProviderWarning())
-                return
-            }
-
-            applyProviderForMode('image')
-            const response = await chatbotService.generateImage(prompt, {
-                size: imageSize,
-                quality: imageQuality,
-                n: 1,
-            })
-
-            const images = response.images
-                .map((img) => {
-                    if (img.url) {
-                        return img.url
-                    }
-                    if (img.base64) {
-                        return img.base64.startsWith('data:')
-                            ? img.base64
-                            : `data:image/png;base64,${img.base64}`
-                    }
-                    return ''
-                })
-                .filter(Boolean) as string[]
-
-            if (images.length === 0) {
-                throw new Error('No images generated')
-            }
-
-            appendMessage(sessionId, {
-                id: `${Date.now()}-${Math.random()
-                    .toString(36)
-                    .slice(2, 8)}`,
-                text: `Generated ${images.length} image(s) for: "${prompt}"`,
-                sender: 'assistant',
-                timestamp: new Date(),
-                messageType: 'image',
-                imageData: {
-                    images,
-                    prompt,
-                    usage: response.metadata?.usage as any,
-                    cost: response.metadata?.cost as any,
-                },
-            })
+        if (!isImageConfigured) {
+            appendMessage(
+                sessionId,
+                createImageProviderWarning()
+            )
             return
         }
 
         applyProviderForMode('image')
-        const responseText = await chatbotService.generateResponse(prompt)
-        appendMessage(sessionId, createAssistantTextMessage(responseText))
+        const response = await chatbotService.generateImage(prompt, {
+            size: imageSize,
+            quality: imageQuality,
+            n: 1,
+        })
+
+        const images = response.images
+            .map((img) => {
+                if (img.url) {
+                    return img.url
+                }
+                if (img.base64) {
+                    return img.base64.startsWith('data:')
+                        ? img.base64
+                        : `data:image/png;base64,${img.base64}`
+                }
+                return ''
+            })
+            .filter(Boolean) as string[]
+
+        if (images.length === 0) {
+            throw new Error('No images generated')
+        }
+
+        appendMessage(sessionId, {
+            id: `${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`,
+            text: `Generated ${images.length} image(s) for: "${prompt}"`,
+            sender: 'assistant',
+            timestamp: new Date(),
+            messageType: 'image',
+            imageData: {
+                images,
+                prompt,
+                usage: response.metadata?.usage as any,
+                cost: response.metadata?.cost as any,
+            },
+        })
     }
 
     async function sendMessage(): Promise<void> {
@@ -324,6 +375,42 @@
         } finally {
             isLoading = false
         }
+    }
+
+    function computeUsageSummary(session: ChatSession | null): UsageSummary {
+        const summary: UsageSummary = {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+            cost: 0,
+            currency: null,
+            hasData: false,
+        }
+
+        if (!session) {
+            return summary
+        }
+
+        for (const message of session.messages) {
+            const usage = message.imageData?.usage
+            if (usage) {
+                summary.hasData = true
+                summary.inputTokens += usage.inputTextTokens ?? 0
+                summary.outputTokens += usage.outputImageTokens ?? 0
+                summary.totalTokens += usage.totalTokens ?? 0
+            }
+
+            const cost = message.imageData?.cost
+            if (cost) {
+                summary.hasData = true
+                summary.cost += cost.totalCost ?? 0
+                if (!summary.currency && cost.currency) {
+                    summary.currency = cost.currency
+                }
+            }
+        }
+
+        return summary
     }
 
     function handleKeyDown(event: KeyboardEvent): void {
@@ -370,23 +457,15 @@
             return
         }
 
-        if (aiProvider === 'none') {
-            imageModel = ''
-            chatModel = ''
-        } else {
-            imageModel = getDefaultModel(aiProvider, 'image')
-            chatModel = getDefaultModel(aiProvider, 'chat')
-        }
+        imageModel = getDefaultModel(aiProvider, 'image')
+        chatModel = getDefaultModel(aiProvider, 'chat')
 
         previousProvider = aiProvider
+        updateAIProviders()
     }
 
     function updateAIProviders(): void {
-        if (
-            aiProvider === 'none' ||
-            !apiKey ||
-            (aiProvider !== 'none' && !isValidApiKey(aiProvider, apiKey))
-        ) {
+        if (!apiKey || !isValidApiKey(aiProvider, apiKey)) {
             imageProvider = null
             chatProvider = null
             isImageConfigured = false
@@ -431,19 +510,16 @@
             }
 
             const settings = JSON.parse(saved)
-            aiProvider = settings.aiProvider ?? 'none'
+            const storedProvider = settings.aiProvider ?? 'gemini'
+            aiProvider = storedProvider === 'openai' ? 'openai' : 'gemini'
             apiKey = settings.apiKey ?? ''
             imageModel =
                 settings.imageModel ??
                 settings.aiModel ??
-                (aiProvider !== 'none'
-                    ? getDefaultModel(aiProvider, 'image')
-                    : '')
+                getDefaultModel(aiProvider, 'image')
             chatModel =
                 settings.chatModel ??
-                (aiProvider !== 'none'
-                    ? getDefaultModel(aiProvider, 'chat')
-                    : '')
+                getDefaultModel(aiProvider, 'chat')
             imageSize = settings.imageSize ?? '1024x1024'
             imageQuality = settings.imageQuality ?? 'standard'
             previousProvider = aiProvider
@@ -459,6 +535,7 @@
         }
 
         try {
+            apiKey = apiKey.trim()
             const settings = {
                 aiProvider,
                 apiKey,
@@ -476,6 +553,17 @@
             showSettings = false
         } catch (error) {
             console.error('Failed to save settings:', error)
+        }
+    }
+
+    function toggleUsageSummary(): void {
+        usageCollapsed = !usageCollapsed
+    }
+
+    function handleUsageToggleKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggleUsageSummary()
         }
     }
 </script>
@@ -532,16 +620,12 @@
             </div>
             <div class="header-controls">
                 <div class="provider-status">
-                    {#if aiProvider === 'none'}
-                        <span class="status-indicator inactive">●</span>
-                        <span class="status-text">Text Only</span>
-                    {:else if isConfiguredForActiveMode}
-                        <span class="status-indicator active">●</span>
-                        <span class="status-text">{aiProvider.toUpperCase()} Ready</span>
-                    {:else}
-                        <span class="status-indicator inactive">●</span>
-                        <span class="status-text">Configure {aiProvider.toUpperCase()}</span>
-                    {/if}
+                    <span
+                        class="status-indicator"
+                        class:active={providerStatus.indicator === 'active'}
+                        class:inactive={providerStatus.indicator === 'inactive'}
+                    >●</span>
+                    <span class="status-text">{providerStatus.text}</span>
                 </div>
                 <button on:click={clearChat} class="clear-btn">Clear Session</button>
             </div>
@@ -592,93 +676,98 @@
             {/if}
         </div>
 
-        <div class="messages-container">
-            {#if !activeSession || activeSession.messages.length === 0}
-                <div class="welcome-message">
-                    <span class="emoji">🎯</span>
-                    <p>Welcome to the Game Asset Assistant!</p>
-                    {#if !activeSession}
-                        <p>Create a session to get started.</p>
-                    {:else if activeSession.mode === 'chat'}
-                        <p>💬 <strong>Chat mode ready.</strong></p>
-                        <p>Discuss workflows, brainstorm ideas, or ask for creative guidance.</p>
-                        <ul class="example-list">
-                            <li>• "How do I optimize sprites for mobile devices?"</li>
-                            <li>• "Pitch three villains for a steampunk roguelike."</li>
-                            <li>• "What shader tricks can fake reflective water?"</li>
-                        </ul>
-                    {:else if isImageConfigured}
-                        <p>✨ <strong>AI Image Generation Ready!</strong></p>
-                        <p>I can now generate custom game assets for you. Try asking me to:</p>
-                        <ul class="example-list">
-                            <li>• "Create a pixel art warrior sprite"</li>
-                            <li>• "Generate a fantasy forest background"</li>
-                            <li>• "Make a sci-fi spaceship texture"</li>
-                            <li>• "Design a medieval castle tileset"</li>
-                        </ul>
-                    {:else}
-                        <p>🚀 <strong>Ready to Generate Amazing Game Assets?</strong></p>
-                        <p>To unlock AI-powered image generation:</p>
-                        <ol class="setup-steps">
-                            <li>1. Click ⚙️ <strong>Settings</strong> in the navigation bar</li>
-                            <li>2. Choose Google Gemini or OpenAI</li>
-                            <li>3. Enter your API key</li>
-                            <li>4. Start creating!</li>
-                        </ol>
-                        <p class="feature-hint">Once configured, I can generate sprites, backgrounds, textures, UI elements, and more!</p>
-                    {/if}
-                </div>
-            {:else}
-                {#each activeSession.messages as message (message.id)}
-                    <div class="message {message.sender}">
-                        <div class="message-content">
-                            {#if message.messageType === 'image' && message.imageData}
-                                <div class="image-message">
-                                    <p>
-                                        {@html message.text
-                                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                            .replace(/\n/g, '<br>')}
-                                    </p>
-                                    <div class="image-gallery">
-                                        {#each message.imageData.images as imageUrl}
-                                            <div class="image-item">
-                                                <img src={imageUrl} alt={message.imageData.prompt} class="generated-image" />
-                                                <div class="image-actions">
-                                                    <button
-                                                        on:click={() => downloadImage(imageUrl, message.imageData?.prompt || 'image')}
-                                                        class="download-btn"
-                                                        title="Download Image"
-                                                    >
-                                                        💾 Download
-                                                    </button>
-                                                    <button
-                                                        on:click={() => browser && window.open(imageUrl, '_blank')}
-                                                        class="view-btn"
-                                                        title="View Full Size"
-                                                    >
-                                                        🔍 View
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        {/each}
-                                    </div>
-                                    {#if message.imageData.cost}
-                                        <div class="usage-info">
-                                            <small>Cost: ${message.imageData.cost.totalCost.toFixed(4)} {message.imageData.cost.currency}</small>
-                                        </div>
-                                    {/if}
-                                </div>
-                            {:else}
-                                {@html message.text
-                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                    .replace(/\n/g, '<br>')}
-                            {/if}
+        {#if activeSession?.mode === 'image' && usageSummary.hasData}
+            <div class="usage-card">
+                <button
+                    class="usage-header"
+                    on:click={toggleUsageSummary}
+                    on:keydown={handleUsageToggleKeydown}
+                    aria-expanded={!usageCollapsed}
+                    aria-controls="usage-details"
+                >
+                    <span class="usage-chevron" class:expanded={!usageCollapsed}>▶</span>
+                    <span class="usage-title">Usage Summary</span>
+                    <span class="usage-cost">
+                        ${usageSummary.cost.toFixed(4)} {usageSummary.currency ?? 'USD'}
+                    </span>
+                </button>
+                {#if !usageCollapsed}
+                    <div id="usage-details" class="usage-details">
+                        <div class="usage-row">
+                            <span>Input Tokens</span>
+                            <span class="value">{usageSummary.inputTokens.toLocaleString()}</span>
                         </div>
-                        <div class="message-time">
-                            {message.timestamp.toLocaleTimeString()}
+                        <div class="usage-row">
+                            <span>Output Tokens</span>
+                            <span class="value">{usageSummary.outputTokens.toLocaleString()}</span>
+                        </div>
+                        <div class="usage-row">
+                            <span>Total Tokens</span>
+                            <span class="value">{usageSummary.totalTokens.toLocaleString()}</span>
                         </div>
                     </div>
-                {/each}
+                {/if}
+            </div>
+        {/if}
+
+        <div class="messages-container">
+            {#if activeSession}
+                {#if activeSession.messages.length === 0}
+                    <div class="empty-state">
+                        <p>Start a conversation or open ⚙️ Settings to connect your AI provider.</p>
+                    </div>
+                {:else}
+                    {#each activeSession.messages as message (message.id)}
+                        <div class="message {message.sender}">
+                            <div class="message-content">
+                                {#if message.messageType === 'image' && message.imageData}
+                                    <div class="image-message">
+                                        <p>
+                                            {@html message.text
+                                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                                .replace(/\n/g, '<br>')}
+                                        </p>
+                                        <div class="image-gallery">
+                                            {#each message.imageData.images as imageUrl}
+                                                <div class="image-item">
+                                                    <img src={imageUrl} alt={message.imageData.prompt} class="generated-image" />
+                                                    <div class="image-actions">
+                                                        <button
+                                                            on:click={() => downloadImage(imageUrl, message.imageData?.prompt || 'image')}
+                                                            class="download-btn"
+                                                            title="Download Image"
+                                                        >
+                                                            💾 Download
+                                                        </button>
+                                                        <button
+                                                            on:click={() => browser && window.open(imageUrl, '_blank')}
+                                                            class="view-btn"
+                                                            title="View Full Size"
+                                                        >
+                                                            🔍 View
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            {/each}
+                                        </div>
+                                        {#if message.imageData.cost}
+                                            <div class="usage-info">
+                                                <small>Cost: ${message.imageData.cost.totalCost.toFixed(4)} {message.imageData.cost.currency}</small>
+                                            </div>
+                                        {/if}
+                                    </div>
+                                {:else}
+                                    {@html message.text
+                                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                        .replace(/\n/g, '<br>')}
+                                {/if}
+                            </div>
+                            <div class="message-time">
+                                {message.timestamp.toLocaleTimeString()}
+                            </div>
+                        </div>
+                    {/each}
+                {/if}
             {/if}
 
             {#if isLoading}
@@ -730,13 +819,11 @@
             bind:value={aiProvider}
             on:change={handleProviderChange}
           >
-            <option value="none">None (Text Only)</option>
             <option value="gemini">Google Gemini</option>
             <option value="openai">OpenAI</option>
           </select>
         </div>
 
-        {#if aiProvider !== 'none'}
           <div class="setting-group">
             <label for="image-model-select">Image Model:</label>
             <select id="image-model-select" bind:value={imageModel}>
@@ -771,9 +858,7 @@
               <p>Model used for text conversations in chat sessions</p>
             </div>
           </div>
-        {/if}
 
-        {#if aiProvider !== 'none'}
           <div class="setting-group">
             <label for="api-key">API Key:</label>
             <input
@@ -791,7 +876,6 @@
               <p>Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></p>
             {/if}
           </div>
-        {/if}
 
         {#if aiProvider === 'openai'}
           <div class="setting-group">
@@ -822,7 +906,7 @@
       </div>
 
       <div class="modal-footer">
-        <button on:click={saveSettings} class="save-btn" disabled={aiProvider !== 'none' && !apiKey}>
+        <button on:click={saveSettings} class="save-btn">
           Save Settings
         </button>
         <button on:click={() => showSettings = false} class="cancel-btn">
@@ -1327,6 +1411,76 @@
     min-height: 200px;
   }
 
+  .usage-card {
+    background: rgba(15, 23, 42, 0.85);
+    border: 2px solid rgba(34, 211, 238, 0.3);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.15);
+  }
+
+  .usage-header {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    text-align: left;
+  }
+
+  .usage-header:focus {
+    outline: 2px solid rgba(34, 211, 238, 0.6);
+    outline-offset: 2px;
+  }
+
+  .usage-chevron {
+    margin-right: 0.75rem;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+
+  .usage-chevron.expanded {
+    transform: rotate(90deg);
+  }
+
+  .usage-title {
+    flex: 1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .usage-cost {
+    font-weight: 600;
+    color: #38bdf8;
+  }
+
+  .usage-details {
+    border-top: 1px solid rgba(34, 211, 238, 0.3);
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .usage-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+  }
+
+  .usage-row .value {
+    font-family: 'Share Tech Mono', monospace;
+    color: #22d3ee;
+  }
+
   .messages-container::before {
     content: '';
     position: absolute;
@@ -1342,62 +1496,11 @@
     opacity: 0.5;
   }
 
-  .welcome-message {
+  .empty-state {
     text-align: center;
-    color: #64748b;
+    color: #94a3b8;
     padding: 2rem;
-  }
-
-  .welcome-message .emoji {
-    font-size: 3rem;
-    display: block;
-    margin-bottom: 1rem;
-  }
-
-  .ai-notice {
-    color: #10b981 !important;
-    font-weight: 500;
-    margin-top: 1rem;
-  }
-
-  .setup-notice {
-    color: #f59e0b !important;
-    font-weight: 500;
-    margin-top: 1rem;
-  }
-
-  .example-list {
-    text-align: left;
-    margin: 1rem 0;
-    padding-left: 0;
-    list-style: none;
-  }
-
-  .example-list li {
-    margin: 0.5rem 0;
-    color: #10b981;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 0.9rem;
-  }
-
-  .setup-steps {
-    text-align: left;
-    margin: 1rem 0;
-    padding-left: 1.5rem;
-  }
-
-  .setup-steps li {
-    margin: 0.5rem 0;
-    color: #06b6d4;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.9rem;
-  }
-
-  .feature-hint {
-    color: #a855f7 !important;
-    font-weight: 500;
-    margin-top: 1rem;
-    font-style: italic;
   }
 
   .message {
