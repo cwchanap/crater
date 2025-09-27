@@ -117,7 +117,9 @@ test.describe('Responsive Design Tests', () => {
             await expect(page.getByPlaceholder('sk-...')).toBeVisible()
 
             // Cancel should work
-            await page.getByRole('button', { name: 'Cancel' }).click()
+            await page
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click()
             await expect(
                 page.getByText('AI Provider Configuration')
             ).not.toBeVisible()
@@ -205,7 +207,9 @@ test.describe('Responsive Design Tests', () => {
             await page.getByLabel('AI Provider:').selectOption('Google Gemini')
 
             // Tap cancel
-            await page.getByRole('button', { name: 'Cancel' }).tap()
+            await page
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .tap()
             await expect(
                 page.getByText('AI Provider Configuration')
             ).not.toBeVisible()

@@ -91,7 +91,9 @@ test.describe('Crater Web Game Asset Chatbot', () => {
             ).toBeVisible()
 
             // Close settings with Cancel
-            await page.getByRole('button', { name: 'Cancel' }).click()
+            await page
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click()
             await expect(
                 page.getByText('AI Provider Configuration')
             ).not.toBeVisible()
@@ -129,7 +131,7 @@ test.describe('Crater Web Game Asset Chatbot', () => {
 
             // Check save button is disabled without API key
             await expect(
-                page.getByRole('button', { name: 'Save Settings' })
+                page.getByRole('button', { name: 'Save Settings', exact: true })
             ).toBeDisabled()
         })
 
@@ -152,7 +154,7 @@ test.describe('Crater Web Game Asset Chatbot', () => {
 
             // Check save button is disabled without API key
             await expect(
-                page.getByRole('button', { name: 'Save Settings' })
+                page.getByRole('button', { name: 'Save Settings', exact: true })
             ).toBeDisabled()
         })
 
@@ -173,7 +175,7 @@ test.describe('Crater Web Game Asset Chatbot', () => {
 
             // Save button should be enabled for None option
             await expect(
-                page.getByRole('button', { name: 'Save Settings' })
+                page.getByRole('button', { name: 'Save Settings', exact: true })
             ).toBeEnabled()
         })
     })

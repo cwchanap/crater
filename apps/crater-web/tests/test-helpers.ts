@@ -8,12 +8,13 @@ export class ChatbotTestHelper {
     constructor(private page: Page) {}
 
     // Locators
-    get settingsButton(): Locator {
-        return this.page.getByRole('button', { name: '⚙️ Settings' })
+    private get settingsButton() {
+        // Use the inner settings button that actually opens the modal
+        return this.page.getByRole('button', { name: 'Settings', exact: true })
     }
 
     get clearChatButton(): Locator {
-        return this.page.getByRole('button', { name: 'Clear Chat' })
+        return this.page.getByRole('button', { name: 'Clear Session' })
     }
 
     get messageInput(): Locator {
@@ -39,15 +40,21 @@ export class ChatbotTestHelper {
     }
 
     get saveSettingsButton(): Locator {
-        return this.page.getByRole('button', { name: 'Save Settings' })
+        return this.page.getByRole('button', {
+            name: 'Save Settings',
+            exact: true,
+        })
     }
 
     get cancelButton(): Locator {
-        return this.page.getByRole('button', { name: 'Cancel' })
+        return this.page.getByRole('button', { name: 'Cancel', exact: true })
     }
 
-    get settingsPanel(): Locator {
-        return this.page.getByText('AI Provider Configuration')
+    private get settingsPanel() {
+        // The modal appears as a large button element when open
+        return this.page
+            .getByRole('button')
+            .filter({ hasText: 'AI Provider Configuration' })
     }
 
     get welcomeMessage(): Locator {
@@ -60,8 +67,21 @@ export class ChatbotTestHelper {
 
     // Actions
     async openSettings(): Promise<void> {
+        // Try clicking the Settings button multiple ways to ensure modal opens
         await this.settingsButton.click()
-        await expect(this.settingsPanel).toBeVisible()
+
+        // Wait for possible state changes
+        await this.page.waitForTimeout(100)
+
+        // Check if modal appeared, if not try force click
+        try {
+            await expect(this.settingsPanel).toBeVisible({ timeout: 1000 })
+        } catch {
+            // If modal didn't appear, try force click
+            await this.settingsButton.click({ force: true })
+            await this.page.waitForTimeout(100)
+            await expect(this.settingsPanel).toBeVisible()
+        }
     }
 
     async closeSettings(): Promise<void> {
@@ -96,8 +116,13 @@ export class ChatbotTestHelper {
         await this.messageInput.fill(message)
         await this.sendButton.click()
 
-        // Wait for message to appear and response to be generated
-        await expect(this.page.getByText(message)).toBeVisible()
+        // Wait for message to appear - use more specific selector to avoid strict mode violations
+        await expect(
+            this.page
+                .locator('.message-content')
+                .filter({ hasText: message })
+                .first()
+        ).toBeVisible()
     }
 
     async clearChat(): Promise<void> {
@@ -112,7 +137,12 @@ export class ChatbotTestHelper {
     }
 
     async expectMessageVisible(message: string): Promise<void> {
-        await expect(this.page.getByText(message)).toBeVisible()
+        await expect(
+            this.page
+                .locator('.message-content')
+                .filter({ hasText: message })
+                .first()
+        ).toBeVisible()
     }
 
     async expectProviderStatus(

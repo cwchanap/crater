@@ -79,7 +79,7 @@ test.describe('Accessibility and Performance Tests', () => {
                 page.getByRole('button', { name: '⚙️ Settings' })
             ).toBeVisible()
             await expect(
-                page.getByRole('button', { name: 'Clear Chat' })
+                page.getByRole('button', { name: 'Clear Session' })
             ).toBeVisible()
             await expect(
                 page.getByRole('button', { name: 'Send' })

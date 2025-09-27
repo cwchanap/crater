@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { ChatbotTestHelper } from './test-helpers'
 
 test.describe('Settings Panel Tests', () => {
     test.beforeEach(async ({ page }) => {
@@ -28,17 +29,13 @@ test.describe('Settings Panel Tests', () => {
         test('should close settings panel when Cancel is clicked', async ({
             page,
         }) => {
+            const helper = new ChatbotTestHelper(page)
+
             // Open settings
-            await page.getByRole('button', { name: '⚙️ Settings' }).click()
-            await expect(
-                page.getByText('AI Provider Configuration')
-            ).toBeVisible()
+            await helper.openSettings()
 
             // Close with Cancel
-            await page.getByRole('button', { name: 'Cancel' }).click()
-            await expect(
-                page.getByText('AI Provider Configuration')
-            ).not.toBeVisible()
+            await helper.closeSettings()
         })
 
         test('should close settings panel when clicking outside', async ({
@@ -224,6 +221,7 @@ test.describe('Settings Panel Tests', () => {
             // None provider should allow saving immediately
             const saveButton = page.getByRole('button', {
                 name: 'Save Settings',
+                exact: true,
             })
             await expect(saveButton).toBeEnabled()
 
@@ -245,6 +243,7 @@ test.describe('Settings Panel Tests', () => {
 
             const saveButton = page.getByRole('button', {
                 name: 'Save Settings',
+                exact: true,
             })
             await expect(saveButton).toBeDisabled()
 
@@ -261,7 +260,9 @@ test.describe('Settings Panel Tests', () => {
             await page.getByLabel('API Key:').fill('AIzaTestKey')
 
             // Cancel without saving
-            await page.getByRole('button', { name: 'Cancel' }).click()
+            await page
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click()
 
             // Reopen settings - should be back to defaults
             await page.getByRole('button', { name: '⚙️ Settings' }).click()
@@ -337,7 +338,7 @@ test.describe('Settings Panel Tests', () => {
                 page.getByRole('button', { name: 'Save Settings' })
             ).toBeVisible()
             await expect(
-                page.getByRole('button', { name: 'Cancel' })
+                page.getByRole('button', { name: 'Cancel', exact: true })
             ).toBeVisible()
         })
     })
