@@ -10,6 +10,13 @@
     export let imageQuality: 'standard' | 'hd' = 'standard'
     export let onProviderChange: () => void = () => {}
 
+    // S3 configuration
+    export let s3Enabled = false
+    export let s3BucketName = ''
+    export let s3Region = 'us-east-1'
+    export let s3AccessKeyId = ''
+    export let s3SecretAccessKey = ''
+
     const dispatch = createEventDispatcher<{ save: void; close: void }>()
 
     function handleBackdropClick(): void {
@@ -166,6 +173,93 @@
                     </select>
                     <div class="setting-info">
                         <p>Image generation quality level</p>
+                    </div>
+                </div>
+            {/if}
+
+            <!-- S3 Configuration Section -->
+            <div class="section-divider">
+                <h3>📦 S3 Storage Configuration</h3>
+            </div>
+
+            <div class="setting-group">
+                <label>
+                    <input type="checkbox" bind:checked={s3Enabled} class="s3-checkbox" />
+                    Enable S3 Storage
+                </label>
+                <div class="setting-info">
+                    <p>Allow saving generated images directly to AWS S3 bucket</p>
+                </div>
+            </div>
+
+            {#if s3Enabled}
+                <div class="setting-group">
+                    <label for="s3-bucket">S3 Bucket Name:</label>
+                    <input
+                        id="s3-bucket"
+                        type="text"
+                        bind:value={s3BucketName}
+                        placeholder="my-crater-images"
+                        class="api-key-input"
+                    />
+                    <div class="setting-info">
+                        <p>The name of your S3 bucket where images will be stored</p>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="s3-region">AWS Region:</label>
+                    <select id="s3-region" bind:value={s3Region}>
+                        <option value="us-east-1">US East (N. Virginia) - us-east-1</option>
+                        <option value="us-east-2">US East (Ohio) - us-east-2</option>
+                        <option value="us-west-1">US West (N. California) - us-west-1</option>
+                        <option value="us-west-2">US West (Oregon) - us-west-2</option>
+                        <option value="eu-west-1">Europe (Ireland) - eu-west-1</option>
+                        <option value="eu-west-2">Europe (London) - eu-west-2</option>
+                        <option value="eu-central-1">Europe (Frankfurt) - eu-central-1</option>
+                        <option value="ap-southeast-1">Asia Pacific (Singapore) - ap-southeast-1</option>
+                        <option value="ap-southeast-2">Asia Pacific (Sydney) - ap-southeast-2</option>
+                        <option value="ap-northeast-1">Asia Pacific (Tokyo) - ap-northeast-1</option>
+                    </select>
+                    <div class="setting-info">
+                        <p>AWS region where your S3 bucket is located</p>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="s3-access-key">AWS Access Key ID:</label>
+                    <input
+                        id="s3-access-key"
+                        type="password"
+                        bind:value={s3AccessKeyId}
+                        placeholder="AKIA..."
+                        class="api-key-input"
+                    />
+                    <div class="setting-info">
+                        <p>Your AWS access key with S3 write permissions</p>
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <label for="s3-secret-key">AWS Secret Access Key:</label>
+                    <input
+                        id="s3-secret-key"
+                        type="password"
+                        bind:value={s3SecretAccessKey}
+                        placeholder="***"
+                        class="api-key-input"
+                    />
+                    <div class="setting-info">
+                        <p>
+                            Your AWS secret access key. Get your credentials from
+                            <a
+                                href="https://console.aws.amazon.com/iam/"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                AWS IAM Console
+                            </a>
+                        </p>
                     </div>
                 </div>
             {/if}
@@ -360,6 +454,34 @@
 
     .cancel-btn:hover {
         background: #4b5563;
+    }
+
+    .section-divider {
+        margin: 2rem 0 1.5rem 0;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(34, 211, 238, 0.2);
+    }
+
+    .section-divider h3 {
+        margin: 0;
+        color: #22d3ee;
+        font-size: 1rem;
+        font-family: 'Orbitron', monospace;
+        font-weight: 600;
+        text-shadow: 0 0 8px #22d3ee;
+    }
+
+    .s3-checkbox {
+        width: auto !important;
+        margin-right: 0.5rem;
+        accent-color: #06b6d4;
+    }
+
+    .setting-group label:has(.s3-checkbox) {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        margin-bottom: 0.5rem;
     }
 
     @keyframes fadeIn {

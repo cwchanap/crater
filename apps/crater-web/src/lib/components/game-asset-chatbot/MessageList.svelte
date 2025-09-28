@@ -9,11 +9,54 @@
     export let activeMode: SessionMode = 'image'
     export let onDownloadImage: (imageUrl: string, prompt: string) => void = () => {}
     export let onViewImage: (imageUrl: string) => void = () => {}
+    export let onSaveToS3: (imageUrl: string, prompt: string) => Promise<void> = async () => {}
+    export let s3Enabled = false
+
+    let contextMenu = { show: false, x: 0, y: 0, imageUrl: '', prompt: '' }
+    let uploadingToS3 = false
 
     function renderMarkdown(text: string): string {
         return text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>')
+    }
+
+    function showContextMenu(event: MouseEvent, imageUrl: string, prompt: string) {
+        event.preventDefault()
+        contextMenu = {
+            show: true,
+            x: event.clientX,
+            y: event.clientY,
+            imageUrl,
+            prompt,
+        }
+    }
+
+    function hideContextMenu() {
+        contextMenu.show = false
+    }
+
+    async function handleS3Upload() {
+        if (!contextMenu.imageUrl || !contextMenu.prompt) return
+
+        uploadingToS3 = true
+        try {
+            await onSaveToS3(contextMenu.imageUrl, contextMenu.prompt)
+            // Success is handled by the parent component's toast
+        } catch (error) {
+            // Error is handled by the parent component's toast
+            // We don't need to do anything here since GameAssetChatbot handles it
+        } finally {
+            uploadingToS3 = false
+            hideContextMenu()
+        }
+    }
+
+    // Close context menu when clicking elsewhere
+    function handleGlobalClick(event: MouseEvent) {
+        if (contextMenu.show && !(event.target as HTMLElement).closest('.context-menu')) {
+            hideContextMenu()
+        }
     }
 </script>
 
@@ -39,6 +82,7 @@
                                             src={imageUrl}
                                             alt={message.imageData.prompt}
                                             class="generated-image"
+                                            on:contextmenu={(e) => showContextMenu(e, imageUrl, message.imageData?.prompt || 'image')}
                                         />
                                         <div class="image-actions">
                                             <button
@@ -96,6 +140,50 @@
         </div>
     {/if}
 </div>
+
+<!-- Context Menu -->
+{#if contextMenu.show}
+    <div
+        class="context-menu"
+        style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+    >
+        <button
+            on:click={() => {
+                onDownloadImage(contextMenu.imageUrl, contextMenu.prompt)
+                hideContextMenu()
+            }}
+            class="context-menu-item"
+        >
+            💾 Download Image
+        </button>
+        <button
+            on:click={() => {
+                onViewImage(contextMenu.imageUrl)
+                hideContextMenu()
+            }}
+            class="context-menu-item"
+        >
+            🔍 View Full Size
+        </button>
+        {#if s3Enabled}
+            <div class="context-menu-divider"></div>
+            <button
+                on:click={handleS3Upload}
+                class="context-menu-item s3-item"
+                disabled={uploadingToS3}
+            >
+                {#if uploadingToS3}
+                    ⏳ Saving to S3...
+                {:else}
+                    ☁️ Save to S3
+                {/if}
+            </button>
+        {/if}
+    </div>
+{/if}
+
+<!-- Global click handler to close context menu -->
+<svelte:window on:click={handleGlobalClick} />
 
 <style>
     .messages-container {
@@ -201,6 +289,56 @@
         display: block;
         max-height: 300px;
         object-fit: cover;
+        cursor: context-menu;
+    }
+
+    .context-menu {
+        position: fixed;
+        background: rgba(15, 23, 42, 0.95);
+        border: 2px solid rgba(34, 211, 238, 0.3);
+        border-radius: 0.5rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+        z-index: 1000;
+        min-width: 180px;
+        padding: 0.5rem 0;
+    }
+
+    .context-menu-item {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background: transparent;
+        color: #e2e8f0;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        font-family: 'Share Tech Mono', monospace;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .context-menu-item:hover:not(:disabled) {
+        background: rgba(34, 211, 238, 0.1);
+        color: #22d3ee;
+    }
+
+    .context-menu-item:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .context-menu-item.s3-item:hover:not(:disabled) {
+        background: rgba(34, 197, 94, 0.1);
+        color: #22c55e;
+    }
+
+    .context-menu-divider {
+        height: 1px;
+        background: rgba(34, 211, 238, 0.2);
+        margin: 0.5rem 0;
     }
 
     .image-actions {

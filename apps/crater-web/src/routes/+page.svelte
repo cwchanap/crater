@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount } from 'svelte'
 import GameAssetChatbot from '$lib/components/GameAssetChatbot.svelte'
+import ToastContainer from '$lib/components/ToastContainer.svelte'
 
 let sessionId = ''
 let currentTime = ''
@@ -46,6 +47,8 @@ onMount(() => {
         </p>
     </footer>
 </div>
+
+<ToastContainer />
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');

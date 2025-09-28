@@ -2,7 +2,8 @@
 <script lang="ts">
     import { onDestroy, onMount } from 'svelte'
     import { browser } from '$app/environment'
-    import { ChatBotService, type BaseImageModelProvider } from '@crater/core'
+    import { ChatBotService, S3Service, type BaseImageModelProvider } from '@crater/core'
+    import { showSuccess, showError } from '$lib/stores/toast'
     import {
         createSession,
         deriveTitleFromMessage,
@@ -68,6 +69,13 @@
     let chatModel = ''
     let imageSize = '1024x1024'
     let imageQuality: 'standard' | 'hd' = 'standard'
+
+    // S3 configuration
+    let s3Enabled = false
+    let s3BucketName = ''
+    let s3Region = 'us-east-1'
+    let s3AccessKeyId = ''
+    let s3SecretAccessKey = ''
 
     let imageProvider: BaseImageModelProvider | null = null
     let chatProvider: BaseImageModelProvider | null = null
@@ -317,6 +325,38 @@
         }
     }
 
+    async function saveImageToS3(imageUrl: string, prompt: string): Promise<void> {
+        if (!browser || !s3Enabled || !s3BucketName || !s3AccessKeyId || !s3SecretAccessKey) {
+            throw new Error('S3 configuration is incomplete')
+        }
+
+        try {
+            const s3Service = new S3Service({
+                bucketName: s3BucketName,
+                region: s3Region,
+                accessKeyId: s3AccessKeyId,
+                secretAccessKey: s3SecretAccessKey,
+            })
+
+            // Generate a unique filename
+            const filename = S3Service.generateImageFilename(prompt)
+
+            // Upload to S3
+            const s3Url = await s3Service.uploadImageFromUrl(imageUrl, filename, {
+                prompt,
+                generator: 'crater-web',
+            })
+
+            // Show success message
+            showSuccess(`Image saved to S3 successfully! File: ${filename}`)
+            return s3Url
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+            showError(`Failed to save image to S3: ${errorMessage}`)
+            throw error
+        }
+    }
+
     function viewImage(imageUrl: string): void {
         if (browser) {
             window.open(imageUrl, '_blank')
@@ -418,6 +458,11 @@
                 getDefaultModel(aiProvider, 'chat')
             imageSize = settings.imageSize ?? '1024x1024'
             imageQuality = settings.imageQuality ?? 'standard'
+            s3Enabled = settings.s3Enabled ?? false
+            s3BucketName = settings.s3BucketName ?? ''
+            s3Region = settings.s3Region ?? 'us-east-1'
+            s3AccessKeyId = settings.s3AccessKeyId ?? ''
+            s3SecretAccessKey = settings.s3SecretAccessKey ?? ''
             previousProvider = aiProvider
             updateAIProviders()
         } catch (error) {
@@ -439,6 +484,11 @@
                 chatModel,
                 imageSize,
                 imageQuality,
+                s3Enabled,
+                s3BucketName,
+                s3Region,
+                s3AccessKeyId,
+                s3SecretAccessKey,
             }
             localStorage.setItem(
                 'crater-web-ai-settings',
@@ -502,6 +552,8 @@
             activeMode={activeMode}
             onDownloadImage={downloadImage}
             onViewImage={viewImage}
+            onSaveToS3={saveImageToS3}
+            {s3Enabled}
         />
 
         <ChatInput
@@ -522,6 +574,11 @@
         bind:chatModel={chatModel}
         bind:imageSize={imageSize}
         bind:imageQuality={imageQuality}
+        bind:s3Enabled={s3Enabled}
+        bind:s3BucketName={s3BucketName}
+        bind:s3Region={s3Region}
+        bind:s3AccessKeyId={s3AccessKeyId}
+        bind:s3SecretAccessKey={s3SecretAccessKey}
         onProviderChange={handleProviderChange}
         on:save={saveSettings}
         on:close={() => (showSettings = false)}
