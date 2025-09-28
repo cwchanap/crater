@@ -13,7 +13,7 @@
     }
 </script>
 
-{#if summary.hasData}
+<!-- Always show usage summary, even with no data -->
     <div class="usage-card">
         <button
             class="usage-header"
@@ -45,7 +45,6 @@
             </div>
         {/if}
     </div>
-{/if}
 
 <style>
     .usage-card {
