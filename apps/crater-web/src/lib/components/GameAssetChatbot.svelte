@@ -62,8 +62,8 @@
     let newChatMenuOpen = false
     let usageCollapsed = true
 
-    let aiProvider: ProviderKind = 'gemini'
-    let previousProvider: ProviderKind = 'gemini'
+    let aiProvider: ProviderKind = 'debug'
+    let previousProvider: ProviderKind = 'debug'
     let apiKey = ''
     let imageModel = ''
     let chatModel = ''
@@ -401,7 +401,8 @@
     }
 
     function updateAIProviders(): void {
-        if (!apiKey || !isValidApiKey(aiProvider, apiKey)) {
+        // Debug provider doesn't need API key validation
+        if (aiProvider !== 'debug' && (!apiKey || !isValidApiKey(aiProvider, apiKey))) {
             imageProvider = null
             chatProvider = null
             isImageConfigured = false
@@ -446,8 +447,8 @@
             }
 
             const settings = JSON.parse(saved)
-            const storedProvider = settings.aiProvider ?? 'gemini'
-            aiProvider = storedProvider === 'openai' ? 'openai' : 'gemini'
+            const storedProvider = settings.aiProvider ?? 'debug'
+            aiProvider = ['openai', 'gemini', 'debug'].includes(storedProvider) ? storedProvider as ProviderKind : 'debug'
             apiKey = settings.apiKey ?? ''
             imageModel =
                 settings.imageModel ??

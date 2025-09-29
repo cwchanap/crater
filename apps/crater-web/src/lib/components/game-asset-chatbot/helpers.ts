@@ -137,7 +137,18 @@ export function getProviderStatus(
     if (isConfiguredForMode) {
         return {
             indicator: 'active',
-            text: `${aiProvider.toUpperCase()} Ready`,
+            text:
+                aiProvider === 'debug'
+                    ? 'DEBUG Ready'
+                    : `${aiProvider.toUpperCase()} Ready`,
+        }
+    }
+
+    // Debug provider doesn't need API key
+    if (aiProvider === 'debug') {
+        return {
+            indicator: 'active',
+            text: 'DEBUG Ready',
         }
     }
 

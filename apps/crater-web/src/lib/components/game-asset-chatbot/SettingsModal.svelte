@@ -64,6 +64,7 @@
                     bind:value={aiProvider}
                     on:change={handleProviderSelect}
                 >
+                    <option value="debug">Debug (Test Images)</option>
                     <option value="gemini">Google Gemini</option>
                     <option value="openai">OpenAI</option>
                 </select>
@@ -72,7 +73,9 @@
             <div class="setting-group">
                 <label for="image-model-select">Image Model:</label>
                 <select id="image-model-select" bind:value={imageModel}>
-                    {#if aiProvider === 'gemini'}
+                    {#if aiProvider === 'debug'}
+                        <option value="debug-image-provider">Debug Image Provider</option>
+                    {:else if aiProvider === 'gemini'}
                         <option value="gemini-2.5-flash-image-preview">
                             Gemini 2.5 Flash (Image Preview)
                         </option>
@@ -96,7 +99,9 @@
             <div class="setting-group">
                 <label for="chat-model-select">Chat Model:</label>
                 <select id="chat-model-select" bind:value={chatModel}>
-                    {#if aiProvider === 'gemini'}
+                    {#if aiProvider === 'debug'}
+                        <option value="debug-text-provider">Debug Text Provider</option>
+                    {:else if aiProvider === 'gemini'}
                         <option value="gemini-2.5-flash-lite">
                             Gemini 2.5 Flash Lite
                         </option>
@@ -120,12 +125,18 @@
                     id="api-key"
                     type="password"
                     bind:value={apiKey}
-                    placeholder={aiProvider === 'gemini' ? 'AIza...' : 'sk-...'}
+                    placeholder={aiProvider === 'debug' ? 'Not required for debug provider' : aiProvider === 'gemini' ? 'AIza...' : 'sk-...'}
                     class="api-key-input"
+                    disabled={aiProvider === 'debug'}
                 />
             </div>
             <div class="setting-info">
-                {#if aiProvider === 'gemini'}
+                {#if aiProvider === 'debug'}
+                    <p>
+                        Debug provider uses a test image and doesn't require an API key.
+                        Perfect for testing and development!
+                    </p>
+                {:else if aiProvider === 'gemini'}
                     <p>
                         Get your API key from
                         <a

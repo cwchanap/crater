@@ -8,6 +8,7 @@ export * from './web-chatbot-service'
 // Export AI providers
 export * from './providers/gemini-provider'
 export * from './providers/openai-provider'
+export * from './providers/debug-provider'
 
 // Export services
 export * from './services/s3-service'

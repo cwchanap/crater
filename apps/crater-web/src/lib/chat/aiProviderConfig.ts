@@ -1,12 +1,13 @@
 import {
     GeminiImageProvider,
     OpenAIImageProvider,
+    DebugImageProvider,
     type BaseImageModelProvider,
 } from '@crater/core'
 
 import type { SessionMode } from './sessionTypes'
 
-export type ProviderKind = 'gemini' | 'openai'
+export type ProviderKind = 'gemini' | 'openai' | 'debug'
 
 export const DEFAULT_MODELS: Record<
     ProviderKind,
@@ -19,6 +20,10 @@ export const DEFAULT_MODELS: Record<
     openai: {
         chat: 'gpt-5-nano',
         image: 'gpt-image-1',
+    },
+    debug: {
+        chat: 'debug-text-provider',
+        image: 'debug-image-provider',
     },
 }
 
@@ -41,11 +46,20 @@ export function createProviderForMode(
     mode: SessionMode,
     config: ProviderConfigInput
 ): BaseImageModelProvider | null {
+    const model = config.model ?? getDefaultModel(provider, mode)
+
+    if (provider === 'debug') {
+        return new DebugImageProvider({
+            model,
+            testImageUrl: '/test_image.png',
+            simulateDelay: 1500, // 1.5 seconds for demo
+            simulateError: false,
+        })
+    }
+
     if (!config.apiKey) {
         return null
     }
-
-    const model = config.model ?? getDefaultModel(provider, mode)
 
     if (provider === 'gemini') {
         return new GeminiImageProvider({
@@ -63,6 +77,10 @@ export function createProviderForMode(
 }
 
 export function isValidApiKey(provider: ProviderKind, apiKey: string): boolean {
+    if (provider === 'debug') {
+        return true // Debug provider doesn't need API key validation
+    }
+
     if (!apiKey) {
         return false
     }
