@@ -5,7 +5,7 @@
 
 import {
     WebChatBotService,
-    MockImageProvider,
+    DebugImageProvider,
     GeminiImageProvider,
     OpenAIImageProvider,
     type BaseImageModelProvider,
@@ -38,7 +38,7 @@ export function createAIProvider(
 
         case 'mock':
         default:
-            return new MockImageProvider()
+            return new DebugImageProvider()
     }
 }
 

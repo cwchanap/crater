@@ -1,135 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';"
+    />
     <title>Minimal Test</title>
     <style>
-        body {
-            background: var(--vscode-editor-background, #1e1e1e);
-            color: var(--vscode-editor-foreground, #d4d4d4);
-            font-family: var(--vscode-font-family, monospace);
-            padding: 20px;
-            margin: 0;
-        }
-        .status {
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #555;
-            border-radius: 4px;
-        }
-        .success { border-color: #4CAF50; color: #4CAF50; }
-        .error { border-color: #f44336; color: #f44336; }
-        button {
-            background: var(--vscode-button-background, #0e639c);
-            color: var(--vscode-button-foreground, white);
-            border: none;
-            padding: 8px 16px;
-            margin: 5px;
-            border-radius: 2px;
-            cursor: pointer;
-        }
+      body {
+        background: var(--vscode-editor-background, #1e1e1e);
+        color: var(--vscode-editor-foreground, #d4d4d4);
+        font-family: var(--vscode-font-family, monospace);
+        padding: 20px;
+        margin: 0;
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #555;
+        border-radius: 4px;
+      }
+      .success {
+        border-color: #4caf50;
+        color: #4caf50;
+      }
+      .error {
+        border-color: #f44336;
+        color: #f44336;
+      }
+      button {
+        background: var(--vscode-button-background, #0e639c);
+        color: var(--vscode-button-foreground, white);
+        border: none;
+        padding: 8px 16px;
+        margin: 5px;
+        border-radius: 2px;
+        cursor: pointer;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Minimal Webview Test</h1>
-    
+
     <div id="html-status" class="status">❓ HTML Status: Unknown</div>
     <div id="js-status" class="status error">❌ JavaScript: Not executed</div>
-    <div id="vscode-status" class="status error">❌ VS Code API: Not tested</div>
-    
+    <div id="vscode-status" class="status error">
+      ❌ VS Code API: Not tested
+    </div>
+
     <button onclick="testVSCode()">Test VS Code API</button>
     <button onclick="sendMessage()">Send Test Message</button>
-    
+
     <div>
-        <h3>Console Output:</h3>
-        <div id="console" style="background: #2d2d2d; padding: 10px; font-family: monospace; white-space: pre-wrap; max-height: 200px; overflow-y: auto;"></div>
+      <h3>Console Output:</h3>
+      <div
+        id="console"
+        style="
+          background: #2d2d2d;
+          padding: 10px;
+          font-family: monospace;
+          white-space: pre-wrap;
+          max-height: 200px;
+          overflow-y: auto;
+        "
+      ></div>
     </div>
 
     <script>
-        console.log('=== Minimal webview script started ===');
-        
-        // Update HTML status
-        const htmlStatus = document.getElementById('html-status');
-        htmlStatus.textContent = '✅ HTML Status: Loaded and rendered';
-        htmlStatus.className = 'status success';
-        
-        // Update JS status
-        const jsStatus = document.getElementById('js-status');
-        jsStatus.textContent = '✅ JavaScript: Executing successfully';
-        jsStatus.className = 'status success';
-        
-        // Console capture
-        const consoleDiv = document.getElementById('console');
-        const originalLog = console.log;
-        const originalError = console.error;
-        
-        function addToConsole(type, ...args) {
-            const timestamp = new Date().toLocaleTimeString();
-            consoleDiv.textContent += `[${timestamp}] [${type}] ${args.join(' ')}\n`;
-            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+      console.log('=== Minimal webview script started ===')
+
+      // Update HTML status
+      const htmlStatus = document.getElementById('html-status')
+      htmlStatus.textContent = '✅ HTML Status: Loaded and rendered'
+      htmlStatus.className = 'status success'
+
+      // Update JS status
+      const jsStatus = document.getElementById('js-status')
+      jsStatus.textContent = '✅ JavaScript: Executing successfully'
+      jsStatus.className = 'status success'
+
+      // Console capture
+      const consoleDiv = document.getElementById('console')
+      const originalLog = console.log
+      const originalError = console.error
+
+      function addToConsole(type, ...args) {
+        const timestamp = new Date().toLocaleTimeString()
+        consoleDiv.textContent += `[${timestamp}] [${type}] ${args.join(' ')}\n`
+        consoleDiv.scrollTop = consoleDiv.scrollHeight
+      }
+
+      console.log = function (...args) {
+        addToConsole('LOG', ...args)
+        originalLog.apply(console, args)
+      }
+
+      console.error = function (...args) {
+        addToConsole('ERROR', ...args)
+        originalError.apply(console, args)
+      }
+
+      // Test VS Code API
+      let vscode = null
+
+      function testVSCode() {
+        const vscodeStatus = document.getElementById('vscode-status')
+        try {
+          if (typeof acquireVsCodeApi !== 'undefined') {
+            vscode = acquireVsCodeApi()
+            vscodeStatus.textContent = '✅ VS Code API: Available'
+            vscodeStatus.className = 'status success'
+            console.log('VS Code API acquired successfully')
+            return true
+          } else {
+            vscodeStatus.textContent =
+              '❌ VS Code API: acquireVsCodeApi not defined'
+            console.error('acquireVsCodeApi is not available')
+            return false
+          }
+        } catch (error) {
+          vscodeStatus.textContent = '❌ VS Code API: Error - ' + error.message
+          console.error('VS Code API error:', error)
+          return false
         }
-        
-        console.log = function(...args) {
-            addToConsole('LOG', ...args);
-            originalLog.apply(console, args);
-        };
-        
-        console.error = function(...args) {
-            addToConsole('ERROR', ...args);
-            originalError.apply(console, args);
-        };
-        
-        // Test VS Code API
-        let vscode = null;
-        
-        function testVSCode() {
-            const vscodeStatus = document.getElementById('vscode-status');
-            try {
-                if (typeof acquireVsCodeApi !== 'undefined') {
-                    vscode = acquireVsCodeApi();
-                    vscodeStatus.textContent = '✅ VS Code API: Available';
-                    vscodeStatus.className = 'status success';
-                    console.log('VS Code API acquired successfully');
-                    return true;
-                } else {
-                    vscodeStatus.textContent = '❌ VS Code API: acquireVsCodeApi not defined';
-                    console.error('acquireVsCodeApi is not available');
-                    return false;
-                }
-            } catch (error) {
-                vscodeStatus.textContent = '❌ VS Code API: Error - ' + error.message;
-                console.error('VS Code API error:', error);
-                return false;
-            }
+      }
+
+      function sendMessage() {
+        if (!vscode && !testVSCode()) {
+          console.error('Cannot send message - VS Code API not available')
+          return
         }
-        
-        function sendMessage() {
-            if (!vscode && !testVSCode()) {
-                console.error('Cannot send message - VS Code API not available');
-                return;
-            }
-            
-            const message = {
-                type: 'minimal-test',
-                timestamp: Date.now(),
-                message: 'Hello from minimal webview!'
-            };
-            
-            console.log('Sending message to extension:', message);
-            vscode.postMessage(message);
+
+        const message = {
+          type: 'minimal-test',
+          timestamp: Date.now(),
+          message: 'Hello from minimal webview!',
         }
-        
-        // Listen for messages from extension
-        window.addEventListener('message', (event) => {
-            console.log('Received message from extension:', event.data);
-        });
-        
-        console.log('=== Minimal webview setup complete ===');
-        
-        // Auto-test VS Code API
-        setTimeout(testVSCode, 100);
+
+        console.log('Sending message to extension:', message)
+        vscode.postMessage(message)
+      }
+
+      // Listen for messages from extension
+      window.addEventListener('message', (event) => {
+        console.log('Received message from extension:', event.data)
+      })
+
+      console.log('=== Minimal webview setup complete ===')
+
+      // Auto-test VS Code API
+      setTimeout(testVSCode, 100)
     </script>
-</body>
+  </body>
 </html>

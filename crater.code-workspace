@@ -93,7 +93,9 @@
                     "--extensionDevelopmentPath=${workspaceFolder:Image Editor Extension}",
                     "--disable-extensions",
                 ],
-                "outFiles": ["${workspaceFolder:Image Editor Extension}/dist/**/*.js"],
+                "outFiles": [
+                    "${workspaceFolder:Image Editor Extension}/dist/**/*.js",
+                ],
                 "preLaunchTask": "Image Editor: Dev HMR",
                 "env": {
                     "NODE_ENV": "development",

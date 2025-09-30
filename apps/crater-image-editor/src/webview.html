@@ -1,24 +1,30 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' vscode-webview-resource:; script-src 'unsafe-inline' vscode-webview-resource: https:; img-src data: blob: vscode-webview-resource: https:; font-src vscode-webview-resource:;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline' vscode-webview-resource:; script-src 'unsafe-inline' vscode-webview-resource: https:; img-src data: blob: vscode-webview-resource: https:; font-src vscode-webview-resource:;"
+    />
     <title>Crater Image Editor</title>
-    <link href="{{CSS_URI}}" rel="stylesheet">
-</head>
-<body>
+    <link href="{{CSS_URI}}" rel="stylesheet" />
+  </head>
+  <body>
     <div id="app">
-        <div id="loading-indicator">Loading...</div>
+      <div id="loading-indicator">Loading...</div>
     </div>
     <script>
-        // Acquire VS Code API and make it globally available
-        try {
-            window.vscode = acquireVsCodeApi();
-        } catch (error) {
-            console.error('[Crater Image Editor] Failed to acquire VS Code API:', error);
-        }
+      // Acquire VS Code API and make it globally available
+      try {
+        window.vscode = acquireVsCodeApi()
+      } catch (error) {
+        console.error(
+          '[Crater Image Editor] Failed to acquire VS Code API:',
+          error
+        )
+      }
     </script>
     <script src="{{SCRIPT_URI}}"></script>
-</body>
+  </body>
 </html>
