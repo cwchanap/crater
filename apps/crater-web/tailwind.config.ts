@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import type { PluginAPI } from 'tailwindcss/types/config'
 
 const config: Config = {
     content: ['./src/**/*.{html,js,svelte,ts}'],
@@ -202,7 +203,7 @@ const config: Config = {
     },
     plugins: [
         // Custom plugin for text-shadow utilities
-        function ({ matchUtilities, theme }: any) {
+        function ({ matchUtilities, theme }: PluginAPI) {
             matchUtilities(
                 {
                     'text-shadow': (value: string) => ({

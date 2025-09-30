@@ -9,6 +9,7 @@ import {
     GeminiImageProvider,
     OpenAIImageProvider,
     type BaseImageModelProvider,
+    type ChatMessage,
 } from '@crater/core'
 
 /**
@@ -80,7 +81,7 @@ export class GameAssetChatbotDemo {
     async sendMessage(
         text: string,
         images?: string[]
-    ): Promise<{ userMessage: any; aiResponse: any }> {
+    ): Promise<{ userMessage: ChatMessage; aiResponse: ChatMessage }> {
         const messages = await this.webChatService.sendMessage(text, images)
         return {
             userMessage: messages[0],
@@ -113,7 +114,7 @@ export class GameAssetChatbotDemo {
     /**
      * Subscribe to message updates
      */
-    subscribe(callback: (messages: any[]) => void): () => void {
+    subscribe(callback: (messages: ChatMessage[]) => void): () => void {
         return this.webChatService.subscribe(callback)
     }
 

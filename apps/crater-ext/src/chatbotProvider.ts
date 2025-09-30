@@ -717,9 +717,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     private convertFilePathsToWebviewUris(
         messages: ExtendedChatMessage[]
-    ): any[] {
+    ): Array<Omit<ExtendedChatMessage, 'timestamp'> & { timestamp: Date }> {
         return messages.map((msg) => {
             const convertedMsg = {
+                id: msg.id,
                 text: msg.text,
                 sender: msg.sender,
                 timestamp: new Date(msg.timestamp),

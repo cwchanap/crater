@@ -21,7 +21,13 @@
       "path": "./apps/crater-ext"
     },
     {
+      "path": "./apps/crater-image-editor"
+    },
+    {
       "path": "./apps/crater-web"
+    },
+    {
+      "path": "./packages/core"
     },
     {
       "path": "./packages/ui-components"
