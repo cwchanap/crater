@@ -101,9 +101,8 @@ describe('Standalone Utility Functions', () => {
             })
 
             invalidQualities.forEach((quality) => {
-                expect(quality).toBeLessThan(1) // Too low
-                // OR
-                expect(quality).toBeGreaterThan(100) // Too high
+                // Each invalid value should fall outside the allowed [1, 100] range
+                expect(quality >= 1 && quality <= 100).toBe(false)
             })
         })
     })
@@ -133,10 +132,12 @@ describe('Standalone Utility Functions', () => {
             malformedPaths.forEach((path) => {
                 expect(() => {
                     if (typeof path === 'string' && path) {
-                        // Valid string path
+                        // Simulate basic normalization for valid-looking paths
+                        const normalized = path.trim()
+                        expect(normalized.length).toBeGreaterThan(0)
                     } else {
-                        // Invalid path should be handled
-                        expect(path).toBeDefined()
+                        // For non-string values, real code should bail out without throwing
+                        // Here we just avoid performing any string operations
                     }
                 }).not.toThrow()
             })

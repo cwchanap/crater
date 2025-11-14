@@ -111,6 +111,25 @@ const createMemento = (withSync = false): MockedMemento => {
     return base
 }
 
+export class EventEmitter<T> {
+    private listeners: Array<(event: T) => void> = []
+
+    public event: vscode.Event<T> = ((listener: (e: T) => void) => {
+        this.listeners.push(listener)
+        return createDisposable()
+    }) as unknown as vscode.Event<T>
+
+    public fire(event: T): void {
+        for (const listener of this.listeners) {
+            listener(event)
+        }
+    }
+
+    public dispose(): void {
+        this.listeners = []
+    }
+}
+
 export const mockVSCode = {
     commands: {
         registerCommand: vi.fn(
