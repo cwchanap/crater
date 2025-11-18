@@ -30,13 +30,21 @@ function initializeApp() {
 
 let app: unknown
 
+function safeInitializeApp() {
+    try {
+        app = initializeApp()
+    } catch (error) {
+        console.error('Failed to initialize Crater Image Editor webview', error)
+    }
+}
+
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        app = initializeApp()
+        safeInitializeApp()
     })
 } else {
-    app = initializeApp()
+    safeInitializeApp()
 }
 
-export default app
+export { app }

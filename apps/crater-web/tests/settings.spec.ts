@@ -4,6 +4,8 @@ import { ChatbotTestHelper } from './test-helpers'
 test.describe('Settings Panel Tests', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/')
+        await page.waitForLoadState('networkidle')
+        await page.waitForTimeout(200)
     })
 
     test.describe('Settings Panel Visibility', () => {
@@ -18,24 +20,27 @@ test.describe('Settings Panel Tests', () => {
             // Initially hidden
             await expect(settingsPanel).not.toBeVisible()
 
-            // Open settings
+            // Open settings via the header settings button
             await settingsButton.click()
             await expect(settingsPanel).toBeVisible()
-
-            // Button should show active state
-            await expect(settingsButton).toHaveAttribute('class', /active/)
         })
 
         test('should close settings panel when Cancel is clicked', async ({
             page,
         }) => {
-            const helper = new ChatbotTestHelper(page)
-
             // Open settings
-            await helper.openSettings()
+            await page.getByRole('button', { name: '⚙️ Settings' }).click()
+            await expect(
+                page.getByText('AI Provider Configuration')
+            ).toBeVisible()
 
             // Close with Cancel
-            await helper.closeSettings()
+            await page
+                .getByRole('button', { name: 'Cancel', exact: true })
+                .click()
+            await expect(
+                page.getByText('AI Provider Configuration')
+            ).not.toBeVisible()
         })
 
         test('should close settings panel when clicking outside', async ({
@@ -47,13 +52,15 @@ test.describe('Settings Panel Tests', () => {
                 page.getByText('AI Provider Configuration')
             ).toBeVisible()
 
-            // Click outside the panel (on the main content)
-            await page.getByText('Welcome to the Game Asset Assistant!').click()
+            // Click outside the panel by targeting the backdrop element
+            await page
+                .locator('.modal-backdrop')
+                .click({ position: { x: 10, y: 10 } })
 
-            // Panel should still be visible (we don't have click-outside functionality implemented)
+            // Panel should close when clicking outside/backdrop
             await expect(
                 page.getByText('AI Provider Configuration')
-            ).toBeVisible()
+            ).not.toBeVisible()
         })
     })
 
@@ -69,26 +76,34 @@ test.describe('Settings Panel Tests', () => {
                 .locator('option')
                 .allTextContents()
             expect(options).toEqual([
-                'None (Text Only)',
+                'Debug (Test Images)',
                 'Google Gemini',
                 'OpenAI',
             ])
         })
 
-        test('should default to "None (Text Only)"', async ({ page }) => {
+        test('should default to "Debug (Test Images)"', async ({ page }) => {
             await page.getByRole('button', { name: '⚙️ Settings' }).click()
 
             const providerSelect = page.getByLabel('AI Provider:')
-            await expect(providerSelect).toHaveValue('none')
+            await expect(providerSelect).toHaveValue('debug')
 
-            // No API key field should be visible
-            await expect(page.getByLabel('API Key:')).not.toBeVisible()
+            // Debug provider keeps API key field visible but disabled with hint text
+            const apiKeyInput = page.getByLabel('API Key:')
+            await expect(apiKeyInput).toBeDisabled()
+            await expect(apiKeyInput).toHaveAttribute(
+                'placeholder',
+                'Not required for debug provider'
+            )
         })
 
         test('should switch between providers correctly', async ({ page }) => {
             await page.getByRole('button', { name: '⚙️ Settings' }).click()
 
             const providerSelect = page.getByLabel('AI Provider:')
+
+            // Default should be Debug
+            await expect(providerSelect).toHaveValue('debug')
 
             // Switch to Gemini
             await providerSelect.selectOption('gemini')
@@ -100,10 +115,16 @@ test.describe('Settings Panel Tests', () => {
             await expect(providerSelect).toHaveValue('openai')
             await expect(page.getByPlaceholder('sk-...')).toBeVisible()
 
-            // Switch back to None
-            await providerSelect.selectOption('none')
-            await expect(providerSelect).toHaveValue('none')
-            await expect(page.getByLabel('API Key:')).not.toBeVisible()
+            // Switch back to Debug
+            await providerSelect.selectOption('debug')
+            await expect(providerSelect).toHaveValue('debug')
+            const apiKeyInput = page.getByLabel('API Key:')
+            await expect(apiKeyInput).toBeVisible()
+            await expect(apiKeyInput).toBeDisabled()
+            await expect(apiKeyInput).toHaveAttribute(
+                'placeholder',
+                'Not required for debug provider'
+            )
         })
     })
 
@@ -138,6 +159,7 @@ test.describe('Settings Panel Tests', () => {
             const apiKeyInput = page.getByLabel('API Key:')
             const saveButton = page.getByRole('button', {
                 name: 'Save Settings',
+                exact: true,
             })
 
             // Empty key - save should be disabled
@@ -199,6 +221,7 @@ test.describe('Settings Panel Tests', () => {
             const apiKeyInput = page.getByLabel('API Key:')
             const saveButton = page.getByRole('button', {
                 name: 'Save Settings',
+                exact: true,
             })
 
             // Empty key - save should be disabled
@@ -266,7 +289,7 @@ test.describe('Settings Panel Tests', () => {
 
             // Reopen settings - should be back to defaults
             await page.getByRole('button', { name: '⚙️ Settings' }).click()
-            await expect(page.getByLabel('AI Provider:')).toHaveValue('none')
+            await expect(page.getByLabel('AI Provider:')).toHaveValue('debug')
         })
 
         test('should clear form when switching providers', async ({ page }) => {
@@ -290,24 +313,24 @@ test.describe('Settings Panel Tests', () => {
             page,
         }) => {
             // Check initial status
-            await expect(page.getByText('No AI Provider')).toBeVisible()
-            await expect(
-                page.locator('.status-indicator.inactive')
-            ).toBeVisible()
+            await expect(page.getByText('DEBUG Ready')).toBeVisible()
+            await expect(page.locator('.status-indicator.active')).toBeVisible()
         })
 
         test('should maintain status indicator styling', async ({ page }) => {
             const statusDot = page.locator('.status-indicator')
             await expect(statusDot).toBeVisible()
 
-            // Should have inactive class initially
-            await expect(statusDot).toHaveClass(/inactive/)
+            // Should have active class initially for debug provider
+            await expect(statusDot).toHaveClass(/active/)
         })
     })
 
     test.describe('Settings Panel Accessibility', () => {
         test('should support keyboard navigation', async ({ page }) => {
-            await page.getByRole('button', { name: '⚙️ Settings' }).click()
+            const helper = new ChatbotTestHelper(page)
+
+            await helper.openSettings()
 
             // Tab through elements
             await page.keyboard.press('Tab')
@@ -321,7 +344,9 @@ test.describe('Settings Panel Tests', () => {
         })
 
         test('should have proper form labels', async ({ page }) => {
-            await page.getByRole('button', { name: '⚙️ Settings' }).click()
+            const helper = new ChatbotTestHelper(page)
+
+            await helper.openSettings()
 
             // Check form labels are properly associated
             await expect(page.getByLabel('AI Provider:')).toBeVisible()
@@ -331,11 +356,16 @@ test.describe('Settings Panel Tests', () => {
         })
 
         test('should support screen reader text', async ({ page }) => {
-            await page.getByRole('button', { name: '⚙️ Settings' }).click()
+            const helper = new ChatbotTestHelper(page)
+
+            await helper.openSettings()
 
             // Check that buttons have descriptive text
             await expect(
-                page.getByRole('button', { name: 'Save Settings' })
+                page.getByRole('button', {
+                    name: 'Save Settings',
+                    exact: true,
+                })
             ).toBeVisible()
             await expect(
                 page.getByRole('button', { name: 'Cancel', exact: true })

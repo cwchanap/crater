@@ -9,8 +9,8 @@ export class ChatbotTestHelper {
 
     // Locators
     private get settingsButton() {
-        // Use the inner settings button that actually opens the modal
-        return this.page.getByRole('button', { name: 'Settings', exact: true })
+        // Use the inner chat header settings button that opens the modal
+        return this.page.locator('.chat-header .settings-btn')
     }
 
     get clearChatButton(): Locator {
@@ -19,7 +19,7 @@ export class ChatbotTestHelper {
 
     get messageInput(): Locator {
         return this.page.getByRole('textbox', {
-            name: /Ask me about game assets/,
+            name: /pixel art hero or vibrant environment/,
         })
     }
 
@@ -51,10 +51,8 @@ export class ChatbotTestHelper {
     }
 
     private get settingsPanel() {
-        // The modal appears as a large button element when open
-        return this.page
-            .getByRole('button')
-            .filter({ hasText: 'AI Provider Configuration' })
+        // Use the visible heading text inside the settings modal
+        return this.page.getByText('AI Provider Configuration')
     }
 
     get welcomeMessage(): Locator {
@@ -90,12 +88,12 @@ export class ChatbotTestHelper {
     }
 
     async selectProvider(
-        provider: 'none' | 'gemini' | 'openai'
+        provider: 'debug' | 'gemini' | 'openai'
     ): Promise<void> {
         await this.openSettings()
 
         const providerMap = {
-            none: 'None (Text Only)',
+            debug: 'Debug (Test Images)',
             gemini: 'Google Gemini',
             openai: 'OpenAI',
         }

@@ -98,6 +98,7 @@
     apiKey
   )
   let usageSummary: UsageSummary = computeUsageSummary(initialSession)
+  let canSave = true
 
   $: activeSession =
     sessions.find((session) => session.id === activeSessionId) ?? null
@@ -114,6 +115,9 @@
     aiProvider,
     apiKey
   )
+  $: canSave =
+    aiProvider === 'debug' ||
+    (apiKey.trim().length > 0 && isValidApiKey(aiProvider, apiKey.trim()))
   $: imageModel = normalizeModel(aiProvider, 'image', imageModel)
   $: chatModel = normalizeModel(aiProvider, 'chat', chatModel)
   $: usageSummary = computeUsageSummary(activeSession)
@@ -415,6 +419,7 @@
 
     imageModel = getDefaultModel(aiProvider, 'image')
     chatModel = getDefaultModel(aiProvider, 'chat')
+    apiKey = ''
 
     previousProvider = aiProvider
     updateAIProviders()
@@ -465,7 +470,20 @@
     try {
       const saved = localStorage.getItem('crater-web-ai-settings')
       if (!saved) {
+        // Reset to debug defaults when no saved settings exist
+        aiProvider = 'debug'
+        apiKey = ''
+        imageModel = getDefaultModel(aiProvider, 'image')
+        chatModel = getDefaultModel(aiProvider, 'chat')
+        imageSize = '1024x1024'
+        imageQuality = 'standard'
+        s3Enabled = false
+        s3BucketName = ''
+        s3Region = 'us-east-1'
+        s3AccessKeyId = ''
+        s3SecretAccessKey = ''
         previousProvider = aiProvider
+        updateAIProviders()
         return
       }
 
@@ -596,9 +614,13 @@
     bind:s3Region
     bind:s3AccessKeyId
     bind:s3SecretAccessKey
+    {canSave}
     onProviderChange={handleProviderChange}
     on:save={saveSettings}
-    on:close={() => (showSettings = false)}
+    on:close={() => {
+      loadSettings()
+      showSettings = false
+    }}
   />
 {/if}
 
