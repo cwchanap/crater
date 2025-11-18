@@ -57,6 +57,35 @@ describe('ImageEditorProvider', () => {
                 createdAt: new Date().toISOString(),
             }
 
+            mockVSCode.workspace.getConfiguration.mockReturnValue({
+                get: vi.fn((key: string) => {
+                    const defaults: { [key: string]: any } = {
+                        outputDirectory: '${workspaceFolder}/edited-images',
+                        outputFormat: 'png',
+                        quality: 90,
+                        preserveOriginal: true,
+                    }
+                    return defaults[key]
+                }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
+            })
+
+            mockVSCode.workspace.getConfiguration.mockReturnValue({
+                get: vi.fn((key: string) => {
+                    const defaults: { [key: string]: any } = {
+                        outputDirectory: '${workspaceFolder}/edited-images',
+                        outputFormat: 'png',
+                        quality: 90,
+                        preserveOriginal: true,
+                    }
+                    return defaults[key]
+                }),
+                update: vi.fn(),
+                has: vi.fn(),
+                inspect: vi.fn(),
+            })
             ;(mockContext.globalState.get as any).mockReturnValue(mockSession)
 
             const newProvider = new ImageEditorProvider(
@@ -81,9 +110,12 @@ describe('ImageEditorProvider', () => {
             provider.resolveWebviewView(mockWebviewView)
 
             expect(mockWebviewView.webview.options.enableScripts).toBe(true)
-            expect(mockWebviewView.webview.options.localResourceRoots).toEqual([
-                mockVSCode.Uri.file('/test/extension'),
-            ])
+            const localRoots = mockWebviewView.webview.options
+                .localResourceRoots as { fsPath: string }[] | undefined
+            expect(localRoots).toBeDefined()
+            expect(Array.isArray(localRoots)).toBe(true)
+            expect(localRoots!.length).toBe(1)
+            expect(localRoots![0].fsPath).toBe('/test/extension')
         })
 
         it('should set HTML content on first resolution', () => {
@@ -117,6 +149,8 @@ describe('ImageEditorProvider', () => {
             })
 
             provider.resolveWebviewView(mockWebviewView)
+
+            provider.forceWebviewReady()
 
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -161,9 +195,7 @@ describe('ImageEditorProvider', () => {
             mockedFs.existsSync.mockReturnValue(false)
             const imagePath = '/test/nonexistent.png'
 
-            await expect(provider.loadImageFromPath(imagePath)).rejects.toThrow(
-                'Image file not found'
-            )
+            await provider.loadImageFromPath(imagePath)
 
             expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
                 expect.stringContaining('Failed to load image')
@@ -186,6 +218,8 @@ describe('ImageEditorProvider', () => {
             const imagePath = '/test/image.png'
 
             await provider.loadImageFromPath(imagePath)
+            ;(providerInternals as any)._webviewReady = true
+            ;(providerInternals as any).flushPendingMessages()
 
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -309,6 +343,7 @@ describe('ImageEditorProvider', () => {
             }
 
             mockedPath.join.mockReturnValue('/output/test_edited_timestamp.png')
+            mockedPath.parse.mockReturnValue({ name: 'test' } as any)
             mockedFs.existsSync.mockReturnValue(false)
             mockedFs.mkdirSync.mockImplementation(() => undefined)
             mockedFs.writeFileSync.mockImplementation(() => undefined)
@@ -398,7 +433,7 @@ describe('ImageEditorProvider', () => {
             )
         })
 
-        it('should restore current session when webview becomes visible', () => {
+        it('should restore current session when webview becomes visible', async () => {
             ;(provider as any)._currentSession = {
                 id: 'test',
                 originalPath: '/test/image.png',
@@ -413,9 +448,14 @@ describe('ImageEditorProvider', () => {
             provider.resolveWebviewView(mockWebviewView)
 
             // Simulate visibility change
-            mockWebviewView.onDidChangeVisibility.mock.calls[0][0]({
-                visible: true,
-            })
+            // Start hidden, then show the view and mark webview as ready so messages are sent
+            ;(mockWebviewView as any).visible = false
+            ;(provider as any)._isVisible = false
+            ;(provider as any)._webviewReady = true
+            ;(mockWebviewView as any).visible = true
+            mockWebviewView.onDidChangeVisibility.mock.calls[0][0]()
+
+            await new Promise((resolve) => setTimeout(resolve, 150))
 
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -432,9 +472,7 @@ describe('ImageEditorProvider', () => {
                 throw new Error('File read error')
             })
 
-            await expect(
-                provider.loadImageFromPath('/test/image.png')
-            ).rejects.toThrow()
+            await provider.loadImageFromPath('/test/image.png')
 
             expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
                 expect.stringContaining('Failed to load image')

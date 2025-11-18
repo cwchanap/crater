@@ -8,6 +8,7 @@
     export let chatModel = ''
     export let imageSize = '1024x1024'
     export let imageQuality: 'standard' | 'hd' = 'standard'
+    export let canSave = true
     export let onProviderChange: () => void = () => {}
 
     // S3 configuration
@@ -277,7 +278,13 @@
         </div>
 
         <div class="modal-footer">
-            <button on:click={handleSave} class="save-btn">Save Settings</button>
+            <button
+                on:click={handleSave}
+                class="save-btn"
+                disabled={!canSave}
+            >
+                Save Settings
+            </button>
             <button on:click={handleClose} class="cancel-btn">Cancel</button>
         </div>
     </div>

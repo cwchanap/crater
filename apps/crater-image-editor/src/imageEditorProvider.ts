@@ -287,6 +287,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     }
 
     private getMimeType(extension: string): string {
+        const normalizedExt = extension.toLowerCase().replace(/^\./, '')
         const mimeTypes: { [key: string]: string } = {
             png: 'image/png',
             jpg: 'image/jpeg',
@@ -295,7 +296,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             bmp: 'image/bmp',
             webp: 'image/webp',
         }
-        return mimeTypes[extension] || 'image/png'
+        return mimeTypes[normalizedExt] || 'image/png'
     }
 
     private sendMessageToWebview(message: any): void {
@@ -454,54 +455,49 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             []
         )
 
-        setTimeout(() => {
-            if (!this._view) return
+        if (!this._view) {
+            return
+        }
 
-            const config = vscode.workspace.getConfiguration(
-                'crater-image-editor'
-            )
-            const outputDirectory = config.get<string>(
-                'outputDirectory',
-                '${workspaceFolder}/edited-images'
-            )
-            const outputFormat = config.get<string>('outputFormat', 'png')
-            const quality = config.get<number>('quality', 90)
-            const preserveOriginal = config.get<boolean>(
-                'preserveOriginal',
-                true
-            )
+        const config = vscode.workspace.getConfiguration('crater-image-editor')
+        const outputDirectory = config.get<string>(
+            'outputDirectory',
+            '${workspaceFolder}/edited-images'
+        )
+        const outputFormat = config.get<string>('outputFormat', 'png')
+        const quality = config.get<number>('quality', 90)
+        const preserveOriginal = config.get<boolean>('preserveOriginal', true)
 
+        this.sendMessageToWebview({
+            type: 'settings',
+            outputDirectory,
+            outputFormat,
+            quality,
+            preserveOriginal,
+        })
+
+        // Restore current session if it exists
+        if (this._currentSession) {
+            console.log(
+                '[Crater Image Editor Provider] Restoring image session:',
+                this._currentSession.fileName
+            )
             this.sendMessageToWebview({
-                type: 'settings',
-                outputDirectory,
-                outputFormat,
-                quality,
-                preserveOriginal,
+                type: 'load-image',
+                imageData: this._currentSession.originalData,
+                fileName: this._currentSession.fileName,
+                originalPath: this._currentSession.originalPath,
+                format: this._currentSession.format,
+                size: this._currentSession.size,
             })
+        }
 
-            // Restore current session if it exists
-            if (this._currentSession) {
-                console.log(
-                    '[Crater Image Editor Provider] Restoring image session:',
-                    this._currentSession.fileName
-                )
-                this.sendMessageToWebview({
-                    type: 'load-image',
-                    imageData: this._currentSession.originalData,
-                    fileName: this._currentSession.fileName,
-                    originalPath: this._currentSession.originalPath,
-                    format: this._currentSession.format,
-                    size: this._currentSession.size,
-                })
-            }
-
-            // Send test message to verify webview connection
-            this.sendMessageToWebview({
-                type: 'test-connection',
-                message: 'Extension can send messages to webview',
-                timestamp: Date.now(),
-            })
-        }, 200)
+        // Send test message to verify webview connection
+        this.sendMessageToWebview({
+            type: 'test-connection',
+            message: 'Extension can send messages to webview',
+            timestamp: Date.now(),
+        })
     }
 
     private async _handleMessage(message: WebviewMessage): Promise<void> {

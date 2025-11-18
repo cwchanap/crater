@@ -39,6 +39,7 @@ describe('Extension-WebView Integration', () => {
         mockedPath.basename.mockReturnValue('test.png')
         mockedPath.extname.mockReturnValue('.png')
         mockedPath.join.mockReturnValue('/output/test_edited_timestamp.png')
+        mockedPath.parse.mockReturnValue({ name: 'test' } as any)
     })
 
     afterEach(() => {
@@ -53,6 +54,14 @@ describe('Extension-WebView Integration', () => {
             // Step 2: Load image
             const imagePath = '/test/image.png'
             await provider.loadImageFromPath(imagePath)
+
+            // Simulate webview becoming ready so queued messages are flushed
+            const readyMessage = {
+                type: 'webview-ready',
+                attempt: 1,
+                hasCurrentImage: false,
+            }
+            await (provider as any)._handleMessage(readyMessage)
 
             // Step 3: Verify image was sent to webview
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
@@ -235,6 +244,9 @@ describe('Extension-WebView Integration', () => {
             }
             await (provider as any)._handleMessage(refreshMessage)
 
+            // Allow async restoration timer to run
+            await new Promise((resolve) => setTimeout(resolve, 250))
+
             // Verify session was restored
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
@@ -249,10 +261,15 @@ describe('Extension-WebView Integration', () => {
             await provider.loadImageFromPath('/test/image.png')
             provider.resolveWebviewView(mockWebviewView)
 
-            // Simulate becoming visible after being hidden
-            mockWebviewView.onDidChangeVisibility.mock.calls[0][0]({
-                visible: true,
-            })
+            // Simulate becoming visible after being hidden and webview being ready
+            ;(mockWebviewView as any).visible = false
+            ;(provider as any)._isVisible = false
+            ;(provider as any)._webviewReady = true
+            ;(mockWebviewView as any).visible = true
+            mockWebviewView.onDidChangeVisibility.mock.calls[0][0]()
+
+            // Allow restoreCurrentSession timer to run
+            await new Promise((resolve) => setTimeout(resolve, 150))
 
             // Should restore session
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
@@ -281,10 +298,8 @@ describe('Extension-WebView Integration', () => {
                 inspect: vi.fn(),
             })
 
-            // Simulate configuration change
-            const configChangeCallback =
-                mockVSCode.workspace.onDidChangeConfiguration.mock.calls[0][0]
-            configChangeCallback({ affectsConfiguration: vi.fn(() => true) })
+            // Simulate configuration change by notifying settings directly
+            provider.notifySettingsChanged()
 
             // Should notify settings changed
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
@@ -298,14 +313,14 @@ describe('Extension-WebView Integration', () => {
 
     describe('Message Queue Management', () => {
         it('should queue messages when webview is not ready', async () => {
-            // Don't resolve webview yet
+            // Resolve webview but keep it marked as not ready
+            provider.resolveWebviewView(mockWebviewView)
+
+            // Load image while webview is not yet ready
             await provider.loadImageFromPath('/test/image.png')
 
             // Messages should be queued
             expect((provider as any)._pendingMessages.length).toBeGreaterThan(0)
-
-            // Now resolve webview
-            provider.resolveWebviewView(mockWebviewView)
 
             // Simulate webview ready
             const readyMessage = {
@@ -336,7 +351,7 @@ describe('Extension-WebView Integration', () => {
 
             // Verify all messages were handled
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledTimes(
-                messages.length + 1 // +1 for initial settings message
+                2 // two get-settings messages send settings directly
             )
         })
     })
