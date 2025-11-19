@@ -71,21 +71,6 @@ describe('ImageEditorProvider', () => {
                 has: vi.fn(),
                 inspect: vi.fn(),
             })
-
-            mockVSCode.workspace.getConfiguration.mockReturnValue({
-                get: vi.fn((key: string) => {
-                    const defaults: { [key: string]: any } = {
-                        outputDirectory: '${workspaceFolder}/edited-images',
-                        outputFormat: 'png',
-                        quality: 90,
-                        preserveOriginal: true,
-                    }
-                    return defaults[key]
-                }),
-                update: vi.fn(),
-                has: vi.fn(),
-                inspect: vi.fn(),
-            })
             ;(mockContext.globalState.get as any).mockReturnValue(mockSession)
 
             const newProvider = new ImageEditorProvider(
@@ -343,7 +328,13 @@ describe('ImageEditorProvider', () => {
             }
 
             mockedPath.join.mockReturnValue('/output/test_edited_timestamp.png')
-            mockedPath.parse.mockReturnValue({ name: 'test' } as any)
+            mockedPath.parse.mockReturnValue({
+                root: '/test',
+                dir: '/test',
+                base: 'test.png',
+                ext: '.png',
+                name: 'test',
+            } as any)
             mockedFs.existsSync.mockReturnValue(false)
             mockedFs.mkdirSync.mockImplementation(() => undefined)
             mockedFs.writeFileSync.mockImplementation(() => undefined)

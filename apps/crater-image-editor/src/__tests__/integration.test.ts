@@ -242,10 +242,11 @@ describe('Extension-WebView Integration', () => {
                 hasCurrentImage: false,
                 wasReloaded: true,
             }
+            // Allow async restoration timer to run deterministically
+            vi.useFakeTimers()
             await (provider as any)._handleMessage(refreshMessage)
-
-            // Allow async restoration timer to run
-            await new Promise((resolve) => setTimeout(resolve, 250))
+            vi.advanceTimersByTime(250)
+            vi.useRealTimers()
 
             // Verify session was restored
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
@@ -261,15 +262,17 @@ describe('Extension-WebView Integration', () => {
             await provider.loadImageFromPath('/test/image.png')
             provider.resolveWebviewView(mockWebviewView)
 
-            // Simulate becoming visible after being hidden and webview being ready
+            // Simulate becoming visible after being hidden while keeping webview ready
+            vi.useFakeTimers()
             ;(mockWebviewView as any).visible = false
-            ;(provider as any)._isVisible = false
-            ;(provider as any)._webviewReady = true
+            mockWebviewView.onDidChangeVisibility.mock.calls[0][0]()
+            provider.forceWebviewReady()
             ;(mockWebviewView as any).visible = true
             mockWebviewView.onDidChangeVisibility.mock.calls[0][0]()
 
-            // Allow restoreCurrentSession timer to run
-            await new Promise((resolve) => setTimeout(resolve, 150))
+            // Allow restoreCurrentSession timer to run deterministically
+            vi.advanceTimersByTime(150)
+            vi.useRealTimers()
 
             // Should restore session
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(

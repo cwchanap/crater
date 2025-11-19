@@ -28,7 +28,7 @@ function initializeApp() {
     return app
 }
 
-let app: unknown
+let app: ReturnType<typeof initializeApp> | undefined
 
 function safeInitializeApp() {
     try {
