@@ -5,7 +5,9 @@ test.describe('Settings Panel Tests', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/')
         await page.waitForLoadState('networkidle')
-        await page.waitForTimeout(200)
+        await page
+            .getByRole('button', { name: '⚙️ Settings' })
+            .waitFor({ state: 'visible' })
     })
 
     test.describe('Settings Panel Visibility', () => {
