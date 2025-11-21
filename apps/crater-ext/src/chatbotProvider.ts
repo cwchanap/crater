@@ -116,12 +116,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         private readonly _extensionUri: vscode.Uri,
         extensionContext?: vscode.ExtensionContext
     ) {
-        console.log('[Crater] ChatbotProvider constructor called')
-        console.log(
-            '[Crater] Extension URI in constructor:',
-            _extensionUri.toString()
-        )
-
         // Store extension context for persistent storage
         this._extensionContext = extensionContext
 
@@ -132,24 +126,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         })
         this.currentProvider = null
 
-        console.log('[Crater] ChatBotService initialized successfully')
-
         // Load chat history from storage
-        this.loadChatHistory().catch((error) => {
-            console.error('[Crater] Failed to load chat history:', error)
+        this.loadChatHistory().catch(() => {
+            // Swallow chat history load errors to avoid noisy console output
         })
 
         // Initialize AI provider based on configuration
         this.initializeAIProvider()
             .then(() => {
                 // this._isInitialized = true
-                console.log('[Crater] ChatbotProvider: Initialization complete')
             })
             .catch((error) => {
-                console.error(
-                    '[Crater] ChatbotProvider: Failed to initialize:',
-                    error
-                )
                 vscode.window.showErrorMessage(
                     `[Crater] Failed to initialize chatbot: ${error instanceof Error ? error.message : String(error)}`
                 )
@@ -165,28 +152,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             process.env.CRATER_HMR_ENABLED === 'true'
 
         if (!isHMREnabled) {
-            console.log(
-                '[Crater] HMR not enabled, skipping development watcher'
-            )
             return
         }
 
         try {
-            console.log('[Crater] Setting up development file watchers...')
-
             const handleFileChange = async (uri?: vscode.Uri) => {
                 const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
-                console.log(
-                    `[Crater] 🔥 Dev: ${fileName} changed, triggering refresh...`
-                )
 
                 // Option 1: Use VS Code's built-in webview reload command
                 try {
                     await vscode.commands.executeCommand(
                         'workbench.action.webview.reloadWebviewAction'
-                    )
-                    console.log(
-                        '[Crater] ✅ Webview reloaded via VS Code command'
                     )
                     vscode.window.setStatusBarMessage(
                         `🔥 ${fileName} → webview reloaded`,
@@ -194,7 +170,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     )
                 } catch {
                     // Fallback: Manual HTML refresh
-                    console.log('[Crater] 🔄 Fallback: Manual webview refresh')
                     if (this._view) {
                         this._view.webview.html = this._getHtmlForWebview(
                             this._view.webview
@@ -219,10 +194,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 'webview.css'
             )
 
-            console.log('[Crater] Watching for webview changes:')
-            console.log(`  📦 ${distJsPattern}`)
-            console.log(`  🎨 ${distCssPattern}`)
-
             const distJsWatcher =
                 vscode.workspace.createFileSystemWatcher(distJsPattern)
             const distCssWatcher =
@@ -238,13 +209,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             // Store watcher for cleanup
             this._fileWatcher = distJsWatcher
-
-            console.log('[Crater] ✅ Development watchers active!')
             vscode.window.showInformationMessage(
                 '🔥 Crater Dev Mode: Auto-reload on webview changes'
             )
-        } catch (error) {
-            console.log('[Crater] Could not setup development watcher:', error)
+        } catch {
+            // Ignore development watcher errors to keep console clean
         }
     }
 
@@ -255,28 +224,26 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         if (this._saveTimeout) {
             clearTimeout(this._saveTimeout)
             // Force immediate save on disposal to prevent data loss
-            this.saveChatHistory().catch((error) => {
-                console.error(
-                    '[Crater] Error in final save during disposal:',
-                    error
-                )
+            this.saveChatHistory().catch(() => {
+                // Ignore final save errors during disposal
             })
         }
     }
 
     private async loadChatHistory(): Promise<void> {
         if (!this._extensionContext) {
-            console.log(
-                '[Crater] No extension context available for loading chat history'
-            )
             return
         }
 
         try {
             // Load chat sessions
-            const storedSessions = this._extensionContext.globalState.get<
-                ChatSession[]
-            >('crater.chatSessions', [])
+            const storedSessionsRaw =
+                this._extensionContext.globalState.get<ChatSession[]>(
+                    'crater.chatSessions'
+                ) ?? []
+            const storedSessions = Array.isArray(storedSessionsRaw)
+                ? storedSessionsRaw
+                : []
             this._chatSessions = storedSessions
 
             // Load current session ID
@@ -337,9 +304,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             return msg
                         }
                     )
-                    console.log(
-                        `[Crater] Loaded ${currentSession.messages.length} messages from current session`
-                    )
                 } else {
                     // Current session doesn't exist, clear it
                     this._currentSessionId = null
@@ -347,17 +311,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
             } else {
                 // No current session, check for legacy chat history to migrate
-                const legacyData = this._extensionContext.globalState.get<
-                    (
-                        | ExtendedChatMessage
-                        | {
-                              id: string
-                              text: string
-                              sender: 'user' | 'assistant'
-                              timestamp: string
-                          }
-                    )[]
-                >('crater.chatHistory', [])
+                const legacyDataRaw =
+                    this._extensionContext.globalState.get<
+                        (
+                            | ExtendedChatMessage
+                            | {
+                                  id: string
+                                  text: string
+                                  sender: 'user' | 'assistant'
+                                  timestamp: string
+                              }
+                        )[]
+                    >('crater.chatHistory') ?? []
+                const legacyData = Array.isArray(legacyDataRaw)
+                    ? legacyDataRaw
+                    : []
 
                 if (legacyData.length > 0) {
                     // Migrate legacy data to new session format
@@ -398,28 +366,17 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         'crater.chatHistory',
                         undefined
                     )
-
-                    console.log(
-                        `[Crater] Migrated ${migratedMessages.length} messages to new session format`
-                    )
                 } else {
                     this._extendedChatHistory = []
                 }
             }
-
-            console.log(
-                `[Crater] Loaded ${this._chatSessions.length} chat sessions`
-            )
-        } catch (error) {
-            console.error('[Crater] Error loading chat history:', error)
+        } catch {
+            // Ignore chat history load errors to avoid noisy console
         }
     }
 
     private async saveChatHistory(): Promise<void> {
         if (!this._extensionContext) {
-            console.log(
-                '[Crater] No extension context available for saving chat history'
-            )
             return
         }
 
@@ -451,8 +408,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     this.saveCurrentSessionInBackground()
                 }
             }
-        } catch (error) {
-            console.error('[Crater] Error saving chat history:', error)
+        } catch {
+            // Ignore chat history save errors to keep console clean
         }
     }
 
@@ -468,8 +425,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         // Set new timeout for 2 seconds to reduce save frequency and prevent lag
         this._saveTimeout = setTimeout(() => {
-            this.saveChatHistory().catch((error) => {
-                console.error('[Crater] Error in debounced save:', error)
+            this.saveChatHistory().catch(() => {
+                // Ignore debounced save errors
             })
             this._saveTimeout = undefined
         }, 2000)
@@ -481,10 +438,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             try {
                 if (fs.existsSync(filePath)) {
                     await fs.promises.unlink(filePath)
-                    console.log(
-                        '[Crater ChatbotProvider] Deleted image file:',
-                        filePath
-                    )
                     return { success: true, path: filePath }
                 }
                 return {
@@ -493,11 +446,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     reason: 'File not found',
                 }
             } catch (error) {
-                console.error(
-                    '[Crater ChatbotProvider] Error deleting image file:',
-                    filePath,
-                    error
-                )
                 return { success: false, path: filePath, error }
             }
         })
@@ -549,11 +497,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 'crater.currentSessionId',
                 this._currentSessionId
             )
-            console.log(
-                `[Crater] Saved ${this._chatSessions.length} chat sessions`
-            )
-        } catch (error) {
-            console.error('[Crater] Error saving chat sessions:', error)
+        } catch {
+            // Ignore chat sessions save errors
         }
     }
 
@@ -561,22 +506,18 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         // Use setImmediate to defer the heavy serialization to the next tick
         // This prevents blocking the current execution context
         setImmediate(async () => {
-            try {
-                await this.saveChatSessions()
-            } catch (error) {
-                console.error('[Crater] Error in background save:', error)
-            }
+            await this.saveChatSessions().catch(() => {
+                // Ignore background save errors
+            })
         })
     }
 
     private saveCurrentSessionInBackground(): void {
         // Use setImmediate to save only current session data
         setImmediate(async () => {
-            try {
-                await this.saveCurrentSession()
-            } catch (error) {
-                console.error('[Crater] Error in current session save:', error)
-            }
+            await this.saveCurrentSession().catch(() => {
+                // Ignore current session save errors
+            })
         })
     }
 
@@ -629,8 +570,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     Buffer.from(sessionJson, 'utf8')
                 )
             }
-        } catch (error) {
-            console.error('[Crater] Error saving current session:', error)
+        } catch {
+            // Ignore save current session errors
         }
     }
 
@@ -683,7 +624,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         this._extendedChatHistory = []
 
         await this.saveChatSessions()
-        console.log('[Crater] Created new chat session:', newSession.id)
     }
 
     private async loadChatSession(sessionId: string): Promise<void> {
@@ -700,12 +640,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             // Update last activity
             session.lastActivity = new Date().toISOString()
             await this.saveChatSessions()
-
-            console.log(
-                `[Crater] Loaded chat session: ${sessionId} with ${session.messages.length} messages`
-            )
-        } else {
-            console.error(`[Crater] Chat session not found: ${sessionId}`)
         }
     }
 
@@ -822,10 +756,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     private async initializeAIProvider(): Promise<void> {
         try {
-            console.log('[Crater] Initializing AI provider...')
             const config = vscode.workspace.getConfiguration('crater-ext')
             const aiProvider = config.get<string>('aiProvider', 'gemini') // Default to gemini
-            console.log('[Crater] Selected AI provider:', aiProvider)
 
             let provider: GeminiImageProvider | OpenAIImageProvider | null =
                 null
@@ -833,10 +765,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             switch (aiProvider) {
                 case 'gemini': {
                     const geminiApiKey = config.get<string>('geminiApiKey')
-                    console.log(
-                        '[Crater] Gemini API key provided:',
-                        !!geminiApiKey
-                    )
                     if (
                         geminiApiKey &&
                         this.isValidApiKey(geminiApiKey, 'gemini')
@@ -844,11 +772,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         provider = new GeminiImageProvider({
                             apiKey: geminiApiKey,
                         })
-                        console.log('[Crater] Initialized Gemini AI provider')
-                    } else {
-                        console.warn(
-                            '[Crater] Gemini API key not configured or invalid'
-                        )
                     }
                     break
                 }
@@ -859,16 +782,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         'imageQuality',
                         'auto'
                     )
-                    console.log(
-                        '[Crater] OpenAI API key provided:',
-                        !!openaiApiKey
-                    )
-                    console.log(
-                        '[Crater] OpenAI image settings - Size:',
-                        imageSize,
-                        'Quality:',
-                        imageQuality
-                    )
                     if (
                         openaiApiKey &&
                         this.isValidApiKey(openaiApiKey, 'openai')
@@ -878,18 +791,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             defaultImageSize: imageSize,
                             defaultImageQuality: imageQuality,
                         })
-                        console.log('[Crater] Initialized OpenAI provider')
-                    } else {
-                        console.warn(
-                            '[Crater] OpenAI API key not configured or invalid'
-                        )
                     }
                     break
                 }
                 default: {
-                    console.log(
-                        '[Crater] Unknown provider, checking for any valid configuration'
-                    )
                     // Check if any provider has a valid API key
                     const geminiApiKey = config.get<string>('geminiApiKey')
                     const openaiApiKey = config.get<string>('openaiApiKey')
@@ -901,7 +806,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         provider = new GeminiImageProvider({
                             apiKey: geminiApiKey,
                         })
-                        console.log('[Crater] Auto-selected Gemini provider')
                     } else if (
                         openaiApiKey &&
                         this.isValidApiKey(openaiApiKey, 'openai')
@@ -919,36 +823,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             defaultImageSize: imageSize,
                             defaultImageQuality: imageQuality,
                         })
-                        console.log('[Crater] Auto-selected OpenAI provider')
                     }
                     break
                 }
             }
 
             this.currentProvider = provider
-            if (provider) {
-                console.log(
-                    '[Crater] Current provider set:',
-                    provider.constructor.name
-                )
-                if (this.chatBotService) {
-                    this.chatBotService.setAIProvider(provider)
-                    console.log(
-                        '[Crater] AI provider set on ChatBotService successfully'
-                    )
-                }
-            } else {
-                console.log('[Crater] No valid AI provider configured')
+            if (provider && this.chatBotService) {
+                this.chatBotService.setAIProvider(provider)
             }
-        } catch (error) {
-            console.error('[Crater] Failed to initialize AI provider:', error)
+        } catch {
             this.currentProvider = null
-            console.log('[Crater] No provider available due to error')
         }
     }
 
     public async updateAIProvider(): Promise<void> {
-        console.log('[Crater] updateAIProvider called')
         await this.initializeAIProvider()
 
         // Update the webview with current provider info
@@ -962,18 +851,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     }
 
     public refreshWebview(): void {
-        console.log('[Crater] Manual webview refresh requested')
         if (this._view) {
-            console.log('[Crater] Refreshing webview HTML manually...')
             this._view.webview.html = this._getHtmlForWebview(
                 this._view.webview
             )
             vscode.window.showInformationMessage(
                 '🔄 Webview refreshed manually'
             )
-            console.log('[Crater] Manual webview refresh complete')
         } else {
-            console.log('[Crater] No webview available to refresh')
             vscode.window.showWarningMessage('No webview available to refresh')
         }
     }
@@ -981,12 +866,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     public toggleSaving(): void {
         this._savingDisabled = !this._savingDisabled
         const status = this._savingDisabled ? 'DISABLED' : 'ENABLED'
-        console.log(`[Crater] Saving ${status}`)
         vscode.window.showInformationMessage(`[Crater] Saving ${status}`)
     }
 
     public notifySettingsChanged(): void {
-        console.log('[Crater] Notifying webview about settings change')
         if (this._view) {
             const config = vscode.workspace.getConfiguration('crater-ext')
             const aiProvider = config.get<string>('aiProvider', 'gemini')
@@ -1018,7 +901,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 imageSize,
                 imageQuality,
             })
-            console.log('[Crater] Settings notification sent to webview')
         }
     }
 
@@ -1075,11 +957,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             const imageBuffer = Buffer.from(base64Data, 'base64')
             fs.writeFileSync(filePath, imageBuffer)
 
-            console.log(`[Crater] Image saved to: ${filePath}`)
             return filePath
         } catch (error) {
-            console.error('[Crater] Error saving image:', error)
-            vscode.window.showErrorMessage(`Failed to save image: ${error}`)
+            vscode.window.showErrorMessage(
+                `Failed to save image: ${error instanceof Error ? error.message : String(error)}`
+            )
             return null
         }
     }
@@ -1087,19 +969,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     // This method is called by VS Code when the view needs to be shown
     resolveWebviewView(
         webviewView: vscode.WebviewView,
-        context: vscode.WebviewViewResolveContext,
-        token: vscode.CancellationToken
+        _context: vscode.WebviewViewResolveContext,
+        _token: vscode.CancellationToken
     ): void | Thenable<void> {
-        console.log(
-            '[Crater ChatbotProvider] *** resolveWebviewView CALLED! ***'
-        )
-        console.log(
-            '[Crater ChatbotProvider] WebviewView object:',
-            !!webviewView
-        )
-        console.log('[Crater ChatbotProvider] Context:', context)
-        console.log('[Crater ChatbotProvider] Token:', !!token)
-
         this._view = webviewView
 
         // Configure the webview
@@ -1110,23 +982,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
         // Set the HTML content
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview)
-        console.log('[Crater ChatbotProvider] HTML content set for webview')
 
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(
             (message) => {
-                console.log(
-                    '[Crater ChatbotProvider] Received message from webview:',
-                    message
-                )
                 this._handleMessage(message)
             },
             undefined,
             []
-        )
-
-        console.log(
-            '[Crater ChatbotProvider] resolveWebviewView completed successfully'
         )
 
         // Proactively send all initial data to the webview after a short delay
@@ -1140,9 +1003,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     if (this._extendedChatHistory.length > 0) {
                         const messages = this.convertFilePathsToWebviewUris(
                             this._extendedChatHistory
-                        )
-                        console.log(
-                            `[Crater ChatbotProvider] Proactively sending ${messages.length} messages to newly created webview`
                         )
                         this._view.webview.postMessage({
                             type: 'chat-history',
@@ -1216,27 +1076,15 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         })),
                         currentSessionId: this._currentSessionId,
                     })
-
-                    console.log(
-                        '[Crater ChatbotProvider] Proactively sent all initial data to webview'
-                    )
                 })
-                .catch((error) => {
-                    console.error(
-                        '[Crater] Error proactively loading initial data:',
-                        error
-                    )
+                .catch(() => {
+                    // Ignore proactive load errors
                 })
         }, 200)
     }
 
     private async _handleMessage(message: WebviewMessage): Promise<void> {
-        console.log('[Crater ChatbotProvider] Handling message:', message.type)
-
         if (!this._view) {
-            console.error(
-                '[Crater ChatbotProvider] No view available to handle message'
-            )
             return
         }
 
@@ -1254,11 +1102,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const messageText = (message.text || message.message) as string
                 if (messageText && this.chatBotService) {
                     try {
-                        console.log(
-                            '[Crater ChatbotProvider] Processing chat message:',
-                            messageText
-                        )
-
                         // Add user message to extended chat history
                         this.addMessageToHistory(messageText, 'user', 'text')
 
@@ -1284,13 +1127,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                     model: imageModel,
                                 }
                             )
-                        console.log(
-                            '[Crater ChatbotProvider] Image generated successfully'
-                        )
-                        console.log(
-                            '[Crater ChatbotProvider] Raw image response:',
-                            JSON.stringify(imageResponse, null, 2)
-                        )
 
                         // Process images and save them to files immediately
                         const savedPaths: string[] = []
@@ -1320,11 +1156,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                                 }
                             }
                         }
-
-                        console.log(
-                            '[Crater ChatbotProvider] Saved image paths:',
-                            savedPaths
-                        )
 
                         if (savedPaths.length > 0) {
                             // Extract usage and cost data from metadata
@@ -1399,11 +1230,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             )
                         }
                     } catch (error) {
-                        console.error(
-                            '[Crater ChatbotProvider] Error generating response:',
-                            error
-                        )
-
                         let errorMessage = 'Unknown error occurred'
 
                         if (error instanceof Error) {
@@ -1450,9 +1276,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 // Send extended messages with proper webview URIs
                 const messages = this.convertFilePathsToWebviewUris(
                     this._extendedChatHistory
-                )
-                console.log(
-                    `[Crater ChatbotProvider] Sending ${messages.length} chat history messages to webview`
                 )
                 this._view.webview.postMessage({
                     type: 'chat-history',
@@ -1549,7 +1372,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     !newProvider ||
                     (newProvider !== 'gemini' && newProvider !== 'openai')
                 ) {
-                    console.warn('[Crater] Invalid provider:', newProvider)
                     break
                 }
 
@@ -1645,10 +1467,6 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         this._lastUpdateStates.get(messageIndex)
 
                     if (lastStateHash === stateHash) {
-                        console.log(
-                            '[Crater ChatbotProvider] Skipping duplicate update for message',
-                            messageIndex
-                        )
                         break
                     }
 
@@ -1709,23 +1527,14 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             setImmediate(() => {
                                 const toDelete = [...this._pendingFileDeletions]
                                 this._pendingFileDeletions = []
-                                this.deleteImageFiles(toDelete).catch(
-                                    (error) => {
-                                        console.error(
-                                            '[Crater] Error in batch file deletion:',
-                                            error
-                                        )
-                                    }
-                                )
+                                this.deleteImageFiles(toDelete).catch(() => {
+                                    // Ignore batch file deletion errors
+                                })
                             })
                         }
 
                         // Use debounced save instead of immediate save
                         this.debouncedSaveChatHistory()
-                        console.log(
-                            '[Crater ChatbotProvider] Image states updated and queued for save for message',
-                            messageIndex
-                        )
                     }
                 }
                 break
@@ -1740,13 +1549,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             'vscode.open',
                             imageUri
                         )
-                        console.log(
-                            `[Crater ChatbotProvider] Opened image in editor: ${imagePath}`
-                        )
                     } catch (error) {
-                        console.error(
-                            `[Crater ChatbotProvider] Error opening image: ${error}`
-                        )
                         vscode.window.showErrorMessage(
                             `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
                         )
@@ -1764,13 +1567,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             'crater-ext.openInImageEditor',
                             imageUri
                         )
-                        console.log(
-                            `[Crater ChatbotProvider] Opened image in Crater Image Editor: ${imagePath}`
-                        )
                     } catch (error) {
-                        console.error(
-                            `[Crater ChatbotProvider] Error opening image in Crater Image Editor: ${error}`
-                        )
                         vscode.window.showErrorMessage(
                             `Failed to open image in Crater Image Editor: ${error instanceof Error ? error.message : String(error)}`
                         )
@@ -1779,16 +1576,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 break
             }
             default:
-                console.warn(
-                    '[Crater ChatbotProvider] Unknown message type:',
-                    message.type
-                )
+                break
         }
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
-        console.log('[Crater] _getHtmlForWebview called')
-
         try {
             // Read the HTML template
             const htmlPath = path.join(
@@ -1822,15 +1614,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
             html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
 
-            console.log(
-                '[Crater] HTML loaded and processed successfully, length:',
-                html.length
-            )
-            console.log('[Crater] Generated HTML:', html)
             return html
         } catch (error) {
-            console.error('[Crater] Error loading HTML for WebView:', error)
-            // Fallback to empty HTML with error message
+            const errorMessage =
+                error instanceof Error ? error.message : String(error)
+            // Fallback to empty HTML with error message, without logging to console
             return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1842,7 +1630,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     <div style="padding: 20px; text-align: center; color: var(--vscode-errorForeground);">
         <h2>Error Loading Webview</h2>
         <p>Unable to load the webview content. Please try reloading the extension.</p>
-        <p>Error: ${error instanceof Error ? error.message : String(error)}</p>
+        <p>Error: ${errorMessage}</p>
     </div>
 </body>
 </html>`

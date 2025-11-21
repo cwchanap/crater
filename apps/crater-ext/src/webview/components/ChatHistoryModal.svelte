@@ -26,8 +26,7 @@
 
   function loadChatSession(sessionId: string) {
     if (!$vscode || sessionId === $currentSessionId) return
-    
-    console.log('[Crater WebView] Loading chat session:', sessionId)
+
     $vscode.postMessage({ type: 'load-chat-session', sessionId })
     hideModal()
   }
@@ -36,7 +35,7 @@
     const date = new Date(dateString)
     const now = new Date()
     const isToday = date.toDateString() === now.toDateString()
-    
+
     if (isToday) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } else {
@@ -46,11 +45,11 @@
 </script>
 
 {#if $showChatHistoryModal}
-  <div 
-    class="fixed inset-0 w-full h-full bg-black/50 flex items-center justify-center z-[1000]" 
-    role="dialog" 
+  <div
+    class="fixed inset-0 w-full h-full bg-black/50 flex items-center justify-center z-[1000]"
+    role="dialog"
     tabindex="-1"
-    aria-modal="true" 
+    aria-modal="true"
     aria-labelledby="modal-title"
     on:click={handleBackdropClick}
     on:keydown={handleBackdropKeydown}
@@ -65,7 +64,7 @@
           <div class="text-center text-vscode-foreground italic py-5">No previous chats found</div>
         {:else}
           {#each $chatSessions as session}
-            <div 
+            <div
               class="p-3 border border-vscode-border rounded-md mb-2 cursor-pointer transition-colors duration-200 hover:bg-vscode-input {session.id === $currentSessionId ? 'bg-vscode-button border-blue-500' : ''}"
               role="button"
               tabindex="0"

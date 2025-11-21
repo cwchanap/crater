@@ -1,33 +1,33 @@
 <script lang="ts">
   import { messages, vscode } from '../stores'
-  
+
   function openImageInEditor(imagePath: string) {
     if (!$vscode || !imagePath) return
-    
+
     $vscode.postMessage({
       type: 'open-image',
       path: imagePath
     })
   }
-  
+
   function openImageInImageEditor(imagePath: string) {
     if (!$vscode || !imagePath) return
-    
+
     $vscode.postMessage({
       type: 'open-in-image-editor',
       path: imagePath
     })
   }
-  
+
   function extractAllImages() {
     const images: { url: string, prompt: string, savedPath?: string }[] = []
-    
+
     $messages.forEach((message) => {
       if (message.messageType === 'image' && message.imageData) {
         message.imageData.images.forEach((imageUrl, index) => {
           const isDeleted = message.imageData?.imageStates?.deleted?.[index] || false
           const isHidden = message.imageData?.imageStates?.hidden?.[index] || false
-          
+
           if (!isDeleted && !isHidden) {
             images.push({
               url: imageUrl,
@@ -38,10 +38,10 @@
         })
       }
     })
-    
+
     return images
   }
-  
+
   $: allImages = extractAllImages()
 </script>
 
@@ -56,7 +56,7 @@
       {/if}
     </p>
   </div>
-  
+
   {#if allImages.length > 0}
     <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 py-2">
       {#each allImages as image}
@@ -69,12 +69,11 @@
               title={image.savedPath ? `Open ${image.savedPath.split('/').pop()} in VS Code` : 'No saved file to open'}
             >
               <img
-                src={image.url.startsWith('data:') || image.url.startsWith('http') 
-                  ? image.url 
+                src={image.url.startsWith('data:') || image.url.startsWith('http')
+                  ? image.url
                   : `data:image/png;base64,${image.url}`}
                 alt="Generated: {image.prompt}"
                 class="w-full h-full object-cover block"
-                on:error={() => console.error('Failed to load thumbnail:', image.url)}
               />
             </button>
             {#if image.savedPath}

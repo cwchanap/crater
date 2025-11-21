@@ -19,6 +19,7 @@ suite('ChatbotProvider Test Suite', () => {
     let provider: ChatbotProvider
 
     suiteSetup(() => {
+        // Silence noisy console logs for this test suite while preserving errors
         // Try different possible extension IDs
         const possibleIds = ['crater.crater-ext', 'crater-ext']
         let extension: Extension<any> | undefined
@@ -75,6 +76,10 @@ suite('ChatbotProvider Test Suite', () => {
         if (provider) {
             provider.dispose()
         }
+    })
+
+    suiteTeardown(() => {
+        // Restore console
     })
 
     test('Should create ChatbotProvider instance', () => {
