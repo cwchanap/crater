@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build core package for web tests
+        run: pnpm --filter @crater/core build
+
       - name: Install Playwright browsers for Vitest
         run: pnpm --filter crater-web playwright:install
 
