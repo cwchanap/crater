@@ -137,7 +137,6 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
 
                     // Get the image path from the URI
-                    console.log(`[Crater] Opening image: ${uri.fsPath}`)
 
                     // Try to execute the loadImage command directly
                     // If the extension isn't available, the command will fail and we'll catch the error
@@ -160,10 +159,6 @@ export async function activate(context: vscode.ExtensionContext) {
                         'OK'
                     )
                 } catch (error) {
-                    console.error(
-                        '[Crater] Error opening image in image editor:',
-                        error
-                    )
                     if (
                         error instanceof Error &&
                         error.message.includes(
@@ -188,14 +183,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const configChangeListener = vscode.workspace.onDidChangeConfiguration(
             async (event) => {
                 if (event.affectsConfiguration('crater-ext')) {
-                    try {
-                        await chatbotProvider.updateAIProvider()
-                    } catch (error) {
-                        console.error(
-                            '[Crater] Failed to update AI provider:',
-                            error
-                        )
-                    }
+                    await chatbotProvider.updateAIProvider()
                 }
             }
         )

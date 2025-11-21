@@ -4,7 +4,7 @@
   import ImageContextMenu from './ImageContextMenu.svelte'
   import ConfirmDialog from './ConfirmDialog.svelte'
   import GalleryView from './GalleryView.svelte'
-  
+
   let messageInput = ''
   let contextMenu = {
     show: false,
@@ -55,9 +55,7 @@
 
   function sendMessage() {
     if (!messageInput.trim() || !$vscode) return
-    
-    console.log('[Crater WebView] Sending message:', messageInput)
-    
+
     // Add user message to store
     const userMessage: ChatMessage = {
       text: messageInput,
@@ -66,13 +64,13 @@
       messageType: 'text'
     }
     messages.update(msgs => [...msgs, userMessage])
-    
+
     // Send to extension
     $vscode.postMessage({
       type: 'send-message',
       message: messageInput
     })
-    
+
     messageInput = ''
     isLoading.set(true)
   }
@@ -102,9 +100,9 @@
   function handleProviderChange(event: Event) {
     const target = event.target as HTMLSelectElement
     const newProvider = target.value
-    
+
     if (!$vscode) return
-    
+
     currentProvider.set(newProvider)
     $vscode.postMessage({
       type: 'switch-provider',
@@ -125,7 +123,7 @@
 
   function handleOpenImage(imageIndex: number) {
     if (contextMenu.messageIndex === -1 || !$vscode) return
-    
+
     const message = $messages[contextMenu.messageIndex]
     if (message.messageType === 'image' && message.imageData?.savedPaths) {
       const savedPath = message.imageData.savedPaths[imageIndex]
@@ -140,7 +138,7 @@
 
   function handleOpenInImageEditor(imageIndex: number) {
     if (contextMenu.messageIndex === -1 || !$vscode) return
-    
+
     const message = $messages[contextMenu.messageIndex]
     if (message.messageType === 'image' && message.imageData?.savedPaths) {
       const savedPath = message.imageData.savedPaths[imageIndex]
@@ -155,7 +153,7 @@
 
   function handleDeleteImage(imageIndex: number) {
     if (contextMenu.messageIndex === -1) return
-    
+
     // Show confirmation dialog
     confirmDialog = {
       show: true,
@@ -166,7 +164,7 @@
 
   function confirmDeleteImage() {
     if (confirmDialog.pendingDeleteMessageIndex === -1 || confirmDialog.pendingDeleteImageIndex === -1) return
-    
+
     messages.update(msgs => {
       // Only update the specific message to avoid triggering full re-render
       const message = msgs[confirmDialog.pendingDeleteMessageIndex]
@@ -351,13 +349,13 @@
             {#each imageData.images as imageUrl, imageIndex}
               {@const isDeleted = imageData.imageStates?.deleted?.[imageIndex] || false}
               {@const isHidden = imageData.imageStates?.hidden?.[imageIndex] || false}
-              
+
               {#if isDeleted}
                 <div class="p-5 mb-1 border-2 border-dashed border-vscode-border rounded text-center text-vscode-foreground italic bg-vscode-input select-none">
                   🗑️ Image deleted
                 </div>
               {:else if isHidden}
-                <div 
+                <div
                   class="p-5 mb-1 border-2 border-dashed border-vscode-border rounded text-center text-vscode-foreground italic bg-vscode-input select-none cursor-context-menu hover:bg-vscode-background"
                   role="button"
                   tabindex="0"
@@ -368,18 +366,17 @@
                   🙈 Image hidden (click to show)
                 </div>
               {:else}
-                <img 
-                  src={imageUrl.startsWith('data:') || imageUrl.startsWith('http') 
-                    ? imageUrl 
+                <img
+                  src={imageUrl.startsWith('data:') || imageUrl.startsWith('http')
+                    ? imageUrl
                     : `data:image/png;base64,${imageUrl}`}
                   alt="Generated game asset: {imageData.prompt}"
                   class="max-w-full h-auto rounded mb-1 cursor-context-menu"
-                  on:error={() => console.error('Failed to load image:', imageUrl)}
                   on:contextmenu={(e) => handleImageRightClick(e, messageIndex, imageIndex)}
                 />
               {/if}
             {/each}
-            
+
           {:else}
             <div>{message.text}</div>
           {/if}
@@ -400,7 +397,7 @@
           </div>
         {/if}
       </div>
-      
+
       <!-- Action buttons -->
       <div class="flex justify-between items-center px-4 py-3 border-t border-vscode-border bg-vscode-background">
         <button
@@ -427,7 +424,7 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Input section -->
       <div class="px-4 py-4 border-t border-vscode-border bg-vscode-background space-y-3">
         <!-- Provider selection -->
@@ -475,7 +472,7 @@
       <div class="flex-1 min-h-0">
         <GalleryView />
       </div>
-      
+
       <!-- Gallery action buttons -->
       <div class="flex justify-between items-center px-4 py-3 border-t border-vscode-border bg-vscode-background">
         <button

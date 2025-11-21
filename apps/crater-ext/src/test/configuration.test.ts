@@ -6,18 +6,25 @@ suite('Configuration Test Suite', () => {
         const config = workspace.getConfiguration('crater-ext')
 
         // Test default values match package.json
-        assert.strictEqual(config.get('aiProvider'), 'gemini')
+        const aiProvider = config.inspect<string>('aiProvider')
+        const aiModel = config.inspect<string>('aiModel')
+        const imageSaveDirectory = config.inspect<string>('imageSaveDirectory')
+        const autoSaveImages = config.inspect<boolean>('autoSaveImages')
+        const imageSize = config.inspect<string>('imageSize')
+        const imageQuality = config.inspect<string>('imageQuality')
+
+        assert.strictEqual(aiProvider?.defaultValue, 'gemini')
         assert.strictEqual(
-            config.get('aiModel'),
+            aiModel?.defaultValue,
             'gemini-2.5-flash-image-preview'
         )
         assert.strictEqual(
-            config.get('imageSaveDirectory'),
+            imageSaveDirectory?.defaultValue,
             '${workspaceFolder}/images'
         )
-        assert.strictEqual(config.get('autoSaveImages'), true)
-        assert.strictEqual(config.get('imageSize'), 'auto')
-        assert.strictEqual(config.get('imageQuality'), 'auto')
+        assert.strictEqual(autoSaveImages?.defaultValue, true)
+        assert.strictEqual(imageSize?.defaultValue, 'auto')
+        assert.strictEqual(imageQuality?.defaultValue, 'auto')
     })
 
     test('Configuration should accept valid values', async () => {
