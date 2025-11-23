@@ -203,7 +203,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "test": "vscode-test",
+    "test": "if [ \"$RUN_EXT_TESTS\" = \"1\" ] || [ \"$CI\" = \"true\" ]; then vscode-test; else echo \"Skipping VS Code extension tests locally (set RUN_EXT_TESTS=1 to run)\"; fi",
     "clean": "rm -rf dist out"
   },
   "dependencies": {

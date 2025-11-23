@@ -50,6 +50,8 @@ This directory contains comprehensive end-to-end tests for the Crater Web applic
 
 ## Running Tests
 
+Run these commands from the repository root (they target the `@crater/web-e2e` workspace package).
+
 ### Prerequisites
 
 ```bash
@@ -57,29 +59,26 @@ This directory contains comprehensive end-to-end tests for the Crater Web applic
 pnpm install
 
 # Install Playwright browsers
-pnpm playwright:install
+pnpm --filter @crater/web-e2e playwright:install
 ```
 
 ### Test Commands
 
 ```bash
 # Run all tests (headless)
-pnpm test:e2e
+pnpm --filter @crater/web-e2e test:e2e
 
 # Run tests with browser UI visible
-pnpm test:e2e:headed
+pnpm --filter @crater/web-e2e test:e2e:headed
 
 # Run tests with Playwright UI for debugging
-pnpm test:e2e:ui
+pnpm --filter @crater/web-e2e test:e2e:ui
 
 # Run specific test file
-pnpm test:e2e tests/chatbot.spec.ts
+pnpm --filter @crater/web-e2e test:e2e -- tests/chatbot.spec.ts
 
 # Run tests in debug mode
-pnpm test:e2e:debug
-
-# Run all tests (unit + e2e)
-pnpm test:all
+pnpm --filter @crater/web-e2e test:e2e:debug
 ```
 
 ### Test Configuration
@@ -87,8 +86,8 @@ pnpm test:all
 The test configuration is defined in `playwright.config.ts`:
 
 - **Base URL**: `http://localhost:5173`
-- **Browsers**: Chrome, Firefox, Safari (Desktop + Mobile)
-- **Auto-start dev server**: Automatically starts `pnpm dev` before tests
+- **Browsers**: Chromium (Desktop Chrome profile)
+- **Auto-start dev server**: `pnpm --filter crater-web dev` before tests
 - **Retries**: 2 retries on CI, 0 locally
 - **Screenshots**: On failure only
 - **Videos**: Retained on failure
@@ -147,7 +146,7 @@ Tests run automatically on:
 
 - Push to `main` or `develop` branches
 - Pull requests targeting `main` or `develop`
-- Changes to `apps/crater-web/**` or `packages/core/**`
+- Changes to `apps/crater-web/**`, `packages/core/**`, or `packages/web-e2e/**`
 
 ### GitHub Actions Workflow
 
@@ -156,8 +155,8 @@ The `.github/workflows/playwright-tests.yml` workflow:
 1. Sets up Node.js and pnpm
 2. Installs dependencies
 3. Builds packages
-4. Installs Playwright browsers
-5. Runs tests with retry logic
+4. Installs Playwright browsers via `pnpm --filter @crater/web-e2e playwright:install chromium`
+5. Runs tests with retry logic using `pnpm --filter @crater/web-e2e test:e2e`
 6. Uploads test reports and results as artifacts
 
 ### Artifacts
@@ -186,13 +185,13 @@ The `.github/workflows/playwright-tests.yml` workflow:
 
 ```bash
 # Run with visible browser
-pnpm test:e2e:headed
+pnpm --filter @crater/web-e2e test:e2e:headed
 
 # Run with Playwright UI
-pnpm test:e2e:ui
+pnpm --filter @crater/web-e2e test:e2e:ui
 
 # Run specific test with debug
-pnpm test:e2e:debug -- tests/chatbot.spec.ts
+pnpm --filter @crater/web-e2e test:e2e:debug -- tests/chatbot.spec.ts
 ```
 
 ### CI Debugging

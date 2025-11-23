@@ -41,7 +41,7 @@ export default defineConfig({
 
     /* Run your local dev server before starting the tests */
     webServer: {
-        command: 'pnpm dev',
+        command: 'pnpm --filter crater-web dev',
         url: 'http://localhost:5173',
         reuseExistingServer: !process.env.CI,
         stdout: 'ignore',
