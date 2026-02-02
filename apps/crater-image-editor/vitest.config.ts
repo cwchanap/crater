@@ -10,6 +10,9 @@ export default defineConfig({
         include: ['src/**/*.{test,spec}.{js,ts}'],
         exclude: ['dist/**', 'out/**', 'node_modules/**'],
         globals: true,
+        coverage: {
+            reporter: ['text', 'lcov'],
+        },
     },
     resolve: {
         alias: {
