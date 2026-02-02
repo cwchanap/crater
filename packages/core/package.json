@@ -24,10 +24,12 @@
     "type-check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest run",
-    "test:watch": "vitest --watch"
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^0.34.0",
     "jsdom": "^22.0.0",
     "tsup": "^7.2.0",
     "typescript": "^5.0.0",
