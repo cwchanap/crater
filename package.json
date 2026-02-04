@@ -8,7 +8,7 @@
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "bun@1.1.0",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
@@ -34,7 +34,7 @@
   },
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "bun": ">=1.1.0"
   },
   "lint-staged": {
     "*.{js,mjs,cjs,ts,tsx,jsx}": [

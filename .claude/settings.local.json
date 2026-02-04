@@ -1,7 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pnpm run:*)",
+      "Bash(bun run:*)",
       "Read(//Users/chanwaichan/workspace/crater/packages/core/**)",
       "Bash(find:*)",
       "Read(//Users/chanwaichan/workspace/crater/**)",
@@ -9,12 +9,12 @@
       "mcp__Context7__get-library-docs",
       "WebSearch",
       "mcp__sequential-thinking__sequentialthinking",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm lint:*)",
-      "Bash(pnpm build:*)",
-      "Bash(pnpm type-check:*)",
+      "Bash(bun run test:*)",
+      "Bash(bun run lint:*)",
+      "Bash(bun run build:*)",
+      "Bash(bun run type-check:*)",
       "Read(//Users/chanwaichan/workspace/**)",
-      "Bash(pnpm --filter=crater-image-editor build:webview)",
+      "Bash(bun --filter=crater-image-editor run build:webview)",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_resize",

@@ -60,23 +60,23 @@ Make sure you have VS Code and the recommended extensions installed:
 
 ```bash
 # From the extension directory
-pnpm build
+bun run build
 
 # For production build
-pnpm run compile
+bun run compile
 
 # From the monorepo root
-pnpm build --filter=crater-image-editor
+bun --filter crater-image-editor run build
 ```
 
 ### Development Mode
 
 ```bash
 # Start development mode with watch and HMR
-pnpm dev
+bun run dev
 
 # Or from workspace root
-pnpm run dev --filter=crater-image-editor
+bun --filter crater-image-editor run dev
 ```
 
 This will start both the extension compilation and webview development servers with hot reload support.

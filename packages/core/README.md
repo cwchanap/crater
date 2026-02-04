@@ -12,7 +12,7 @@ Core shared logic and utilities for Crater applications.
 ## Installation
 
 ```bash
-pnpm add @crater/core
+bun add @crater/core
 ```
 
 ## Usage
@@ -90,17 +90,17 @@ prefsService.setPreference('theme', 'dark')
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Build the package
-pnpm run build
+bun run build
 
 # Run in development mode
-pnpm run dev
+bun run dev
 
 # Run tests
-pnpm run test
+bun run test
 
 # Type check
-pnpm run type-check
+bun run type-check
 ```

@@ -49,14 +49,14 @@ A VS Code extension featuring an AI-powered chatbot assistant for brainstorming 
 
 ```bash
 cd apps/crater-ext
-pnpm install
-pnpm run build
+bun install
+bun run build
 ```
 
 ### Running in Development Mode
 
 ```bash
-pnpm run dev
+bun run dev
 ```
 
 This will start esbuild in watch mode for development.
