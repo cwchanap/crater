@@ -17,63 +17,63 @@ Crater is a Turborepo monorepo consisting of:
 ### Root Level (All packages/apps)
 
 ```bash
-pnpm build          # Build all packages and apps
-pnpm dev            # Start development mode for all
-pnpm lint           # Lint all packages
-pnpm lint:fix       # Fix lint issues across all packages
-pnpm test           # Run tests across all packages
-pnpm type-check     # TypeScript checking across all packages
-pnpm format         # Format code with Prettier
-pnpm format:check   # Check code formatting
-pnpm clean          # Clean build artifacts
+bun run build          # Build all packages and apps
+bun run dev            # Start development mode for all
+bun run lint           # Lint all packages
+bun run lint:fix       # Fix lint issues across all packages
+bun run test           # Run tests across all packages
+bun run type-check     # TypeScript checking across all packages
+bun run format         # Format code with Prettier
+bun run format:check   # Check code formatting
+bun run clean          # Clean build artifacts
 ```
 
 ### VS Code Extension (`apps/crater-ext/`)
 
 ```bash
 cd apps/crater-ext
-pnpm dev            # Watch mode for both extension and webview
-pnpm dev:hmr        # Development with hot module replacement
-pnpm build          # Production build
-pnpm test           # Run extension tests
-pnpm package        # Create .vsix package
+bun run dev            # Watch mode for both extension and webview
+bun run dev:hmr        # Development with hot module replacement
+bun run build          # Production build
+bun run test           # Run extension tests
+bun run package        # Create .vsix package
 ```
 
 ### Image Editor Extension (`apps/crater-image-editor/`)
 
 ```bash
 cd apps/crater-image-editor
-pnpm dev            # Watch mode for both extension and webview
-pnpm build          # Production build
-pnpm build:ext      # Build extension only
-pnpm build:webview  # Build webview only
-pnpm package        # Create .vsix package
+bun run dev            # Watch mode for both extension and webview
+bun run build          # Production build
+bun run build:ext      # Build extension only
+bun run build:webview  # Build webview only
+bun run package        # Create .vsix package
 ```
 
 ### SvelteKit Web App (`apps/crater-web/`)
 
 ```bash
 cd apps/crater-web
-pnpm dev            # Start development server
-pnpm build          # Build for production
-pnpm preview        # Preview production build
-pnpm test           # Run Vitest tests
-pnpm test:unit      # Run unit tests
+bun run dev            # Start development server
+bun run build          # Build for production
+bun run preview        # Preview production build
+bun run test           # Run Vitest tests
+bun run test:unit      # Run unit tests
 ```
 
 ### Core Package (`packages/core/`)
 
 ```bash
 cd packages/core
-pnpm test           # Run Vitest tests
-pnpm test:watch     # Run tests in watch mode
+bun run test           # Run Vitest tests
+bun run test:watch     # Run tests in watch mode
 ```
 
 ## Architecture & Key Patterns
 
 ### Monorepo Structure
 
-- Uses pnpm workspaces with `workspace:*` dependencies between internal packages
+- Uses Bun workspaces with `workspace:*` dependencies between internal packages
 - Turborepo manages build orchestration and caching via `turbo.json`
 - Each package has independent scripts but respects dependency order during builds
 
@@ -96,9 +96,9 @@ pnpm test:watch     # Run tests in watch mode
 
 ### Development Workflow
 
-1. Install: `pnpm install` (from root)
-2. Build dependencies: `pnpm build`
-3. For extension development: `cd apps/crater-ext && pnpm dev`
+1. Install: `bun install` (from root)
+2. Build dependencies: `bun run build`
+3. For extension development: `cd apps/crater-ext && bun run dev`
 4. Test extension: Press F5 in VS Code to launch Extension Development Host
 5. Debug via VS Code Debug Console
 
@@ -210,7 +210,7 @@ Extension supports configurable AI providers (Gemini, OpenAI), image settings, a
 This repository includes specific AI development guidance in `.github/copilot-instructions.md` covering:
 
 - VS Code extension WebView patterns and message passing
-- Monorepo dependency management with pnpm workspaces
+- Monorepo dependency management with Bun workspaces
 - shadcn/ui component library conventions
 - Extension development workflow and testing
 - Build system architecture with Turborepo

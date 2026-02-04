@@ -23,7 +23,7 @@ The crater-ext extension integrates with the crater-image-editor extension to pr
 If "Open in Image Editor" doesn't work, check:
 
 1. **Both extensions installed**: crater-ext and crater-image-editor must both be active
-2. **Build status**: Run `pnpm run build:ext` in both extension directories
+2. **Build status**: Run `bun run build:ext` in both extension directories
 3. **Console logs**: Check VS Code Developer Tools for error messages
 4. **File paths**: Ensure image files exist at the specified paths
 

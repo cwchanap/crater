@@ -5,7 +5,7 @@ A collection of reusable UI components built with shadcn/ui, Radix UI, and Tailw
 ## Installation
 
 ```bash
-pnpm add @crater/ui-components
+bun add @crater/ui-components
 ```
 
 ## Usage
@@ -94,17 +94,17 @@ A flexible card component for displaying content.
 
 ```bash
 # Install dependencies
-pnpm install
+bun install
 
 # Build the package
-pnpm build
+bun run build
 
 # Watch for changes
-pnpm dev
+bun run dev
 
 # Type check
-pnpm type-check
+bun run type-check
 
 # Lint
-pnpm lint
+bun run lint
 ```

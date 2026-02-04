@@ -20,7 +20,7 @@ This Turborepo includes the following packages and apps:
 ### Prerequisites
 
 - Node.js >= 18
-- pnpm >= 8
+- Bun >= 1.1
 
 ### Installation
 
@@ -28,7 +28,7 @@ This Turborepo includes the following packages and apps:
 2. Install dependencies:
 
 ```bash
-pnpm install
+bun install
 ```
 
 ## Development
@@ -36,49 +36,49 @@ pnpm install
 ### Build all packages and apps
 
 ```bash
-pnpm build
+bun run build
 ```
 
 ### Develop all packages and apps
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 ### Run type checking
 
 ```bash
-pnpm type-check
+bun run type-check
 ```
 
 ### Run linting
 
 ```bash
-pnpm lint
+bun run lint
 ```
 
 ### Fix linting issues
 
 ```bash
-pnpm lint:fix
+bun run lint:fix
 ```
 
 ### Format code
 
 ```bash
-pnpm format
+bun run format
 ```
 
 ### Check formatting
 
 ```bash
-pnpm format:check
+bun run format:check
 ```
 
 ### Run tests
 
 ```bash
-pnpm test
+bun run test
 ```
 
 ## Working with packages
@@ -87,7 +87,7 @@ pnpm test
 
 ```bash
 cd packages/ui-components
-pnpm build
+bun run build
 ```
 
 ### Using UI Components in other apps
@@ -112,7 +112,6 @@ crater/
 ├── packages/
 │   └── ui-components/       # React UI component library
 ├── package.json             # Root package.json with workspace config
-├── pnpm-workspace.yaml      # pnpm workspace configuration
 ├── turbo.json              # Turborepo configuration
 └── README.md               # This file
 ```
@@ -150,7 +149,7 @@ This project enforces code quality through:
 ## Technologies Used
 
 - **Build System**: Turborepo
-- **Package Manager**: pnpm
+- **Package Manager**: Bun
 - **Web Framework**: SvelteKit (crater-web)
 - **Extension Framework**: VS Code Extension API (crater-ext)
 - **UI Library**: React + shadcn/ui + Radix UI (ui-components)
@@ -160,8 +159,8 @@ This project enforces code quality through:
 ## Contributing
 
 1. Make your changes
-2. Run `pnpm build` to ensure everything builds correctly
-3. Run `pnpm test` to ensure tests pass
+2. Run `bun run build` to ensure everything builds correctly
+3. Run `bun run test` to ensure tests pass
 4. Submit a pull request
 
 ## License
