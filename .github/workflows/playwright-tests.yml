@@ -44,7 +44,7 @@ jobs:
           path: |
             ~/.bun/install/cache
             ~/.bun
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
@@ -55,10 +55,10 @@ jobs:
         run: bun run build
 
       - name: Install Playwright Browsers
-        run: bun --filter @crater/web-e2e run playwright:install chromium
+        run: bun run --filter @crater/web-e2e playwright:install chromium
 
       - name: Run Playwright tests
-        run: bun --filter @crater/web-e2e run test:e2e
+        run: bun run --filter @crater/web-e2e test:e2e
         env:
           CI: true
 
