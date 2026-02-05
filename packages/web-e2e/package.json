@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "echo \"No build step for Playwright tests\"",
-    "test": "echo \"Skipping e2e in default test run. Use bun --filter @crater/web-e2e run test:e2e\"",
+    "test": "echo \"Skipping e2e in default test run. Use bun --cwd ./packages/web-e2e run test:e2e\"",
     "test:e2e": "playwright test",
     "test:headed": "playwright test --headed",
     "test:e2e:headed": "bun run test:headed",
