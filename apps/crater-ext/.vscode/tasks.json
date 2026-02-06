@@ -76,10 +76,35 @@
       ]
     },
     {
-      "label": "build-for-debug",
+      "label": "build:ext",
       "type": "shell",
       "command": "bun",
-      "args": ["run", "build:ext", "&&", "bun", "run", "build:webview"],
+      "args": ["run", "build:ext"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "build:webview",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "build:webview"],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": "$tsc"
+    },
+    {
+      "label": "build-for-debug",
+      "dependsOn": ["build:ext", "build:webview"],
+      "dependsOrder": "sequence",
       "group": "build",
       "presentation": {
         "echo": true,
