@@ -66,7 +66,7 @@ bun run build
 bun run compile
 
 # From the monorepo root
-bun --filter crater-image-editor run build
+bun run --filter crater-image-editor build
 ```
 
 ### Development Mode
@@ -76,7 +76,7 @@ bun --filter crater-image-editor run build
 bun run dev
 
 # Or from workspace root
-bun --filter crater-image-editor run dev
+bun run --filter crater-image-editor dev
 ```
 
 This will start both the extension compilation and webview development servers with hot reload support.
