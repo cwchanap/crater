@@ -14,6 +14,7 @@ export default tseslint.config(
             '**/.turbo/**',
             '**/coverage/**',
             '**/.vscode-test/**',
+            '**/tsup.config.bundled*.mjs',
         ],
     },
     {
