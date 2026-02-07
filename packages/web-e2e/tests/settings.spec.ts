@@ -3,6 +3,10 @@ import { ChatbotTestHelper } from './test-helpers'
 
 test.describe('Settings Panel Tests', () => {
     test.beforeEach(async ({ page }) => {
+        // Clear localStorage to ensure test isolation
+        await page.addInitScript(() => {
+            localStorage.clear()
+        })
         await page.goto('/')
         await page.waitForLoadState('networkidle')
         await page
