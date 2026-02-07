@@ -59,26 +59,26 @@ Run these commands from the repository root (they target the `@crater/web-e2e` w
 bun install
 
 # Install Playwright browsers
-bun --filter @crater/web-e2e run playwright:install
+bun run --filter @crater/web-e2e playwright:install
 ```
 
 ### Test Commands
 
 ```bash
 # Run all tests (headless)
-bun --filter @crater/web-e2e run test:e2e
+bun run --filter @crater/web-e2e test:e2e
 
 # Run tests with browser UI visible
-bun --filter @crater/web-e2e run test:e2e:headed
+bun run --filter @crater/web-e2e test:e2e:headed
 
 # Run tests with Playwright UI for debugging
-bun --filter @crater/web-e2e run test:e2e:ui
+bun run --filter @crater/web-e2e test:e2e:ui
 
 # Run specific test file
-bun --filter @crater/web-e2e run test:e2e -- tests/chatbot.spec.ts
+bun run --filter @crater/web-e2e test:e2e -- tests/chatbot.spec.ts
 
 # Run tests in debug mode
-bun --filter @crater/web-e2e run test:e2e:debug
+bun run --filter @crater/web-e2e test:e2e:debug
 ```
 
 ### Test Configuration
@@ -87,7 +87,7 @@ The test configuration is defined in `playwright.config.ts`:
 
 - **Base URL**: `http://localhost:5173`
 - **Browsers**: Chromium (Desktop Chrome profile)
-- **Auto-start dev server**: `bun --filter crater-web run dev` before tests
+- **Auto-start dev server**: `bun run --filter crater-web dev` before tests
 - **Retries**: 2 retries on CI, 0 locally
 - **Screenshots**: On failure only
 - **Videos**: Retained on failure
@@ -155,8 +155,8 @@ The `.github/workflows/playwright-tests.yml` workflow:
 1. Sets up Node.js and Bun
 2. Installs dependencies
 3. Builds packages
-4. Installs Playwright browsers via `bun --filter @crater/web-e2e run playwright:install chromium`
-5. Runs tests with retry logic using `bun --filter @crater/web-e2e run test:e2e`
+4. Installs Playwright browsers via `bun run --filter @crater/web-e2e playwright:install chromium`
+5. Runs tests with retry logic using `bun run --filter @crater/web-e2e test:e2e`
 6. Uploads test reports and results as artifacts
 
 ### Artifacts
@@ -185,13 +185,13 @@ The `.github/workflows/playwright-tests.yml` workflow:
 
 ```bash
 # Run with visible browser
-bun --filter @crater/web-e2e run test:e2e:headed
+bun run --filter @crater/web-e2e test:e2e:headed
 
 # Run with Playwright UI
-bun --filter @crater/web-e2e run test:e2e:ui
+bun run --filter @crater/web-e2e test:e2e:ui
 
 # Run specific test with debug
-bun --filter @crater/web-e2e run test:e2e:debug -- tests/chatbot.spec.ts
+bun run --filter @crater/web-e2e test:e2e:debug -- tests/chatbot.spec.ts
 ```
 
 ### CI Debugging
