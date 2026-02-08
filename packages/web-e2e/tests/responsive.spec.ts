@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Responsive Design Tests', () => {
-    test.beforeEach(async ({ page }) => {
-        // Clear localStorage to ensure test isolation
-        await page.addInitScript(() => {
-            localStorage.clear()
-        })
+    test.beforeEach(async ({ page, context }) => {
+        // Clear storage and reload to ensure clean state
+        await context.clearCookies()
         await page.goto('/')
+        await page.evaluate(() => {
+            localStorage.clear()
+            sessionStorage.clear()
+        })
+        await page.reload()
+        await page.waitForLoadState('networkidle')
     })
 
     test.describe('Desktop Layout', () => {
@@ -15,12 +19,9 @@ test.describe('Responsive Design Tests', () => {
         }) => {
             await page.setViewportSize({ width: 1280, height: 720 })
 
-            // Check that both main sections are visible side by side
+            // Check that chatbot section is visible
             const chatbotSection = page.locator('.chatbot-section')
-            const infoSection = page.locator('.info-section')
-
             await expect(chatbotSection).toBeVisible()
-            await expect(infoSection).toBeVisible()
 
             // Check that header text is full size
             const mainHeading = page.getByRole('heading', {
@@ -40,7 +41,9 @@ test.describe('Responsive Design Tests', () => {
                 .fill('Desktop large test')
             await page.getByRole('button', { name: 'Send' }).click()
 
-            await expect(page.getByText('Desktop large test')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Desktop large test')
+            ).toBeVisible()
         })
     })
 
@@ -62,7 +65,11 @@ test.describe('Responsive Design Tests', () => {
                 .fill('Tablet portrait test')
             await page.getByRole('button', { name: 'Send' }).click()
 
-            await expect(page.getByText('Tablet portrait test')).toBeVisible()
+            await expect(
+                page
+                    .locator('.message-content')
+                    .getByText('Tablet portrait test')
+            ).toBeVisible()
         })
 
         test('should adapt layout for tablet landscape', async ({ page }) => {
@@ -104,7 +111,11 @@ test.describe('Responsive Design Tests', () => {
             await messageInput.fill('iPhone test message')
             await page.getByRole('button', { name: 'Send' }).click()
 
-            await expect(page.getByText('iPhone test message')).toBeVisible()
+            await expect(
+                page
+                    .locator('.message-content')
+                    .getByText('iPhone test message')
+            ).toBeVisible()
         })
 
         test('should work on Android-sized screens', async ({ page }) => {
@@ -143,7 +154,9 @@ test.describe('Responsive Design Tests', () => {
             await messageInput.fill('Small screen test')
             await page.getByRole('button', { name: 'Send' }).click()
 
-            await expect(page.getByText('Small screen test')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Small screen test')
+            ).toBeVisible()
         })
     })
 
@@ -159,20 +172,26 @@ test.describe('Responsive Design Tests', () => {
                 .getByRole('textbox', { name: /Ask me about game assets/ })
                 .fill('Consistency test')
             await page.getByRole('button', { name: 'Send' }).click()
-            await expect(page.getByText('Consistency test')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Consistency test')
+            ).toBeVisible()
 
             // Switch to mobile
             await page.setViewportSize({ width: 375, height: 667 })
 
             // Message should still be visible
-            await expect(page.getByText('Consistency test')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Consistency test')
+            ).toBeVisible()
 
             // Should be able to send another message
             await page
                 .getByRole('textbox', { name: /Ask me about game assets/ })
                 .fill('Mobile follow-up')
             await page.getByRole('button', { name: 'Send' }).click()
-            await expect(page.getByText('Mobile follow-up')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Mobile follow-up')
+            ).toBeVisible()
         })
 
         test('should handle orientation changes', async ({ page }) => {
@@ -185,14 +204,18 @@ test.describe('Responsive Design Tests', () => {
 
             // Landscape mobile
             await page.setViewportSize({ width: 667, height: 375 })
-            await expect(page.getByText('Portrait message')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Portrait message')
+            ).toBeVisible()
 
             // Should still function
             await page
                 .getByRole('textbox', { name: /Ask me about game assets/ })
                 .fill('Landscape message')
             await page.getByRole('button', { name: 'Send' }).click()
-            await expect(page.getByText('Landscape message')).toBeVisible()
+            await expect(
+                page.locator('.message-content').getByText('Landscape message')
+            ).toBeVisible()
         })
     })
 

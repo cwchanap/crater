@@ -1,12 +1,15 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('Crater Web Game Asset Chatbot', () => {
-    test.beforeEach(async ({ page }) => {
-        // Clear localStorage to ensure test isolation
-        await page.addInitScript(() => {
-            localStorage.clear()
-        })
+    test.beforeEach(async ({ page, context }) => {
+        // Clear storage and reload to ensure clean state
+        await context.clearCookies()
         await page.goto('/')
+        await page.evaluate(() => {
+            localStorage.clear()
+            sessionStorage.clear()
+        })
+        await page.reload()
         await page.waitForLoadState('networkidle')
         await page.waitForTimeout(200)
     })
