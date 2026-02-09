@@ -44,7 +44,9 @@ test.describe('Responsive Design Tests', () => {
             await page.getByRole('button', { name: 'Send' }).click()
 
             await expect(
-                page.locator('.message-content').getByText('Desktop large test')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Desktop large test')
             ).toBeVisible()
         })
     })
@@ -71,7 +73,7 @@ test.describe('Responsive Design Tests', () => {
 
             await expect(
                 page
-                    .locator('.message-content')
+                    .locator('.message.user .message-content')
                     .getByText('Tablet portrait test')
             ).toBeVisible()
         })
@@ -117,7 +119,7 @@ test.describe('Responsive Design Tests', () => {
 
             await expect(
                 page
-                    .locator('.message-content')
+                    .locator('.message.user .message-content')
                     .getByText('iPhone test message')
             ).toBeVisible()
         })
@@ -159,7 +161,9 @@ test.describe('Responsive Design Tests', () => {
             await page.getByRole('button', { name: 'Send' }).click()
 
             await expect(
-                page.locator('.message-content').getByText('Small screen test')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Small screen test')
             ).toBeVisible()
         })
     })
@@ -179,7 +183,9 @@ test.describe('Responsive Design Tests', () => {
                 .fill('Consistency test')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
-                page.locator('.message-content').getByText('Consistency test')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Consistency test')
             ).toBeVisible()
 
             // Switch to mobile
@@ -187,7 +193,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Message should still be visible
             await expect(
-                page.locator('.message-content').getByText('Consistency test')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Consistency test')
             ).toBeVisible()
 
             // Should be able to send another message
@@ -198,7 +206,9 @@ test.describe('Responsive Design Tests', () => {
                 .fill('Mobile follow-up')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
-                page.locator('.message-content').getByText('Mobile follow-up')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Mobile follow-up')
             ).toBeVisible()
         })
 
@@ -215,7 +225,9 @@ test.describe('Responsive Design Tests', () => {
             // Landscape mobile
             await page.setViewportSize({ width: 667, height: 375 })
             await expect(
-                page.locator('.message-content').getByText('Portrait message')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Portrait message')
             ).toBeVisible()
 
             // Should still function
@@ -226,7 +238,9 @@ test.describe('Responsive Design Tests', () => {
                 .fill('Landscape message')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
-                page.locator('.message-content').getByText('Landscape message')
+                page
+                    .locator('.message.user .message-content')
+                    .getByText('Landscape message')
             ).toBeVisible()
         })
     })
