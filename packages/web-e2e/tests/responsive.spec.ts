@@ -37,7 +37,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Test basic chatbot functionality
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Desktop large test')
             await page.getByRole('button', { name: 'Send' }).click()
 
@@ -61,7 +63,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Test chatbot functionality
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Tablet portrait test')
             await page.getByRole('button', { name: 'Send' }).click()
 
@@ -106,7 +110,7 @@ test.describe('Responsive Design Tests', () => {
 
             // Chat functionality should work
             const messageInput = page.getByRole('textbox', {
-                name: /Ask me about game assets/,
+                name: /pixel art hero or vibrant environment/,
             })
             await messageInput.fill('iPhone test message')
             await page.getByRole('button', { name: 'Send' }).click()
@@ -149,7 +153,7 @@ test.describe('Responsive Design Tests', () => {
             ).toBeVisible()
 
             const messageInput = page.getByRole('textbox', {
-                name: /Ask me about game assets/,
+                name: /pixel art hero or vibrant environment/,
             })
             await messageInput.fill('Small screen test')
             await page.getByRole('button', { name: 'Send' }).click()
@@ -169,7 +173,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Send a message
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Consistency test')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
@@ -186,7 +192,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Should be able to send another message
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Mobile follow-up')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
@@ -198,7 +206,9 @@ test.describe('Responsive Design Tests', () => {
             // Portrait mobile
             await page.setViewportSize({ width: 375, height: 667 })
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Portrait message')
             await page.getByRole('button', { name: 'Send' }).click()
 
@@ -210,7 +220,9 @@ test.describe('Responsive Design Tests', () => {
 
             // Should still function
             await page
-                .getByRole('textbox', { name: /Ask me about game assets/ })
+                .getByRole('textbox', {
+                    name: /pixel art hero or vibrant environment/,
+                })
                 .fill('Landscape message')
             await page.getByRole('button', { name: 'Send' }).click()
             await expect(
