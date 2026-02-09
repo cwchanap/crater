@@ -224,19 +224,19 @@ test.describe('Responsive Design Tests', () => {
             await page.setViewportSize({ width: 375, height: 667 })
 
             // Tap settings button
-            await page.getByRole('button', { name: '⚙️ Settings' }).tap()
+            await page.getByRole('button', { name: '⚙️ Settings' }).click()
             await expect(
                 page.getByText('AI Provider Configuration')
             ).toBeVisible()
 
             // Tap dropdown
-            await page.getByLabel('AI Provider:').tap()
+            await page.getByLabel('AI Provider:').click()
             await page.getByLabel('AI Provider:').selectOption('Google Gemini')
 
             // Tap cancel
             await page
                 .getByRole('button', { name: 'Cancel', exact: true })
-                .tap()
+                .click()
             await expect(
                 page.getByText('AI Provider Configuration')
             ).not.toBeVisible()
