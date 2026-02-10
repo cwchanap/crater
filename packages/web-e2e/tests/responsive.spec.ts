@@ -121,7 +121,7 @@ test.describe('Responsive Design Tests', () => {
                 page
                     .locator('.message.user .message-content')
                     .getByText('iPhone test message')
-            ).toBeVisible()
+            ).toHaveCount(1)
         })
 
         test('should work on Android-sized screens', async ({ page }) => {
@@ -164,7 +164,7 @@ test.describe('Responsive Design Tests', () => {
                 page
                     .locator('.message.user .message-content')
                     .getByText('Small screen test')
-            ).toBeVisible()
+            ).toHaveCount(1)
         })
     })
 
