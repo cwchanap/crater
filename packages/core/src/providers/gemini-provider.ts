@@ -146,7 +146,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         model: string,
         request: AIGenerationRequest
     ): Promise<GeminiResponse> {
-        const url = `${endpoint}/${model}:generateContent?key=${this.config.apiKey}`
+        const url = `${endpoint}/${model}:generateContent`
 
         const parts: GeminiPart[] = [
             {
@@ -184,6 +184,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'x-goog-api-key': this.config.apiKey!,
             },
             body: JSON.stringify(body),
         })
@@ -245,7 +246,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         model: string,
         request: ImageGenerationRequest
     ): Promise<GeminiResponse> {
-        const url = `${endpoint}/${model}:generateContent?key=${this.config.apiKey}`
+        const url = `${endpoint}/${model}:generateContent`
 
         const parts: GeminiPart[] = [
             {
@@ -283,6 +284,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'x-goog-api-key': this.config.apiKey!,
             },
             body: JSON.stringify(body),
         })

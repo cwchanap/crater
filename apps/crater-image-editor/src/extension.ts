@@ -1,7 +1,13 @@
-import * as vscode from 'vscode'
+import {
+    type ExtensionContext,
+    type Uri,
+    commands,
+    window,
+    workspace,
+} from 'vscode'
 import { ImageEditorProvider } from './imageEditorProvider'
 
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: ExtensionContext) {
     try {
         const imageEditorProvider = new ImageEditorProvider(
             context.extensionUri,
@@ -10,22 +16,22 @@ export async function activate(context: vscode.ExtensionContext) {
 
         const viewType = ImageEditorProvider.viewType
 
-        const disposable = vscode.window.registerWebviewViewProvider(
+        const disposable = window.registerWebviewViewProvider(
             viewType,
             imageEditorProvider
         )
 
         context.subscriptions.push(disposable)
 
-        const openEditorCommand = vscode.commands.registerCommand(
+        const openEditorCommand = commands.registerCommand(
             'crater-image-editor.openEditor',
             async () => {
                 try {
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'crater-image-editor.editorView.focus'
                     )
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to open image editor: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -34,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(openEditorCommand)
 
-        const refreshWebviewCommand = vscode.commands.registerCommand(
+        const refreshWebviewCommand = commands.registerCommand(
             'crater-image-editor.refreshWebview',
             () => {
                 imageEditorProvider.refreshWebview()
@@ -43,11 +49,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(refreshWebviewCommand)
 
-        const editImageFromExplorerCommand = vscode.commands.registerCommand(
+        const editImageFromExplorerCommand = commands.registerCommand(
             'crater-image-editor.editImageFromExplorer',
-            async (uri: vscode.Uri) => {
+            async (uri: Uri) => {
                 try {
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'crater-image-editor.editorView.focus'
                     )
 
@@ -55,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         imageEditorProvider.loadImageFromPath(uri.fsPath)
                     }, 500)
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -65,9 +71,9 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(editImageFromExplorerCommand)
 
         // Register loadImage command for external calls (e.g., from crater-ext)
-        const loadImageCommand = vscode.commands.registerCommand(
+        const loadImageCommand = commands.registerCommand(
             'crater-image-editor.loadImage',
-            async (imagePathOrUri: string | vscode.Uri) => {
+            async (imagePathOrUri: string | Uri) => {
                 try {
                     // Convert URI to file path if needed
                     let imagePath: string
@@ -85,13 +91,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
                     // Focus the image editor view first
                     try {
-                        await vscode.commands.executeCommand(
+                        await commands.executeCommand(
                             'crater-image-editor.editorView.focus'
                         )
                     } catch {
                         // Try alternative approach - open the view container first
                         try {
-                            await vscode.commands.executeCommand(
+                            await commands.executeCommand(
                                 'workbench.view.extension.crater-image-editor-container'
                             )
                         } catch {
@@ -110,7 +116,7 @@ export async function activate(context: vscode.ExtensionContext) {
                         }, 1500)
                     }, 500)
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -119,7 +125,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(loadImageCommand)
 
-        const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+        const configChangeListener = workspace.onDidChangeConfiguration(
             async (event) => {
                 if (event.affectsConfiguration('crater-image-editor')) {
                     imageEditorProvider.notifySettingsChanged()
@@ -129,11 +135,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(configChangeListener)
 
-        vscode.window.showInformationMessage(
+        window.showInformationMessage(
             '[Crater Image Editor] Image Editor is now active!'
         )
     } catch (error) {
-        vscode.window.showErrorMessage(
+        window.showErrorMessage(
             `[Crater Image Editor] Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`
         )
         throw error

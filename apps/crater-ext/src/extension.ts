@@ -1,11 +1,17 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode'
+import {
+    type ExtensionContext,
+    type OpenDialogOptions,
+    type Uri,
+    commands,
+    window,
+    workspace,
+    ConfigurationTarget,
+} from 'vscode'
 import { ChatbotProvider } from './chatbotProvider'
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: ExtensionContext) {
     // Use the console to output diagnostic information (console.log) and errors (console.error)
     // This line of code will only be executed once when your extension is activated
     try {
@@ -18,7 +24,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Register the webview view provider for the sidebar (main)
         const viewType = ChatbotProvider.viewType
 
-        const disposable = vscode.window.registerWebviewViewProvider(
+        const disposable = window.registerWebviewViewProvider(
             viewType,
             chatbotProvider
         )
@@ -26,16 +32,16 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(disposable)
 
         // Register the command to open the chatbot (focuses the sidebar view)
-        const openChatbotCommand = vscode.commands.registerCommand(
+        const openChatbotCommand = commands.registerCommand(
             'crater-ext.openChatbot',
             async () => {
                 try {
                     // Focus the chatbot view in the explorer sidebar
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'crater-ext.chatbotView.focus'
                     )
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to open chatbot: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -45,13 +51,13 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(openChatbotCommand)
 
         // Register a command to update AI provider when configuration changes
-        const updateProviderCommand = vscode.commands.registerCommand(
+        const updateProviderCommand = commands.registerCommand(
             'crater-ext.updateAIProvider',
             async () => {
                 try {
                     await chatbotProvider.updateAIProvider()
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to update AI provider: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -61,7 +67,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(updateProviderCommand)
 
         // Register a command to manually refresh the webview (for development)
-        const refreshWebviewCommand = vscode.commands.registerCommand(
+        const refreshWebviewCommand = commands.registerCommand(
             'crater-ext.refreshWebview',
             () => {
                 chatbotProvider.refreshWebview()
@@ -71,7 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(refreshWebviewCommand)
 
         // Register a command to toggle saving for performance testing
-        const toggleSavingCommand = vscode.commands.registerCommand(
+        const toggleSavingCommand = commands.registerCommand(
             'crater-ext.toggleSaving',
             () => {
                 chatbotProvider.toggleSaving()
@@ -81,11 +87,11 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(toggleSavingCommand)
 
         // Register a command to browse for folder selection
-        const browseFolderCommand = vscode.commands.registerCommand(
+        const browseFolderCommand = commands.registerCommand(
             'crater-ext.browseFolder',
             async () => {
                 try {
-                    const options: vscode.OpenDialogOptions = {
+                    const options: OpenDialogOptions = {
                         canSelectFolders: true,
                         canSelectFiles: false,
                         canSelectMany: false,
@@ -93,29 +99,28 @@ export async function activate(context: vscode.ExtensionContext) {
                         title: 'Select Directory for Saving Images',
                     }
 
-                    const result = await vscode.window.showOpenDialog(options)
+                    const result = await window.showOpenDialog(options)
                     if (result && result[0]) {
                         const selectedPath = result[0].fsPath
 
                         // Update the configuration
-                        const config =
-                            vscode.workspace.getConfiguration('crater-ext')
+                        const config = workspace.getConfiguration('crater-ext')
                         await config.update(
                             'imageSaveDirectory',
                             selectedPath,
-                            vscode.ConfigurationTarget.Global
+                            ConfigurationTarget.Global
                         )
 
                         // Notify the webview about the change
                         chatbotProvider.notifySettingsChanged()
 
-                        vscode.window.showInformationMessage(
+                        window.showInformationMessage(
                             `[Crater] Image save directory updated to: ${selectedPath}`
                         )
                         return selectedPath
                     }
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to select folder: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -125,14 +130,12 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(browseFolderCommand)
 
         // Register a command to open image in the image editor extension
-        const openInImageEditorCommand = vscode.commands.registerCommand(
+        const openInImageEditorCommand = commands.registerCommand(
             'crater-ext.openInImageEditor',
-            async (uri: vscode.Uri) => {
+            async (uri: Uri) => {
                 try {
                     if (!uri) {
-                        vscode.window.showErrorMessage(
-                            '[Crater] No file selected'
-                        )
+                        window.showErrorMessage('[Crater] No file selected')
                         return
                     }
 
@@ -143,18 +146,18 @@ export async function activate(context: vscode.ExtensionContext) {
 
                     // Execute the command to load image in the image editor
                     // Pass the original URI object directly
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'crater-image-editor.loadImage',
                         uri
                     )
 
                     // Focus the image editor view
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'crater-image-editor.editorView.focus'
                     )
 
                     // Show a notification to help user find the image editor
-                    vscode.window.showInformationMessage(
+                    window.showInformationMessage(
                         `✅ Image opened in Crater Image Editor! Look for the image editor icon in the activity bar or sidebar.`,
                         'OK'
                     )
@@ -165,11 +168,11 @@ export async function activate(context: vscode.ExtensionContext) {
                             "command 'crater-image-editor.loadImage' not found"
                         )
                     ) {
-                        vscode.window.showErrorMessage(
+                        window.showErrorMessage(
                             '[Crater] Image Editor extension not found or not active. Please install and activate the Crater Image Editor extension.'
                         )
                     } else {
-                        vscode.window.showErrorMessage(
+                        window.showErrorMessage(
                             `[Crater] Failed to open image in editor: ${error instanceof Error ? error.message : String(error)}`
                         )
                     }
@@ -180,7 +183,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(openInImageEditorCommand)
 
         // Listen for configuration changes
-        const configChangeListener = vscode.workspace.onDidChangeConfiguration(
+        const configChangeListener = workspace.onDidChangeConfiguration(
             async (event) => {
                 if (event.affectsConfiguration('crater-ext')) {
                     await chatbotProvider.updateAIProvider()
@@ -190,11 +193,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
         context.subscriptions.push(configChangeListener)
 
-        vscode.window.showInformationMessage(
+        window.showInformationMessage(
             '[Crater] Game Asset Assistant is now active!'
         )
     } catch (error) {
-        vscode.window.showErrorMessage(
+        window.showErrorMessage(
             `[Crater] Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`
         )
         throw error // Re-throw to ensure VS Code knows activation failed

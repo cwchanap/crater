@@ -25,6 +25,20 @@ export interface AssetSuggestion {
     followUpQuestion?: string
 }
 
+export interface ImageStates {
+    deleted: boolean[]
+    hidden: boolean[]
+}
+
+export interface ImageData {
+    images: string[]
+    prompt: string
+    savedPaths?: string[]
+    imageStates?: ImageStates
+    usage?: import('./base-provider').ImageGenerationUsage
+    cost?: import('./base-provider').ImageGenerationCost
+}
+
 // Re-export all AI provider types and base class from dedicated file
 export * from './base-provider'
 

@@ -1,6 +1,24 @@
-import * as vscode from 'vscode'
-import * as fs from 'fs'
-import * as path from 'path'
+import {
+    type ExtensionContext,
+    type FileSystemWatcher,
+    type OpenDialogOptions,
+    Uri,
+    type Webview,
+    type WebviewView,
+    type WebviewViewProvider,
+    commands,
+    EventEmitter,
+    window,
+    workspace,
+} from 'vscode'
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    statSync,
+    writeFileSync,
+} from 'fs'
+import { basename, extname, join, parse as pathParse } from 'path'
 
 interface WebviewMessage {
     type: string
@@ -21,6 +39,27 @@ interface WebviewMessage {
     [key: string]: unknown
 }
 
+type OutboundWebviewMessage =
+    | {
+          type: 'settings'
+          outputDirectory: string
+          outputFormat: string
+          quality: number
+          preserveOriginal: boolean
+      }
+    | {
+          type: 'load-image'
+          imageData: string
+          fileName: string
+          originalPath: string
+          format: string
+          size: number
+      }
+    | { type: 'test-connection'; message: string; timestamp: number }
+    | { type: 'image-saved'; savedPath: string }
+    | { type: 'extension-response'; message: string; timestamp?: number }
+    | { type: 'test-response'; message: string; timestamp: number }
+
 interface ImageEditSession {
     id: string
     originalPath: string
@@ -32,22 +71,22 @@ interface ImageEditSession {
     createdAt: string
 }
 
-export class ImageEditorProvider implements vscode.WebviewViewProvider {
+export class ImageEditorProvider implements WebviewViewProvider {
     public static readonly viewType = 'crater-image-editor.editorView'
-    private _view?: vscode.WebviewView
-    private _extensionContext?: vscode.ExtensionContext
+    private _view?: WebviewView
+    private _extensionContext?: ExtensionContext
     private _currentSession: ImageEditSession | null = null
-    private _fileWatcher?: vscode.FileSystemWatcher
-    private _pendingMessages: any[] = []
+    private _fileWatcher?: FileSystemWatcher
+    private _pendingMessages: OutboundWebviewMessage[] = []
     private _webviewReady = false
     private _isVisible = true
-    private _onDidChangeVisibilityEmitter = new vscode.EventEmitter<boolean>()
+    private _onDidChangeVisibilityEmitter = new EventEmitter<boolean>()
     public readonly onDidChangeVisibility =
         this._onDidChangeVisibilityEmitter.event
 
     constructor(
-        private readonly _extensionUri: vscode.Uri,
-        extensionContext?: vscode.ExtensionContext
+        private readonly _extensionUri: Uri,
+        extensionContext?: ExtensionContext
     ) {
         this._extensionContext = extensionContext
         this.setupDevelopmentWatcher()
@@ -92,14 +131,14 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         }
 
         try {
-            const handleFileChange = async (uri?: vscode.Uri) => {
-                const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
+            const handleFileChange = async (uri?: Uri) => {
+                const fileName = uri ? basename(uri.fsPath) : 'unknown'
 
                 try {
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'workbench.action.webview.reloadWebviewAction'
                     )
-                    vscode.window.setStatusBarMessage(
+                    window.setStatusBarMessage(
                         `🔥 ${fileName} → webview reloaded`,
                         2000
                     )
@@ -109,28 +148,28 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                             this._view.webview
                         )
                     }
-                    vscode.window.setStatusBarMessage(
+                    window.setStatusBarMessage(
                         `🔄 ${fileName} → manual refresh`,
                         2000
                     )
                 }
             }
 
-            const distJsPattern = path.join(
+            const distJsPattern = join(
                 this._extensionUri.fsPath,
                 'dist',
                 'webview.js'
             )
-            const distCssPattern = path.join(
+            const distCssPattern = join(
                 this._extensionUri.fsPath,
                 'dist',
                 'webview.css'
             )
 
             const distJsWatcher =
-                vscode.workspace.createFileSystemWatcher(distJsPattern)
+                workspace.createFileSystemWatcher(distJsPattern)
             const distCssWatcher =
-                vscode.workspace.createFileSystemWatcher(distCssPattern)
+                workspace.createFileSystemWatcher(distCssPattern)
 
             distJsWatcher.onDidChange((uri) => {
                 setTimeout(() => handleFileChange(uri), 300)
@@ -141,7 +180,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
             this._fileWatcher = distJsWatcher
 
-            vscode.window.showInformationMessage(
+            window.showInformationMessage(
                 '🔥 Crater Image Editor Dev Mode: Auto-reload on webview changes'
             )
         } catch {
@@ -178,7 +217,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 this._view.webview
             )
         } else {
-            vscode.window.showWarningMessage('No webview available to refresh')
+            window.showWarningMessage('No webview available to refresh')
         }
     }
 
@@ -193,7 +232,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         )
 
         // Send settings first
-        const config = vscode.workspace.getConfiguration('crater-image-editor')
+        const config = workspace.getConfiguration('crater-image-editor')
         this.sendMessageToWebview({
             type: 'settings',
             outputDirectory: config.get<string>(
@@ -218,15 +257,15 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
     public async loadImageFromPath(imagePath: string): Promise<void> {
         try {
-            if (!fs.existsSync(imagePath)) {
+            if (!existsSync(imagePath)) {
                 throw new Error('Image file not found')
             }
 
-            const fileStats = fs.statSync(imagePath)
-            const imageBuffer = fs.readFileSync(imagePath)
+            const fileStats = statSync(imagePath)
+            const imageBuffer = readFileSync(imagePath)
             const base64Data = imageBuffer.toString('base64')
-            const fileName = path.basename(imagePath)
-            const ext = path.extname(imagePath).toLowerCase().substring(1)
+            const fileName = basename(imagePath)
+            const ext = extname(imagePath).toLowerCase().substring(1)
 
             const mimeType = this.getMimeType(ext)
             const dataUrl = `data:${mimeType};base64,${base64Data}`
@@ -246,15 +285,14 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             this.persistSession()
 
             if (this._view) {
-                const message = {
+                this.sendMessageToWebview({
                     type: 'load-image',
                     imageData: dataUrl,
                     fileName: fileName,
                     originalPath: imagePath,
                     format: ext,
                     size: fileStats.size,
-                }
-                this.sendMessageToWebview(message)
+                })
 
                 // Send a follow-up test message to verify the webview received the load-image message
                 setTimeout(() => {
@@ -280,7 +318,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                 }, 1000)
             }
         } catch (error) {
-            vscode.window.showErrorMessage(
+            window.showErrorMessage(
                 `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
             )
         }
@@ -299,7 +337,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         return mimeTypes[normalizedExt] || 'image/png'
     }
 
-    private sendMessageToWebview(message: any): void {
+    private sendMessageToWebview(message: OutboundWebviewMessage): void {
         if (this._view && this._webviewReady) {
             this._view.webview.postMessage(message)
         } else {
@@ -322,9 +360,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
     public notifySettingsChanged(): void {
         if (this._view) {
-            const config = vscode.workspace.getConfiguration(
-                'crater-image-editor'
-            )
+            const config = workspace.getConfiguration('crater-image-editor')
             const outputDirectory = config.get<string>(
                 'outputDirectory',
                 '${workspaceFolder}/edited-images'
@@ -352,52 +388,49 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         outputFormat: string
     ): Promise<string | null> {
         try {
-            const config = vscode.workspace.getConfiguration(
-                'crater-image-editor'
-            )
+            const config = workspace.getConfiguration('crater-image-editor')
             let outputDirectory = config.get<string>(
                 'outputDirectory',
                 '${workspaceFolder}/edited-images'
             )
 
             if (
-                vscode.workspace.workspaceFolders &&
-                vscode.workspace.workspaceFolders.length > 0
+                workspace.workspaceFolders &&
+                workspace.workspaceFolders.length > 0
             ) {
-                const workspaceFolder =
-                    vscode.workspace.workspaceFolders[0].uri.fsPath
+                const workspaceFolder = workspace.workspaceFolders[0].uri.fsPath
                 outputDirectory = outputDirectory.replace(
                     '${workspaceFolder}',
                     workspaceFolder
                 )
             } else {
-                outputDirectory = path.join(
+                outputDirectory = join(
                     this._extensionUri.fsPath,
                     'edited-images'
                 )
             }
 
-            if (!fs.existsSync(outputDirectory)) {
-                fs.mkdirSync(outputDirectory, { recursive: true })
+            if (!existsSync(outputDirectory)) {
+                mkdirSync(outputDirectory, { recursive: true })
             }
 
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-            const nameWithoutExt = path.parse(fileName).name
+            const nameWithoutExt = pathParse(fileName).name
             const newFileName = `${nameWithoutExt}_edited_${timestamp}.${outputFormat}`
-            const filePath = path.join(outputDirectory, newFileName)
+            const filePath = join(outputDirectory, newFileName)
 
             const base64Data = imageData.split(',')[1] || imageData
             const imageBuffer = Buffer.from(base64Data, 'base64')
-            fs.writeFileSync(filePath, imageBuffer)
+            writeFileSync(filePath, imageBuffer)
 
             return filePath
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to save image: ${error}`)
+            window.showErrorMessage(`Failed to save image: ${error}`)
             return null
         }
     }
 
-    resolveWebviewView(webviewView: vscode.WebviewView): void | Thenable<void> {
+    resolveWebviewView(webviewView: WebviewView): void | Thenable<void> {
         this._view = webviewView
 
         // Don't reset webview ready state if this is just a visibility change
@@ -408,7 +441,10 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._extensionUri],
+            localResourceRoots: [
+                this._extensionUri,
+                ...(workspace.workspaceFolders?.map((f) => f.uri) ?? []),
+            ],
         }
 
         // Only set HTML for the first time or if webview was actually disposed
@@ -459,7 +495,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
             return
         }
 
-        const config = vscode.workspace.getConfiguration('crater-image-editor')
+        const config = workspace.getConfiguration('crater-image-editor')
         const outputDirectory = config.get<string>(
             'outputDirectory',
             '${workspaceFolder}/edited-images'
@@ -508,7 +544,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         switch (message.type) {
             case 'select-image': {
                 try {
-                    const options: vscode.OpenDialogOptions = {
+                    const options: OpenDialogOptions = {
                         canSelectFiles: true,
                         canSelectFolders: false,
                         canSelectMany: false,
@@ -526,12 +562,12 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                         },
                     }
 
-                    const result = await vscode.window.showOpenDialog(options)
+                    const result = await window.showOpenDialog(options)
                     if (result && result[0]) {
                         await this.loadImageFromPath(result[0].fsPath)
                     }
                 } catch (error) {
-                    vscode.window.showErrorMessage(
+                    window.showErrorMessage(
                         `Failed to select image: ${error instanceof Error ? error.message : String(error)}`
                     )
                 }
@@ -553,17 +589,15 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
                             savedPath: savedPath,
                         })
 
-                        vscode.window.showInformationMessage(
-                            `Image saved to: ${path.basename(savedPath)}`
+                        window.showInformationMessage(
+                            `Image saved to: ${basename(savedPath)}`
                         )
                     }
                 }
                 break
             }
             case 'get-settings': {
-                const config = vscode.workspace.getConfiguration(
-                    'crater-image-editor'
-                )
+                const config = workspace.getConfiguration('crater-image-editor')
                 const outputDirectory = config.get<string>(
                     'outputDirectory',
                     '${workspaceFolder}/edited-images'
@@ -648,23 +682,23 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
+    private _getHtmlForWebview(webview: Webview) {
         try {
-            const htmlPath = path.join(
+            const htmlPath = join(
                 this._extensionUri.fsPath,
                 'src',
                 'webview.html'
             )
-            let html = fs.readFileSync(htmlPath, 'utf8')
+            let html = readFileSync(htmlPath, 'utf8')
 
-            const scriptPathOnDisk = vscode.Uri.joinPath(
+            const scriptPathOnDisk = Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.js'
             )
             const scriptUriWebview = webview.asWebviewUri(scriptPathOnDisk)
 
-            const cssPathOnDisk = vscode.Uri.joinPath(
+            const cssPathOnDisk = Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.css'
@@ -683,6 +717,14 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
 
             return html
         } catch (error) {
+            const errorMessage =
+                error instanceof Error ? error.message : String(error)
+            const escaped = errorMessage
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
             return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -694,7 +736,7 @@ export class ImageEditorProvider implements vscode.WebviewViewProvider {
     <div style="padding: 20px; text-align: center; color: var(--vscode-errorForeground);">
         <h2>Error Loading Webview</h2>
         <p>Unable to load the webview content. Please try reloading the extension.</p>
-        <p>Error: ${error instanceof Error ? error.message : String(error)}</p>
+        <p>Error: ${escaped}</p>
     </div>
 </body>
 </html>`
