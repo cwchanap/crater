@@ -1,8 +1,19 @@
-import {
-    S3Client,
-    PutObjectCommand,
-    PutObjectCommandInput,
-} from '@aws-sdk/client-s3'
+type PutObjectCommandInput = import('@aws-sdk/client-s3').PutObjectCommandInput
+
+let _s3Module: typeof import('@aws-sdk/client-s3') | undefined
+
+async function getS3Module(): Promise<typeof import('@aws-sdk/client-s3')> {
+    if (!_s3Module) {
+        try {
+            _s3Module = await import('@aws-sdk/client-s3')
+        } catch {
+            throw new Error(
+                '@aws-sdk/client-s3 is required for S3Service. Install it with: npm install @aws-sdk/client-s3'
+            )
+        }
+    }
+    return _s3Module
+}
 
 export interface S3Config {
     bucketName: string
@@ -16,19 +27,31 @@ export interface S3UploadOptions {
     metadata?: Record<string, string>
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type S3ClientInstance = {
+    send: (command: any) => Promise<any>
+    config: { region: unknown }
+}
+
 export class S3Service {
-    private client: S3Client
+    private client: S3ClientInstance
     private bucketName: string
 
-    constructor(config: S3Config) {
-        this.bucketName = config.bucketName
-        this.client = new S3Client({
+    private constructor(client: S3ClientInstance, bucketName: string) {
+        this.client = client
+        this.bucketName = bucketName
+    }
+
+    static async create(config: S3Config): Promise<S3Service> {
+        const s3 = await getS3Module()
+        const client = new s3.S3Client({
             region: config.region,
             credentials: {
                 accessKeyId: config.accessKeyId,
                 secretAccessKey: config.secretAccessKey,
             },
         })
+        return new S3Service(client, config.bucketName)
     }
 
     /**
@@ -46,7 +69,8 @@ export class S3Service {
         const { contentType = 'application/octet-stream', metadata = {} } =
             options
 
-        const command = new PutObjectCommand({
+        const s3 = await getS3Module()
+        const command = new s3.PutObjectCommand({
             Bucket: this.bucketName,
             Key: key,
             Body: body,

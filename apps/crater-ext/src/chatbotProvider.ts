@@ -1,53 +1,46 @@
-import * as vscode from 'vscode'
-import * as fs from 'fs'
-import * as path from 'path'
+import {
+    type CancellationToken,
+    type ExtensionContext,
+    type FileSystemWatcher,
+    type Webview,
+    type WebviewView,
+    type WebviewViewProvider,
+    type WebviewViewResolveContext,
+    commands,
+    ConfigurationTarget,
+    Uri,
+    window,
+    workspace,
+} from 'vscode'
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    writeFileSync,
+    promises as fsPromises,
+} from 'fs'
+import { basename, dirname, join } from 'path'
 import {
     ChatBotService,
     GeminiImageProvider,
     OpenAIImageProvider,
+    type ImageStates,
+    type ImageData,
+    type ImageGenerationUsage,
+    type ImageGenerationCost,
 } from '@crater/core'
 
 interface WebviewMessage {
     type: string
     text?: string
     messageIndex?: number
-    imageStates?: {
-        deleted: boolean[]
-        hidden: boolean[]
-    }
+    imageStates?: ImageStates
     messages?: Array<{
         text: string
         sender: string
         timestamp: Date
         messageType?: 'text' | 'image'
-        imageData?: {
-            images: string[]
-            prompt: string
-            savedPaths?: string[]
-            imageStates?: {
-                deleted: boolean[]
-                hidden: boolean[]
-            }
-            usage?: {
-                inputTextTokens: number
-                inputImageTokens: number
-                outputImageTokens: number
-                totalTokens: number
-            }
-            cost?: {
-                inputTextCost: number
-                inputImageCost: number
-                outputImageCost: number
-                perImageCost: number
-                totalImageCost: number
-                totalCost: number
-                currency: string
-                breakdown: {
-                    tokenBasedCost: number
-                    qualityBasedCost: number
-                }
-            }
-        }
+        imageData?: ImageData
     }>
     [key: string]: unknown
 }
@@ -58,34 +51,7 @@ interface ExtendedChatMessage {
     sender: 'user' | 'assistant'
     timestamp: string
     messageType?: 'text' | 'image'
-    imageData?: {
-        images: string[]
-        prompt: string
-        savedPaths?: string[]
-        imageStates?: {
-            deleted: boolean[]
-            hidden: boolean[]
-        }
-        usage?: {
-            inputTextTokens: number
-            inputImageTokens: number
-            outputImageTokens: number
-            totalTokens: number
-        }
-        cost?: {
-            inputTextCost: number
-            inputImageCost: number
-            outputImageCost: number
-            perImageCost: number
-            totalImageCost: number
-            totalCost: number
-            currency: string
-            breakdown: {
-                tokenBasedCost: number
-                qualityBasedCost: number
-            }
-        }
-    }
+    imageData?: ImageData
 }
 
 interface ChatSession {
@@ -96,25 +62,25 @@ interface ChatSession {
     lastActivity: string
 }
 
-export class ChatbotProvider implements vscode.WebviewViewProvider {
+export class ChatbotProvider implements WebviewViewProvider {
     public static readonly viewType = 'crater-ext.chatbotView'
-    private _view?: vscode.WebviewView
+    private _view?: WebviewView
     private chatBotService: ChatBotService
     private currentProvider: GeminiImageProvider | OpenAIImageProvider | null
     // private _isInitialized = false // Unused for now
-    private _extensionContext?: vscode.ExtensionContext
+    private _extensionContext?: ExtensionContext
     private _extendedChatHistory: ExtendedChatMessage[] = []
     private _chatSessions: ChatSession[] = []
     private _currentSessionId: string | null = null
-    private _fileWatcher?: vscode.FileSystemWatcher
+    private _fileWatcher?: FileSystemWatcher
     private _saveTimeout?: NodeJS.Timeout
     private _pendingFileDeletions: string[] = []
     private _lastUpdateStates = new Map<number, string>()
     private _savingDisabled = false // Set to true to test without saving
 
     constructor(
-        private readonly _extensionUri: vscode.Uri,
-        extensionContext?: vscode.ExtensionContext
+        private readonly _extensionUri: Uri,
+        extensionContext?: ExtensionContext
     ) {
         // Store extension context for persistent storage
         this._extensionContext = extensionContext
@@ -137,7 +103,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 // this._isInitialized = true
             })
             .catch((error) => {
-                vscode.window.showErrorMessage(
+                window.showErrorMessage(
                     `[Crater] Failed to initialize chatbot: ${error instanceof Error ? error.message : String(error)}`
                 )
             })
@@ -156,15 +122,15 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
 
         try {
-            const handleFileChange = async (uri?: vscode.Uri) => {
-                const fileName = uri ? path.basename(uri.fsPath) : 'unknown'
+            const handleFileChange = async (uri?: Uri) => {
+                const fileName = uri ? basename(uri.fsPath) : 'unknown'
 
                 // Option 1: Use VS Code's built-in webview reload command
                 try {
-                    await vscode.commands.executeCommand(
+                    await commands.executeCommand(
                         'workbench.action.webview.reloadWebviewAction'
                     )
-                    vscode.window.setStatusBarMessage(
+                    window.setStatusBarMessage(
                         `🔥 ${fileName} → webview reloaded`,
                         2000
                     )
@@ -175,7 +141,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                             this._view.webview
                         )
                     }
-                    vscode.window.setStatusBarMessage(
+                    window.setStatusBarMessage(
                         `🔄 ${fileName} → manual refresh`,
                         2000
                     )
@@ -183,21 +149,21 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             }
 
             // Watch dist files for immediate refresh
-            const distJsPattern = path.join(
+            const distJsPattern = join(
                 this._extensionUri.fsPath,
                 'dist',
                 'webview.js'
             )
-            const distCssPattern = path.join(
+            const distCssPattern = join(
                 this._extensionUri.fsPath,
                 'dist',
                 'webview.css'
             )
 
             const distJsWatcher =
-                vscode.workspace.createFileSystemWatcher(distJsPattern)
+                workspace.createFileSystemWatcher(distJsPattern)
             const distCssWatcher =
-                vscode.workspace.createFileSystemWatcher(distCssPattern)
+                workspace.createFileSystemWatcher(distCssPattern)
 
             // Immediate refresh for dist files
             distJsWatcher.onDidChange((uri) => {
@@ -209,7 +175,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             // Store watcher for cleanup
             this._fileWatcher = distJsWatcher
-            vscode.window.showInformationMessage(
+            window.showInformationMessage(
                 '🔥 Crater Dev Mode: Auto-reload on webview changes'
             )
         } catch {
@@ -257,12 +223,12 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
                 // Try to load from fast file-based storage first
                 try {
-                    const sessionFilePath = path.join(
+                    const sessionFilePath = join(
                         this._extensionContext.globalStorageUri.fsPath,
                         `session_${this._currentSessionId}.json`
                     )
-                    const fileContent = await vscode.workspace.fs.readFile(
-                        vscode.Uri.file(sessionFilePath)
+                    const fileContent = await workspace.fs.readFile(
+                        Uri.file(sessionFilePath)
                     )
                     const sessionJson =
                         Buffer.from(fileContent).toString('utf8')
@@ -436,8 +402,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         // Delete files asynchronously to avoid blocking the UI
         const deletionPromises = filePaths.map(async (filePath) => {
             try {
-                if (fs.existsSync(filePath)) {
-                    await fs.promises.unlink(filePath)
+                if (existsSync(filePath)) {
+                    await fsPromises.unlink(filePath)
                     return { success: true, path: filePath }
                 }
                 return {
@@ -461,7 +427,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         ).length
 
         if (deletedCount > 0) {
-            vscode.window.showInformationMessage(
+            window.showInformationMessage(
                 `Deleted ${deletedCount} image file${deletedCount > 1 ? 's' : ''} from directory.`
             )
         }
@@ -475,11 +441,11 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 )
                 .map((r) =>
                     r.status === 'fulfilled'
-                        ? path.basename(r.value.path)
+                        ? basename(r.value.path)
                         : 'unknown'
                 )
                 .join(', ')
-            vscode.window.showWarningMessage(
+            window.showWarningMessage(
                 `Failed to delete ${failedCount} image file${failedCount > 1 ? 's' : ''}: ${failedPaths}. Files may have been moved or deleted manually.`
             )
         }
@@ -554,19 +520,19 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 const sessionJson = JSON.stringify(lightweightSession)
 
                 // Use file-based storage instead of VS Code globalState for speed
-                const sessionFilePath = path.join(
+                const sessionFilePath = join(
                     this._extensionContext.globalStorageUri.fsPath,
                     `session_${this._currentSessionId}.json`
                 )
 
                 // Ensure directory exists
-                await vscode.workspace.fs.createDirectory(
+                await workspace.fs.createDirectory(
                     this._extensionContext.globalStorageUri
                 )
 
                 // Write directly to file (much faster than globalState)
-                await vscode.workspace.fs.writeFile(
-                    vscode.Uri.file(sessionFilePath),
+                await workspace.fs.writeFile(
+                    Uri.file(sessionFilePath),
                     Buffer.from(sessionJson, 'utf8')
                 )
             }
@@ -674,7 +640,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     images: msg.imageData.savedPaths
                         .map((path) => {
                             if (path) {
-                                const fileUri = vscode.Uri.file(path)
+                                const fileUri = Uri.file(path)
                                 return this._view!.webview.asWebviewUri(
                                     fileUri
                                 ).toString()
@@ -693,34 +659,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         text: string,
         sender: 'user' | 'assistant',
         messageType: 'text' | 'image' = 'text',
-        imageData?: {
-            images: string[]
-            prompt: string
-            savedPaths?: string[]
-            imageStates?: {
-                deleted: boolean[]
-                hidden: boolean[]
-            }
-            usage?: {
-                inputTextTokens: number
-                inputImageTokens: number
-                outputImageTokens: number
-                totalTokens: number
-            }
-            cost?: {
-                inputTextCost: number
-                inputImageCost: number
-                outputImageCost: number
-                perImageCost: number
-                totalImageCost: number
-                totalCost: number
-                currency: string
-                breakdown: {
-                    tokenBasedCost: number
-                    qualityBasedCost: number
-                }
-            }
-        }
+        imageData?: ImageData
     ): void {
         const message: ExtendedChatMessage = {
             id: this.generateMessageId(),
@@ -756,7 +695,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     private async initializeAIProvider(): Promise<void> {
         try {
-            const config = vscode.workspace.getConfiguration('crater-ext')
+            const config = workspace.getConfiguration('crater-ext')
             const aiProvider = config.get<string>('aiProvider', 'gemini') // Default to gemini
 
             let provider: GeminiImageProvider | OpenAIImageProvider | null =
@@ -855,51 +794,47 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
             this._view.webview.html = this._getHtmlForWebview(
                 this._view.webview
             )
-            vscode.window.showInformationMessage(
-                '🔄 Webview refreshed manually'
-            )
+            window.showInformationMessage('🔄 Webview refreshed manually')
         } else {
-            vscode.window.showWarningMessage('No webview available to refresh')
+            window.showWarningMessage('No webview available to refresh')
         }
     }
 
     public toggleSaving(): void {
         this._savingDisabled = !this._savingDisabled
         const status = this._savingDisabled ? 'DISABLED' : 'ENABLED'
-        vscode.window.showInformationMessage(`[Crater] Saving ${status}`)
+        window.showInformationMessage(`[Crater] Saving ${status}`)
+    }
+
+    private getExtensionSettings() {
+        const config = workspace.getConfiguration('crater-ext')
+        const aiProvider = config.get<string>('aiProvider', 'gemini')
+        const aiModel = config.get<string>(
+            'aiModel',
+            aiProvider === 'gemini'
+                ? 'gemini-2.5-flash-image-preview'
+                : 'gpt-image-1'
+        )
+        return {
+            aiProvider,
+            aiModel,
+            geminiApiKey: config.get<string>('geminiApiKey', ''),
+            openaiApiKey: config.get<string>('openaiApiKey', ''),
+            imageSaveDirectory: config.get<string>(
+                'imageSaveDirectory',
+                '${workspaceFolder}/images'
+            ),
+            autoSaveImages: config.get<boolean>('autoSaveImages', true),
+            imageSize: config.get<string>('imageSize', 'auto'),
+            imageQuality: config.get<string>('imageQuality', 'auto'),
+        }
     }
 
     public notifySettingsChanged(): void {
         if (this._view) {
-            const config = vscode.workspace.getConfiguration('crater-ext')
-            const aiProvider = config.get<string>('aiProvider', 'gemini')
-            const aiModel = config.get<string>(
-                'aiModel',
-                aiProvider === 'gemini'
-                    ? 'gemini-2.5-flash-image-preview'
-                    : 'gpt-image-1'
-            )
-
-            const geminiApiKey = config.get<string>('geminiApiKey', '')
-            const openaiApiKey = config.get<string>('openaiApiKey', '')
-            const imageSaveDirectory = config.get<string>(
-                'imageSaveDirectory',
-                '${workspaceFolder}/images'
-            )
-            const autoSaveImages = config.get<boolean>('autoSaveImages', true)
-            const imageSize = config.get<string>('imageSize', 'auto')
-            const imageQuality = config.get<string>('imageQuality', 'auto')
-
             this._view.webview.postMessage({
                 type: 'settings',
-                aiProvider,
-                aiModel,
-                geminiApiKey,
-                openaiApiKey,
-                imageSaveDirectory,
-                autoSaveImages,
-                imageSize,
-                imageQuality,
+                ...this.getExtensionSettings(),
             })
         }
     }
@@ -909,7 +844,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         prompt: string
     ): Promise<string | null> {
         try {
-            const config = vscode.workspace.getConfiguration('crater-ext')
+            const config = workspace.getConfiguration('crater-ext')
             const autoSave = config.get<boolean>('autoSaveImages', true)
 
             if (!autoSave) {
@@ -923,23 +858,22 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
             // Resolve VS Code variables
             if (
-                vscode.workspace.workspaceFolders &&
-                vscode.workspace.workspaceFolders.length > 0
+                workspace.workspaceFolders &&
+                workspace.workspaceFolders.length > 0
             ) {
-                const workspaceFolder =
-                    vscode.workspace.workspaceFolders[0].uri.fsPath
+                const workspaceFolder = workspace.workspaceFolders[0].uri.fsPath
                 saveDirectory = saveDirectory.replace(
                     '${workspaceFolder}',
                     workspaceFolder
                 )
             } else {
                 // No workspace, use extension directory
-                saveDirectory = path.join(this._extensionUri.fsPath, 'images')
+                saveDirectory = join(this._extensionUri.fsPath, 'images')
             }
 
             // Create directory if it doesn't exist
-            if (!fs.existsSync(saveDirectory)) {
-                fs.mkdirSync(saveDirectory, { recursive: true })
+            if (!existsSync(saveDirectory)) {
+                mkdirSync(saveDirectory, { recursive: true })
             }
 
             // Generate filename from prompt and timestamp
@@ -951,15 +885,15 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 .substring(0, 50)
 
             const filename = `${sanitizedPrompt}_${timestamp}.png`
-            const filePath = path.join(saveDirectory, filename)
+            const filePath = join(saveDirectory, filename)
 
             // Convert base64 to buffer and save
             const imageBuffer = Buffer.from(base64Data, 'base64')
-            fs.writeFileSync(filePath, imageBuffer)
+            writeFileSync(filePath, imageBuffer)
 
             return filePath
         } catch (error) {
-            vscode.window.showErrorMessage(
+            window.showErrorMessage(
                 `Failed to save image: ${error instanceof Error ? error.message : String(error)}`
             )
             return null
@@ -968,16 +902,19 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
     // This method is called by VS Code when the view needs to be shown
     resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        _context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken
+        webviewView: WebviewView,
+        _context: WebviewViewResolveContext,
+        _token: CancellationToken
     ): void | Thenable<void> {
         this._view = webviewView
 
         // Configure the webview
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._extensionUri],
+            localResourceRoots: [
+                this._extensionUri,
+                ...(workspace.workspaceFolders?.map((f) => f.uri) ?? []),
+            ],
         }
 
         // Set the HTML content
@@ -1018,45 +955,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     })
 
                     // Send settings
-                    const config =
-                        vscode.workspace.getConfiguration('crater-ext')
-                    const aiProvider = config.get<string>(
-                        'aiProvider',
-                        'gemini'
-                    )
-                    const aiModel = config.get<string>(
-                        'aiModel',
-                        aiProvider === 'gemini'
-                            ? 'gemini-2.5-flash-image-preview'
-                            : 'gpt-image-1'
-                    )
-
-                    const geminiApiKey = config.get<string>('geminiApiKey', '')
-                    const openaiApiKey = config.get<string>('openaiApiKey', '')
-                    const imageSaveDirectory = config.get<string>(
-                        'imageSaveDirectory',
-                        '${workspaceFolder}/images'
-                    )
-                    const autoSaveImages = config.get<boolean>(
-                        'autoSaveImages',
-                        true
-                    )
-                    const imageSize = config.get<string>('imageSize', 'auto')
-                    const imageQuality = config.get<string>(
-                        'imageQuality',
-                        'auto'
-                    )
-
                     this._view.webview.postMessage({
                         type: 'settings',
-                        aiProvider,
-                        aiModel,
-                        geminiApiKey,
-                        openaiApiKey,
-                        imageSaveDirectory,
-                        autoSaveImages,
-                        imageSize,
-                        imageQuality,
+                        ...this.getExtensionSettings(),
                     })
 
                     // Send chat sessions
@@ -1106,8 +1007,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         this.addMessageToHistory(messageText, 'user', 'text')
 
                         // Get the configured model
-                        const config =
-                            vscode.workspace.getConfiguration('crater-ext')
+                        const config = workspace.getConfiguration('crater-ext')
                         const aiModel = config.get<string>(
                             'aiModel',
                             'gemini-2.5-flash-image-preview'
@@ -1160,27 +1060,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                         if (savedPaths.length > 0) {
                             // Extract usage and cost data from metadata
                             const usage = imageResponse.metadata?.usage as
-                                | {
-                                      inputTextTokens: number
-                                      inputImageTokens: number
-                                      outputImageTokens: number
-                                      totalTokens: number
-                                  }
+                                | ImageGenerationUsage
                                 | undefined
                             const cost = imageResponse.metadata?.cost as
-                                | {
-                                      inputTextCost: number
-                                      inputImageCost: number
-                                      outputImageCost: number
-                                      perImageCost: number
-                                      totalImageCost: number
-                                      totalCost: number
-                                      currency: string
-                                      breakdown: {
-                                          tokenBasedCost: number
-                                          qualityBasedCost: number
-                                      }
-                                  }
+                                | ImageGenerationCost
                                 | undefined
 
                             // Add assistant response to extended chat history with image data
@@ -1203,7 +1086,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
                             // Convert file paths to proper webview URIs for immediate display
                             const webviewImageUris = savedPaths.map((path) => {
-                                const fileUri = vscode.Uri.file(path)
+                                const fileUri = Uri.file(path)
                                 return this._view!.webview.asWebviewUri(
                                     fileUri
                                 ).toString()
@@ -1220,8 +1103,8 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
 
                             // Show success message if images were saved
                             if (savedPaths.length > 0) {
-                                vscode.window.showInformationMessage(
-                                    `Generated ${savedPaths.length} image(s) and saved to ${path.dirname(savedPaths[0])}`
+                                window.showInformationMessage(
+                                    `Generated ${savedPaths.length} image(s) and saved to ${dirname(savedPaths[0])}`
                                 )
                             }
                         } else {
@@ -1332,37 +1215,9 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 break
             }
             case 'get-settings': {
-                const config = vscode.workspace.getConfiguration('crater-ext')
-                const aiProvider = config.get<string>('aiProvider', 'gemini')
-                const aiModel = config.get<string>(
-                    'aiModel',
-                    aiProvider === 'gemini'
-                        ? 'gemini-2.5-flash-image-preview'
-                        : 'gpt-image-1'
-                )
-
-                const geminiApiKey = config.get<string>('geminiApiKey', '')
-                const openaiApiKey = config.get<string>('openaiApiKey', '')
-                const imageSaveDirectory = config.get<string>(
-                    'imageSaveDirectory',
-                    '${workspaceFolder}/images'
-                )
-                const autoSaveImages = config.get<boolean>(
-                    'autoSaveImages',
-                    true
-                )
-                const imageSize = config.get<string>('imageSize', 'auto')
-                const imageQuality = config.get<string>('imageQuality', 'auto')
                 this._view.webview.postMessage({
                     type: 'settings',
-                    aiProvider,
-                    aiModel,
-                    geminiApiKey,
-                    openaiApiKey,
-                    imageSaveDirectory,
-                    autoSaveImages,
-                    imageSize,
-                    imageQuality,
+                    ...this.getExtensionSettings(),
                 })
                 break
             }
@@ -1375,22 +1230,22 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                     break
                 }
 
-                const config = vscode.workspace.getConfiguration('crater-ext')
-                const target = vscode.ConfigurationTarget.Global
+                const config = workspace.getConfiguration('crater-ext')
+                const target = ConfigurationTarget.Global
 
                 await config.update('aiProvider', newProvider, target)
 
                 // Update the AI provider
                 await this.updateAIProvider()
 
-                vscode.window.showInformationMessage(
+                window.showInformationMessage(
                     `[Crater] Switched to ${newProvider === 'gemini' ? 'Gemini' : 'OpenAI'} provider`
                 )
                 break
             }
             case 'save-settings': {
-                const config = vscode.workspace.getConfiguration('crater-ext')
-                const target = vscode.ConfigurationTarget.Global
+                const config = workspace.getConfiguration('crater-ext')
+                const target = ConfigurationTarget.Global
 
                 const aiProvider = String(message['aiProvider'] || 'gemini')
                 const aiModel = String(
@@ -1427,17 +1282,15 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 }
 
                 // Prompt ChatbotProvider to refresh its provider
-                await vscode.commands.executeCommand(
-                    'crater-ext.updateAIProvider'
-                )
+                await commands.executeCommand('crater-ext.updateAIProvider')
 
                 this._view.webview.postMessage({ type: 'settings-saved' })
-                vscode.window.showInformationMessage('[Crater] Settings saved')
+                window.showInformationMessage('[Crater] Settings saved')
                 break
             }
             case 'browse-folder': {
                 // Trigger the browse folder command
-                const selectedPath = await vscode.commands.executeCommand(
+                const selectedPath = await commands.executeCommand(
                     'crater-ext.browseFolder'
                 )
                 if (selectedPath) {
@@ -1544,13 +1397,10 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 if (imagePath) {
                     try {
                         // Open the image file in VS Code editor
-                        const imageUri = vscode.Uri.file(imagePath)
-                        await vscode.commands.executeCommand(
-                            'vscode.open',
-                            imageUri
-                        )
+                        const imageUri = Uri.file(imagePath)
+                        await commands.executeCommand('vscode.open', imageUri)
                     } catch (error) {
-                        vscode.window.showErrorMessage(
+                        window.showErrorMessage(
                             `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
                         )
                     }
@@ -1562,13 +1412,13 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
                 if (imagePath) {
                     try {
                         // Open the image in the Crater Image Editor extension
-                        const imageUri = vscode.Uri.file(imagePath)
-                        await vscode.commands.executeCommand(
+                        const imageUri = Uri.file(imagePath)
+                        await commands.executeCommand(
                             'crater-ext.openInImageEditor',
                             imageUri
                         )
                     } catch (error) {
-                        vscode.window.showErrorMessage(
+                        window.showErrorMessage(
                             `Failed to open image in Crater Image Editor: ${error instanceof Error ? error.message : String(error)}`
                         )
                     }
@@ -1580,25 +1430,25 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
+    private _getHtmlForWebview(webview: Webview) {
         try {
             // Read the HTML template
-            const htmlPath = path.join(
+            const htmlPath = join(
                 this._extensionUri.fsPath,
                 'src',
                 'webview.html'
             )
-            let html = fs.readFileSync(htmlPath, 'utf8')
+            let html = readFileSync(htmlPath, 'utf8')
 
             // Always use built files but with aggressive cache-busting for development
-            const scriptPathOnDisk = vscode.Uri.joinPath(
+            const scriptPathOnDisk = Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.js'
             )
             const scriptUriWebview = webview.asWebviewUri(scriptPathOnDisk)
 
-            const cssPathOnDisk = vscode.Uri.joinPath(
+            const cssPathOnDisk = Uri.joinPath(
                 this._extensionUri,
                 'dist',
                 'webview.css'
@@ -1618,6 +1468,12 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
         } catch (error) {
             const errorMessage =
                 error instanceof Error ? error.message : String(error)
+            const escaped = errorMessage
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
             // Fallback to empty HTML with error message, without logging to console
             return `<!DOCTYPE html>
 <html lang="en">
@@ -1630,7 +1486,7 @@ export class ChatbotProvider implements vscode.WebviewViewProvider {
     <div style="padding: 20px; text-align: center; color: var(--vscode-errorForeground);">
         <h2>Error Loading Webview</h2>
         <p>Unable to load the webview content. Please try reloading the extension.</p>
-        <p>Error: ${errorMessage}</p>
+        <p>Error: ${escaped}</p>
     </div>
 </body>
 </html>`

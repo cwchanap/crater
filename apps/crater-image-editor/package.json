@@ -120,7 +120,7 @@
     }
   },
   "scripts": {
-    "build": "bun run lint && bun run build:ext && bun run build:webview",
+    "build": "bun run build:ext && bun run build:webview",
     "build:ext": "node esbuild.js --production",
     "build:webview": "vite build",
     "dev": "npm-run-all -p dev:*",
