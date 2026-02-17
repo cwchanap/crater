@@ -1430,6 +1430,16 @@ export class ChatbotProvider implements WebviewViewProvider {
         }
     }
 
+    private getNonce(): string {
+        let text = ''
+        const possible =
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+        for (let i = 0; i < 32; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length))
+        }
+        return text
+    }
+
     private _getHtmlForWebview(webview: Webview) {
         try {
             // Read the HTML template
@@ -1460,9 +1470,14 @@ export class ChatbotProvider implements WebviewViewProvider {
             const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}`
             const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}`
 
-            // Replace all placeholders with the actual URIs
+            // Generate a secure nonce for CSP
+            const nonce = this.getNonce()
+
+            // Replace all placeholders with the actual URIs and CSP values
             html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
             html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
+            html = html.replace(/\{\{NONCE\}\}/g, nonce)
+            html = html.replace(/\{\{CSP_SOURCE\}\}/g, webview.cspSource)
 
             return html
         } catch (error) {

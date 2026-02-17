@@ -144,16 +144,19 @@ export async function activate(context: ExtensionContext) {
                     // Try to execute the loadImage command directly
                     // If the extension isn't available, the command will fail and we'll catch the error
 
+                    // Focus the image editor view first to ensure it's available
+                    await commands.executeCommand(
+                        'crater-image-editor.editorView.focus'
+                    )
+
+                    // Wait for the view to initialize
+                    await new Promise((resolve) => setTimeout(resolve, 500))
+
                     // Execute the command to load image in the image editor
                     // Pass the original URI object directly
                     await commands.executeCommand(
                         'crater-image-editor.loadImage',
                         uri
-                    )
-
-                    // Focus the image editor view
-                    await commands.executeCommand(
-                        'crater-image-editor.editorView.focus'
                     )
 
                     // Show a notification to help user find the image editor
