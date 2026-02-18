@@ -27,7 +27,6 @@ export interface S3UploadOptions {
     metadata?: Record<string, string>
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type S3ClientInstance = {
     send: (command: any) => Promise<any>
     config: { region: unknown }
