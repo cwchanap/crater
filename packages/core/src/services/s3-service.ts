@@ -1,4 +1,5 @@
 type PutObjectCommandInput = import('@aws-sdk/client-s3').PutObjectCommandInput
+type S3Client = import('@aws-sdk/client-s3').S3Client
 
 let _s3Module: typeof import('@aws-sdk/client-s3') | undefined
 
@@ -27,10 +28,7 @@ export interface S3UploadOptions {
     metadata?: Record<string, string>
 }
 
-type S3ClientInstance = {
-    send: (command: any) => Promise<any>
-    config: { region: unknown }
-}
+type S3ClientInstance = Pick<S3Client, 'send' | 'config'>
 
 export class S3Service {
     private client: S3ClientInstance
