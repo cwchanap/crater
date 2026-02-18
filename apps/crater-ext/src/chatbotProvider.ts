@@ -20,6 +20,7 @@ import {
     promises as fsPromises,
 } from 'fs'
 import { basename, dirname, join } from 'path'
+import { randomBytes } from 'crypto'
 import {
     ChatBotService,
     GeminiImageProvider,
@@ -29,6 +30,17 @@ import {
     type ImageGenerationUsage,
     type ImageGenerationCost,
 } from '@crater/core'
+
+export interface ExtensionSettings {
+    aiProvider: string
+    aiModel: string
+    geminiApiKey: string
+    openaiApiKey: string
+    imageSaveDirectory: string
+    autoSaveImages: boolean
+    imageSize: string
+    imageQuality: string
+}
 
 interface WebviewMessage {
     type: string
@@ -73,6 +85,7 @@ export class ChatbotProvider implements WebviewViewProvider {
     private _chatSessions: ChatSession[] = []
     private _currentSessionId: string | null = null
     private _fileWatcher?: FileSystemWatcher
+    private _cssWatcher?: FileSystemWatcher
     private _saveTimeout?: NodeJS.Timeout
     private _pendingFileDeletions: string[] = []
     private _lastUpdateStates = new Map<number, string>()
@@ -173,8 +186,9 @@ export class ChatbotProvider implements WebviewViewProvider {
                 setTimeout(() => handleFileChange(uri), 300)
             })
 
-            // Store watcher for cleanup
+            // Store watchers for cleanup (use distJsWatcher as primary; distCssWatcher stored separately)
             this._fileWatcher = distJsWatcher
+            this._cssWatcher = distCssWatcher
             window.showInformationMessage(
                 '🔥 Crater Dev Mode: Auto-reload on webview changes'
             )
@@ -185,6 +199,7 @@ export class ChatbotProvider implements WebviewViewProvider {
 
     dispose(): void {
         this._fileWatcher?.dispose()
+        this._cssWatcher?.dispose()
 
         // Ensure any pending saves are completed before disposal
         if (this._saveTimeout) {
@@ -806,7 +821,7 @@ export class ChatbotProvider implements WebviewViewProvider {
         window.showInformationMessage(`[Crater] Saving ${status}`)
     }
 
-    private getExtensionSettings() {
+    private getExtensionSettings(): ExtensionSettings {
         const config = workspace.getConfiguration('crater-ext')
         const aiProvider = config.get<string>('aiProvider', 'gemini')
         const aiModel = config.get<string>(
@@ -1431,16 +1446,10 @@ export class ChatbotProvider implements WebviewViewProvider {
     }
 
     private getNonce(): string {
-        let text = ''
-        const possible =
-            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-        for (let i = 0; i < 32; i++) {
-            text += possible.charAt(Math.floor(Math.random() * possible.length))
-        }
-        return text
+        return randomBytes(16).toString('base64')
     }
 
-    private _getHtmlForWebview(webview: Webview) {
+    private _getHtmlForWebview(webview: Webview): string {
         try {
             // Read the HTML template
             const htmlPath = join(

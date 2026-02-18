@@ -19,6 +19,7 @@ import {
     writeFileSync,
 } from 'fs'
 import { basename, extname, join, parse as pathParse } from 'path'
+import { randomBytes } from 'crypto'
 
 interface WebviewMessage {
     type: string
@@ -77,6 +78,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
     private _extensionContext?: ExtensionContext
     private _currentSession: ImageEditSession | null = null
     private _fileWatcher?: FileSystemWatcher
+    private _cssFileWatcher?: FileSystemWatcher
     private _pendingMessages: OutboundWebviewMessage[] = []
     private _webviewReady = false
     private _isVisible = true
@@ -179,6 +181,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
             })
 
             this._fileWatcher = distJsWatcher
+            this._cssFileWatcher = distCssWatcher
 
             window.showInformationMessage(
                 '🔥 Crater Image Editor Dev Mode: Auto-reload on webview changes'
@@ -190,6 +193,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
 
     dispose(): void {
         this._fileWatcher?.dispose()
+        this._cssFileWatcher?.dispose()
         this._onDidChangeVisibilityEmitter.dispose()
     }
 
@@ -315,7 +319,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
                         this._webviewReady = true
                         this.flushPendingMessages()
                     }
-                }, 1000)
+                }, 1500)
             }
         } catch (error) {
             window.showErrorMessage(
@@ -682,7 +686,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
         }
     }
 
-    private _getHtmlForWebview(webview: Webview) {
+    private _getHtmlForWebview(webview: Webview): string {
         try {
             const htmlPath = join(
                 this._extensionUri.fsPath,
@@ -712,8 +716,11 @@ export class ImageEditorProvider implements WebviewViewProvider {
             const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
             const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
 
+            const nonce = randomBytes(16).toString('base64')
+
             html = html.replace(/\{\{SCRIPT_URI\}\}/g, scriptUri)
             html = html.replace(/\{\{CSS_URI\}\}/g, cssUri)
+            html = html.replace(/\{\{NONCE\}\}/g, nonce)
 
             return html
         } catch (error) {
@@ -725,11 +732,13 @@ export class ImageEditorProvider implements WebviewViewProvider {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;')
+            const nonce = randomBytes(16).toString('base64')
             return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
     <title>Crater Image Editor</title>
 </head>
 <body>

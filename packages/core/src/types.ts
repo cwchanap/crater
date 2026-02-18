@@ -1,5 +1,9 @@
 // Types and interfaces for the ChatBot service
-import type { BaseImageModelProvider } from './base-provider'
+import type {
+    BaseImageModelProvider,
+    ImageGenerationUsage,
+    ImageGenerationCost,
+} from './base-provider'
 
 export interface ChatMessage {
     id: string
@@ -35,8 +39,8 @@ export interface ImageData {
     prompt: string
     savedPaths?: string[]
     imageStates?: ImageStates
-    usage?: import('./base-provider').ImageGenerationUsage
-    cost?: import('./base-provider').ImageGenerationCost
+    usage?: ImageGenerationUsage
+    cost?: ImageGenerationCost
 }
 
 // Re-export all AI provider types and base class from dedicated file
