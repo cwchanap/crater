@@ -355,7 +355,7 @@
     }
 
     try {
-      const s3Service = new S3Service({
+      const s3Service = await S3Service.create({
         bucketName: s3BucketName,
         region: s3Region,
         accessKeyId: s3AccessKeyId,
