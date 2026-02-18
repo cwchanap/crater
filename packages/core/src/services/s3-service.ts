@@ -7,10 +7,13 @@ async function getS3Module(): Promise<typeof import('@aws-sdk/client-s3')> {
     if (!_s3Module) {
         try {
             _s3Module = await import('@aws-sdk/client-s3')
-        } catch {
-            throw new Error(
+        } catch (cause) {
+            const err = new Error(
                 '@aws-sdk/client-s3 is required for S3Service. Install it with: npm install @aws-sdk/client-s3'
             )
+            // Preserve original error for diagnostic context
+            ;(err as Error & { cause?: unknown }).cause = cause
+            throw err
         }
     }
     return _s3Module
@@ -40,6 +43,7 @@ export class S3Service {
     }
 
     static async create(config: S3Config): Promise<S3Service> {
+        S3Service.validateConfig(config)
         const s3 = await getS3Module()
         const client = new s3.S3Client({
             region: config.region,
@@ -151,7 +155,11 @@ export class S3Service {
      * @returns Promise with the region string
      */
     private async getRegion(): Promise<string> {
-        return (this.client.config.region as string) || 'us-east-1'
+        const region = this.client.config.region
+        if (typeof region === 'function') {
+            return (await region()) || 'us-east-1'
+        }
+        return (region as string) || 'us-east-1'
     }
 
     /**

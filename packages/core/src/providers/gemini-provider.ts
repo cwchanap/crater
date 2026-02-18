@@ -146,6 +146,9 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         model: string,
         request: AIGenerationRequest
     ): Promise<GeminiResponse> {
+        if (!this.config.apiKey) {
+            throw new Error('Gemini API key is not configured')
+        }
         const url = `${endpoint}/${model}:generateContent`
 
         const parts: GeminiPart[] = [
@@ -184,7 +187,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-goog-api-key': this.config.apiKey!,
+                'x-goog-api-key': this.config.apiKey,
             },
             body: JSON.stringify(body),
         })
@@ -246,6 +249,9 @@ export class GeminiImageProvider extends BaseImageModelProvider {
         model: string,
         request: ImageGenerationRequest
     ): Promise<GeminiResponse> {
+        if (!this.config.apiKey) {
+            throw new Error('Gemini API key is not configured')
+        }
         const url = `${endpoint}/${model}:generateContent`
 
         const parts: GeminiPart[] = [
@@ -284,7 +290,7 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-goog-api-key': this.config.apiKey!,
+                'x-goog-api-key': this.config.apiKey,
             },
             body: JSON.stringify(body),
         })

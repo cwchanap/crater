@@ -56,12 +56,14 @@ describe('Extension Activation', () => {
         ).toHaveBeenCalledWith(expect.any(Function))
     })
 
-    it('should show information message on successful activation', async () => {
+    it('should log message on successful activation', async () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
         await activate(mockContext)
 
-        expect(mockVSCode.window.showInformationMessage).toHaveBeenCalledWith(
-            '[Crater Image Editor] Image Editor is now active!'
+        expect(consoleSpy).toHaveBeenCalledWith(
+            '[Crater Image Editor] activated'
         )
+        consoleSpy.mockRestore()
     })
 
     it('should handle activation errors gracefully', async () => {

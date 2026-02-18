@@ -14,9 +14,6 @@ import {
 // Import after mocks are set up
 import { ImageEditorProvider } from '../imageEditorProvider'
 
-const mockedFs = fsMock
-const mockedPath = pathMock
-
 describe('ImageEditorProvider', () => {
     let provider: ImageEditorProvider
     let providerInternals: ProviderInternals
@@ -151,17 +148,15 @@ describe('ImageEditorProvider', () => {
 
     describe('Image Loading', () => {
         beforeEach(() => {
-            mockedFs.existsSync.mockReturnValue(true)
-            mockedFs.statSync.mockReturnValue({
+            fsMock.existsSync.mockReturnValue(true)
+            fsMock.statSync.mockReturnValue({
                 size: 1024,
                 isFile: () => true,
                 isDirectory: () => false,
             } as unknown as Stats)
-            mockedFs.readFileSync.mockReturnValue(
-                Buffer.from('test image data')
-            )
-            mockedPath.basename.mockReturnValue('test.png')
-            mockedPath.extname.mockReturnValue('.png')
+            fsMock.readFileSync.mockReturnValue(Buffer.from('test image data'))
+            pathMock.basename.mockReturnValue('test.png')
+            pathMock.extname.mockReturnValue('.png')
         })
 
         it('should load image from valid path', async () => {
@@ -169,15 +164,15 @@ describe('ImageEditorProvider', () => {
 
             await provider.loadImageFromPath(imagePath)
 
-            expect(mockedFs.existsSync).toHaveBeenCalledWith(imagePath)
-            expect(mockedFs.readFileSync).toHaveBeenCalledWith(imagePath)
+            expect(fsMock.existsSync).toHaveBeenCalledWith(imagePath)
+            expect(fsMock.readFileSync).toHaveBeenCalledWith(imagePath)
             expect((provider as any)._currentSession).toBeDefined()
             expect((provider as any)._currentSession?.fileName).toBe('test.png')
             expect((provider as any)._currentSession?.format).toBe('png')
         })
 
         it('should handle non-existent image file', async () => {
-            mockedFs.existsSync.mockReturnValue(false)
+            fsMock.existsSync.mockReturnValue(false)
             const imagePath = '/test/nonexistent.png'
 
             await provider.loadImageFromPath(imagePath)
@@ -327,21 +322,21 @@ describe('ImageEditorProvider', () => {
                 createdAt: new Date().toISOString(),
             }
 
-            mockedPath.join.mockReturnValue('/output/test_edited_timestamp.png')
-            mockedPath.parse.mockReturnValue({
+            pathMock.join.mockReturnValue('/output/test_edited_timestamp.png')
+            pathMock.parse.mockReturnValue({
                 root: '/test',
                 dir: '/test',
                 base: 'test.png',
                 ext: '.png',
                 name: 'test',
             } as any)
-            mockedFs.existsSync.mockReturnValue(false)
-            mockedFs.mkdirSync.mockImplementation(() => undefined)
-            mockedFs.writeFileSync.mockImplementation(() => undefined)
+            fsMock.existsSync.mockReturnValue(false)
+            fsMock.mkdirSync.mockImplementation(() => undefined)
+            fsMock.writeFileSync.mockImplementation(() => undefined)
 
             await (provider as any)._handleMessage(message)
 
-            expect(mockedFs.writeFileSync).toHaveBeenCalled()
+            expect(fsMock.writeFileSync).toHaveBeenCalled()
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
                 expect.objectContaining({
                     type: 'image-saved',
@@ -459,7 +454,7 @@ describe('ImageEditorProvider', () => {
 
     describe('Error Handling', () => {
         it('should handle file system errors during image loading', async () => {
-            mockedFs.readFileSync.mockImplementation(() => {
+            fsMock.readFileSync.mockImplementation(() => {
                 throw new Error('File read error')
             })
 
@@ -471,7 +466,7 @@ describe('ImageEditorProvider', () => {
         })
 
         it('should handle save errors gracefully', async () => {
-            mockedFs.writeFileSync.mockImplementation(() => {
+            fsMock.writeFileSync.mockImplementation(() => {
                 throw new Error('Write error')
             })
 

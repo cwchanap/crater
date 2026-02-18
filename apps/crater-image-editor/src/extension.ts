@@ -60,6 +60,10 @@ export async function activate(context: ExtensionContext) {
                     setTimeout(() => {
                         imageEditorProvider.loadImageFromPath(uri.fsPath)
                     }, 500)
+
+                    setTimeout(() => {
+                        imageEditorProvider.forceWebviewReady()
+                    }, 1500)
                 } catch (error) {
                     window.showErrorMessage(
                         `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
@@ -135,9 +139,7 @@ export async function activate(context: ExtensionContext) {
 
         context.subscriptions.push(configChangeListener)
 
-        window.showInformationMessage(
-            '[Crater Image Editor] Image Editor is now active!'
-        )
+        console.log('[Crater Image Editor] activated')
     } catch (error) {
         window.showErrorMessage(
             `[Crater Image Editor] Failed to activate extension: ${error instanceof Error ? error.message : String(error)}`
