@@ -4,9 +4,9 @@
 
 /* Base body styles */
 body {
-  font-family: var(--vscode-font-family, system-ui);
-  color: var(--vscode-foreground);
-  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family, system-ui, sans-serif);
+  color: var(--vscode-foreground, #cccccc);
+  background-color: var(--vscode-editor-background, #1e1e1e);
   margin: 0;
   padding: 0;
 }

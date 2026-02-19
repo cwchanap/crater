@@ -376,7 +376,8 @@ export class ImageEditorProvider implements WebviewViewProvider {
                 true
             )
 
-            this._view.webview.postMessage({
+            // Use the message queue to ensure messages are delivered when webview is ready
+            this.sendMessageToWebview({
                 type: 'settings',
                 outputDirectory,
                 outputFormat,
@@ -709,12 +710,12 @@ export class ImageEditorProvider implements WebviewViewProvider {
             )
             const cssUriWebview = webview.asWebviewUri(cssPathOnDisk)
 
-            // Force aggressive cache busting with random number + timestamp
-            const cacheBuster =
-                Date.now() + Math.random().toString(36).substring(2)
-            const randomBuster = Math.random().toString(36).substring(2)
-            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
-            const cssUri = `${cssUriWebview.toString()}?v=${cacheBuster}&bust=${randomBuster}&force=${Date.now()}`
+            // Force aggressive cache busting with single timestamp and random value
+            const ts = Date.now()
+            const rand = Math.random().toString(36).substring(2)
+            const cacheKey = `${ts}-${rand}`
+            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheKey}`
+            const cssUri = `${cssUriWebview.toString()}?v=${cacheKey}`
 
             const nonce = randomBytes(16).toString('base64')
 
