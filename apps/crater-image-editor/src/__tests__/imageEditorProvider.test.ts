@@ -96,7 +96,7 @@ describe('ImageEditorProvider', () => {
                 .localResourceRoots as { fsPath: string }[] | undefined
             expect(localRoots).toBeDefined()
             expect(Array.isArray(localRoots)).toBe(true)
-            expect(localRoots!.length).toBeGreaterThanOrEqual(1)
+            expect(localRoots!.length).toBe(1)
             expect(localRoots![0].fsPath).toBe('/test/extension')
         })
 
@@ -454,6 +454,13 @@ describe('ImageEditorProvider', () => {
 
     describe('Error Handling', () => {
         it('should handle file system errors during image loading', async () => {
+            // File must exist for the read error path to be exercised
+            fsMock.existsSync.mockReturnValue(true)
+            fsMock.statSync.mockReturnValue({
+                size: 1024,
+                isFile: () => true,
+                isDirectory: () => false,
+            } as unknown as Stats)
             fsMock.readFileSync.mockImplementation(() => {
                 throw new Error('File read error')
             })

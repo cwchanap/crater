@@ -83,9 +83,12 @@ export class S3Service {
             await this.client.send(command)
             return `https://${this.bucketName}.s3.${await this.getRegion()}.amazonaws.com/${key}`
         } catch (error) {
-            throw new Error(
-                `S3 upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            )
+            const message =
+                error instanceof Error ? error.message : 'Unknown error'
+            const err = new Error(`S3 upload failed: ${message}`)
+            // Preserve original error for diagnostic context
+            ;(err as Error & { cause?: unknown }).cause = error
+            throw err
         }
     }
 
@@ -124,9 +127,12 @@ export class S3Service {
                 },
             })
         } catch (error) {
-            throw new Error(
-                `Image upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            )
+            const message =
+                error instanceof Error ? error.message : 'Unknown error'
+            const err = new Error(`Image upload failed: ${message}`)
+            // Preserve original error for diagnostic context
+            ;(err as Error & { cause?: unknown }).cause = error
+            throw err
         }
     }
 
@@ -134,7 +140,7 @@ export class S3Service {
      * Generate a unique filename with timestamp and sanitized prompt
      * @param prompt - The original prompt used to generate the image
      * @param prefix - Optional prefix for the filename
-     * @returns A sanitized filename
+     * @returns A sanitized filename with random suffix for uniqueness
      */
     static generateImageFilename(
         prompt: string,
@@ -146,8 +152,10 @@ export class S3Service {
             .replace(/\s+/g, '-')
             .toLowerCase()
             .substring(0, 50)
+        // Add random suffix to prevent collisions under high throughput
+        const randomSuffix = Math.random().toString(36).substring(2, 10)
 
-        return `${prefix}/${timestamp}-${sanitizedPrompt}.png`
+        return `${prefix}/${timestamp}-${sanitizedPrompt}-${randomSuffix}.png`
     }
 
     /**
@@ -165,9 +173,9 @@ export class S3Service {
     /**
      * Validate S3 configuration
      * @param config - S3 configuration to validate
-     * @returns true if valid, throws error if invalid
+     * @throws Error if configuration is invalid
      */
-    static validateConfig(config: S3Config): boolean {
+    static validateConfig(config: S3Config): asserts config is S3Config {
         if (!config.bucketName?.trim()) {
             throw new Error('S3 bucket name is required')
         }
@@ -180,7 +188,6 @@ export class S3Service {
         if (!config.secretAccessKey?.trim()) {
             throw new Error('S3 secret access key is required')
         }
-        return true
     }
 }
 

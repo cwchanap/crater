@@ -7,6 +7,10 @@ import {
 } from 'vscode'
 import { ImageEditorProvider } from './imageEditorProvider'
 
+// Timing constants for webview initialization
+const WEBVIEW_LOAD_DELAY = 500
+const WEBVIEW_READY_DELAY = 1500
+
 export async function activate(context: ExtensionContext) {
     try {
         const imageEditorProvider = new ImageEditorProvider(
@@ -57,13 +61,15 @@ export async function activate(context: ExtensionContext) {
                         'crater-image-editor.editorView.focus'
                     )
 
-                    setTimeout(() => {
-                        imageEditorProvider.loadImageFromPath(uri.fsPath)
-                    }, 500)
+                    // Use consistent timing: load after delay, then force ready
+                    setTimeout(async () => {
+                        await imageEditorProvider.loadImageFromPath(uri.fsPath)
 
-                    setTimeout(() => {
-                        imageEditorProvider.forceWebviewReady()
-                    }, 1500)
+                        // Force webview ready state after delay to ensure proper initialization
+                        setTimeout(() => {
+                            imageEditorProvider.forceWebviewReady()
+                        }, WEBVIEW_READY_DELAY)
+                    }, WEBVIEW_LOAD_DELAY)
                 } catch (error) {
                     window.showErrorMessage(
                         `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
@@ -114,11 +120,11 @@ export async function activate(context: ExtensionContext) {
                         // Load the image directly - the provider will handle queueing if needed
                         await imageEditorProvider.loadImageFromPath(imagePath)
 
-                        // Force webview ready state after a delay to ensure proper initialization
+                        // Force webview ready state after delay to ensure proper initialization
                         setTimeout(() => {
                             imageEditorProvider.forceWebviewReady()
-                        }, 1500)
-                    }, 500)
+                        }, WEBVIEW_READY_DELAY)
+                    }, WEBVIEW_LOAD_DELAY)
                 } catch (error) {
                     window.showErrorMessage(
                         `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
@@ -148,4 +154,4 @@ export async function activate(context: ExtensionContext) {
     }
 }
 
-export function deactivate() {}
+export function deactivate(): void {}

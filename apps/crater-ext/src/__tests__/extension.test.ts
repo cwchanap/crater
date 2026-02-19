@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { ExtensionContext } from 'vscode'
 import {
     mockVSCode,
     createMockExtensionContext,
@@ -8,7 +9,7 @@ import {
 import { activate } from '../extension'
 
 describe('Extension Activation', () => {
-    let mockContext: any
+    let mockContext: ExtensionContext
 
     beforeEach(() => {
         resetAllMocks()

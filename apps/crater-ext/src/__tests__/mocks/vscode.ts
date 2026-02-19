@@ -190,7 +190,16 @@ export const mockVSCode = {
                 return createMockFileSystemWatcher()
             }
         ),
-        workspaceFolders: [{ uri: createMockUri('/test/workspace') }],
+        // Use a getter to return a fresh array each time, preventing state leakage between tests
+        get workspaceFolders(): vscode.WorkspaceFolder[] {
+            return [
+                {
+                    uri: createMockUri('/test/workspace'),
+                    name: 'workspace',
+                    index: 0,
+                },
+            ]
+        },
     },
     Uri: {
         joinPath: vi.fn(
