@@ -92,9 +92,22 @@ jobs:
         run: bun run --filter @crater/core build
 
       - name: Run VS Code tests
-        run: xvfb-run -a bun run --filter crater-ext test
+        run: xvfb-run -a bun run --filter crater-ext test:vscode
         env:
           CI: true
+
+      - name: Run unit tests with coverage
+        run: bun run --filter crater-ext test:coverage
+        env:
+          CI: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/crater-ext/coverage/lcov.info
+          flags: crater-ext
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   crater-image-editor-tests:
     name: Crater Image Editor Unit Tests
