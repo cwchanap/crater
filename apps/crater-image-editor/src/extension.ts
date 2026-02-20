@@ -63,12 +63,26 @@ export async function activate(context: ExtensionContext) {
 
                     // Use consistent timing: load after delay, then force ready
                     setTimeout(async () => {
-                        await imageEditorProvider.loadImageFromPath(uri.fsPath)
+                        try {
+                            await imageEditorProvider.loadImageFromPath(
+                                uri.fsPath
+                            )
 
-                        // Force webview ready state after delay to ensure proper initialization
-                        setTimeout(() => {
-                            imageEditorProvider.forceWebviewReady()
-                        }, WEBVIEW_READY_DELAY)
+                            // Force webview ready state after delay to ensure proper initialization
+                            setTimeout(() => {
+                                try {
+                                    imageEditorProvider.forceWebviewReady()
+                                } catch (error) {
+                                    console.error(
+                                        `[Crater Image Editor] Error in forceWebviewReady: ${error instanceof Error ? error.message : String(error)}`
+                                    )
+                                }
+                            }, WEBVIEW_READY_DELAY)
+                        } catch (error) {
+                            window.showErrorMessage(
+                                `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
+                            )
+                        }
                     }, WEBVIEW_LOAD_DELAY)
                 } catch (error) {
                     window.showErrorMessage(
@@ -117,13 +131,27 @@ export async function activate(context: ExtensionContext) {
 
                     // Wait a bit for the view to become available, then load the image
                     setTimeout(async () => {
-                        // Load the image directly - the provider will handle queueing if needed
-                        await imageEditorProvider.loadImageFromPath(imagePath)
+                        try {
+                            // Load the image directly - the provider will handle queueing if needed
+                            await imageEditorProvider.loadImageFromPath(
+                                imagePath
+                            )
 
-                        // Force webview ready state after delay to ensure proper initialization
-                        setTimeout(() => {
-                            imageEditorProvider.forceWebviewReady()
-                        }, WEBVIEW_READY_DELAY)
+                            // Force webview ready state after delay to ensure proper initialization
+                            setTimeout(() => {
+                                try {
+                                    imageEditorProvider.forceWebviewReady()
+                                } catch (error) {
+                                    console.error(
+                                        `[Crater Image Editor] Error in forceWebviewReady: ${error instanceof Error ? error.message : String(error)}`
+                                    )
+                                }
+                            }, WEBVIEW_READY_DELAY)
+                        } catch (error) {
+                            window.showErrorMessage(
+                                `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
+                            )
+                        }
                     }, WEBVIEW_LOAD_DELAY)
                 } catch (error) {
                     window.showErrorMessage(
