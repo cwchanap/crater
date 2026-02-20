@@ -1,45 +1,64 @@
-import type * as vscode from 'vscode'
+import type {
+    Event,
+    Memento,
+    Webview,
+    WebviewOptions,
+    WebviewView,
+    FileSystemWatcher,
+    Uri as VscodeUri,
+    Disposable,
+    SecretStorageChangeEvent,
+    SecretStorage,
+    EnvironmentVariableCollection,
+    ConfigurationChangeEvent,
+    GlobPattern,
+    WorkspaceConfiguration,
+    WorkspaceFolder,
+    WebviewViewProvider,
+    ExtensionMode,
+    ExtensionContext,
+} from 'vscode'
 import { vi } from 'vitest'
 
 type ViMock = ReturnType<typeof vi.fn>
 
-type MockEvent<T> = vscode.Event<T> & ViMock
+type MockEvent<T> = Event<T> & ViMock
 
-type MockedMemento = vscode.Memento & {
+type MockedMemento = Memento & {
     get: ViMock
     update: ViMock
     keys: ViMock
     setKeysForSync?: ViMock
 }
 
-type MockWebview = vscode.Webview & {
+type MockWebview = Webview & {
     postMessage: ViMock
     asWebviewUri: ViMock
     onDidReceiveMessage: ViMock
-    options: vscode.WebviewOptions
+    options: WebviewOptions
     html: string
 }
 
-type MockWebviewView = vscode.WebviewView & {
+type MockWebviewView = WebviewView & {
     onDidChangeVisibility: MockEvent<void>
     onDidDispose: MockEvent<void>
     show: ViMock
     webview: MockWebview
 }
 
-type MockFileSystemWatcher = vscode.FileSystemWatcher & {
-    onDidChange: MockEvent<vscode.Uri>
-    onDidCreate: MockEvent<vscode.Uri>
-    onDidDelete: MockEvent<vscode.Uri>
+type MockFileSystemWatcher = FileSystemWatcher & {
+    onDidChange: MockEvent<VscodeUri>
+    onDidCreate: MockEvent<VscodeUri>
+    onDidDelete: MockEvent<VscodeUri>
     dispose: ViMock
 }
 
 const createMockEvent = <T>(): MockEvent<T> =>
     vi.fn() as unknown as MockEvent<T>
 
-const createDisposable = () => ({ dispose: vi.fn() }) as vscode.Disposable
+const createDisposable = () => ({ dispose: vi.fn() }) as Disposable
 
-const createMockUri = (fsPath: string): vscode.Uri =>
+const createMockUri = (fsPath: string): VscodeUri =>
     ({
         fsPath,
         path: fsPath,
@@ -50,10 +69,10 @@ const createMockUri = (fsPath: string): vscode.Uri =>
         toString: () => fsPath,
         toJSON: () => ({ path: fsPath }),
         with: vi.fn(() => createMockUri(fsPath)),
-    }) as unknown as vscode.Uri
+    }) as unknown as VscodeUri
 
 const createMockWebview = (): MockWebview => {
-    const localResourceRoots: vscode.Uri[] = []
+    const localResourceRoots: VscodeUri[] = []
 
     return {
         html: '',
@@ -64,7 +83,7 @@ const createMockWebview = (): MockWebview => {
             localResourceRoots,
         },
         localResourceRoots,
-        asWebviewUri: vi.fn((uri: vscode.Uri) => uri),
+        asWebviewUri: vi.fn((uri: VscodeUri) => uri),
         postMessage: vi.fn(async () => true),
         onDidReceiveMessage: vi.fn(() => createDisposable()),
     } as unknown as MockWebview
@@ -72,9 +91,9 @@ const createMockWebview = (): MockWebview => {
 
 const createMockFileSystemWatcher = (): MockFileSystemWatcher =>
     ({
-        onDidChange: createMockEvent<vscode.Uri>(),
-        onDidCreate: createMockEvent<vscode.Uri>(),
-        onDidDelete: createMockEvent<vscode.Uri>(),
+        onDidChange: createMockEvent<VscodeUri>(),
+        onDidCreate: createMockEvent<VscodeUri>(),
+        onDidDelete: createMockEvent<VscodeUri>(),
         dispose: vi.fn(),
     }) as unknown as MockFileSystemWatcher
 
@@ -87,15 +106,15 @@ const createEnvironmentVariableCollection = () =>
         forEach: vi.fn(),
         clear: vi.fn(),
         delete: vi.fn(),
-    }) as unknown as vscode.EnvironmentVariableCollection
+    }) as unknown as EnvironmentVariableCollection
 
 const createSecretStorage = () =>
     ({
         get: vi.fn(),
         store: vi.fn(),
         delete: vi.fn(),
-        onDidChange: createMockEvent<vscode.SecretStorageChangeEvent>(),
-    }) as unknown as vscode.SecretStorage
+        onDidChange: createMockEvent<SecretStorageChangeEvent>(),
+    }) as unknown as SecretStorage
 
 const createMemento = (withSync = false): MockedMemento => {
     const base: MockedMemento = {
@@ -114,10 +133,10 @@ const createMemento = (withSync = false): MockedMemento => {
 export class EventEmitter<T> {
     private listeners: Array<(event: T) => void> = []
 
-    public event: vscode.Event<T> = ((listener: (e: T) => void) => {
+    public event: Event<T> = ((listener: (e: T) => void) => {
         this.listeners.push(listener)
         return createDisposable()
-    }) as unknown as vscode.Event<T>
+    }) as unknown as Event<T>
 
     public fire(event: T): void {
         for (const listener of this.listeners) {
@@ -149,8 +168,8 @@ export const mockVSCode = {
         registerWebviewViewProvider: vi.fn(
             (
                 viewType: string,
-                provider: vscode.WebviewViewProvider,
-                options?: { webviewOptions?: vscode.WebviewOptions }
+                provider: WebviewViewProvider,
+                options?: { webviewOptions?: WebviewOptions }
             ) => {
                 void viewType
                 void provider
@@ -176,22 +195,18 @@ export const mockVSCode = {
                 update: vi.fn(),
                 has: vi.fn(),
                 inspect: vi.fn(),
-            } as unknown as vscode.WorkspaceConfiguration
+            } as unknown as WorkspaceConfiguration
         }),
-        onDidChangeConfiguration:
-            createMockEvent<vscode.ConfigurationChangeEvent>(),
+        onDidChangeConfiguration: createMockEvent<ConfigurationChangeEvent>(),
         createFileSystemWatcher: vi.fn(
-            (
-                globPattern: vscode.GlobPattern,
-                ignoreCreateOrDelete?: boolean
-            ) => {
+            (globPattern: GlobPattern, ignoreCreateOrDelete?: boolean) => {
                 void globPattern
                 void ignoreCreateOrDelete
                 return createMockFileSystemWatcher()
             }
         ),
         // Use a getter to return a fresh array each time, preventing state leakage between tests
-        get workspaceFolders(): vscode.WorkspaceFolder[] {
+        get workspaceFolders(): WorkspaceFolder[] {
             return [
                 {
                     uri: createMockUri('/test/workspace'),
@@ -202,16 +217,14 @@ export const mockVSCode = {
         },
     },
     Uri: {
-        joinPath: vi.fn(
-            (base: vscode.Uri, ...paths: (string | vscode.Uri)[]) => {
-                const suffix = paths
-                    .map((segment) =>
-                        typeof segment === 'string' ? segment : segment.fsPath
-                    )
-                    .join('/')
-                return createMockUri([base.fsPath, suffix].join('/'))
-            }
-        ),
+        joinPath: vi.fn((base: VscodeUri, ...paths: (string | VscodeUri)[]) => {
+            const suffix = paths
+                .map((segment) =>
+                    typeof segment === 'string' ? segment : segment.fsPath
+                )
+                .join('/')
+            return createMockUri([base.fsPath, suffix].join('/'))
+        }),
         file: vi.fn((filePath: string) => createMockUri(filePath)),
     },
     ConfigurationTarget: {
@@ -237,17 +250,17 @@ export const mockVSCode = {
         }
     },
     ExtensionContext: class {
-        extensionUri: vscode.Uri
-        subscriptions: vscode.Disposable[]
+        extensionUri: VscodeUri
+        subscriptions: Disposable[]
         globalState: MockedMemento
         workspaceState: MockedMemento
-        environmentVariableCollection: vscode.EnvironmentVariableCollection
-        secrets: vscode.SecretStorage
+        environmentVariableCollection: EnvironmentVariableCollection
+        secrets: SecretStorage
         extensionPath: string
-        extensionMode: vscode.ExtensionMode
-        storageUri: vscode.Uri | undefined
-        globalStorageUri: vscode.Uri
-        logUri: vscode.Uri
+        extensionMode: ExtensionMode
+        storageUri: VscodeUri | undefined
+        globalStorageUri: VscodeUri
+        logUri: VscodeUri
         storagePath: string | undefined
         globalStoragePath: string
         logPath: string
@@ -261,7 +274,7 @@ export const mockVSCode = {
                 createEnvironmentVariableCollection()
             this.secrets = createSecretStorage()
             this.extensionPath = '/test/extension'
-            this.extensionMode = 1 as vscode.ExtensionMode
+            this.extensionMode = 1 as ExtensionMode
             this.storageUri = undefined
             this.globalStorageUri = createMockUri('/test/global-storage')
             this.logUri = createMockUri('/test/log')
@@ -276,8 +289,8 @@ export const mockVSCode = {
     },
 }
 
-export function createMockExtensionContext(): vscode.ExtensionContext {
-    return new mockVSCode.ExtensionContext() as unknown as vscode.ExtensionContext
+export function createMockExtensionContext(): ExtensionContext {
+    return new mockVSCode.ExtensionContext() as unknown as ExtensionContext
 }
 
 export function createMockWebviewView(): MockWebviewView {
