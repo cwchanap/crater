@@ -201,17 +201,16 @@ export class ImageEditorProvider implements WebviewViewProvider {
     }
 
     public forceWebviewReady(): void {
-        if (this._view) {
-            this._webviewReady = true
+        if (!this._view) return
+        if (this._webviewReady) return
 
-            this._view.webview.postMessage({
-                type: 'test-connection',
-                message: 'Testing webview communication',
-                timestamp: Date.now(),
-            })
-
-            this.flushPendingMessages()
-        }
+        this._webviewReady = true
+        this._view.webview.postMessage({
+            type: 'test-connection',
+            message: 'Testing webview communication',
+            timestamp: Date.now(),
+        })
+        this.flushPendingMessages()
     }
 
     public refreshWebview(): void {
@@ -309,20 +308,6 @@ export class ImageEditorProvider implements WebviewViewProvider {
                         timestamp: Date.now(),
                     })
                 }, 100)
-            }
-
-            // If webview still isn't ready after loading, force it and flush messages
-            if (
-                this._view &&
-                !this._webviewReady &&
-                this._pendingMessages.length > 0
-            ) {
-                setTimeout(() => {
-                    if (!this._webviewReady) {
-                        this._webviewReady = true
-                        this.flushPendingMessages()
-                    }
-                }, 1500)
             }
         } catch (error) {
             window.showErrorMessage(
