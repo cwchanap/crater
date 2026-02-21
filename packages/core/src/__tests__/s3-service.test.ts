@@ -118,9 +118,8 @@ describe('S3Service', () => {
             // The full name has: timestamp-slug-randomsuffix.png
             // Slug should be <= 50 chars
             const slugMatch = name.match(/T[\d-]+-([a-z-]+)-[a-z0-9]+\.png$/)
-            if (slugMatch) {
-                expect(slugMatch[1].length).toBeLessThanOrEqual(50)
-            }
+            expect(slugMatch).not.toBeNull()
+            expect(slugMatch![1].length).toBeLessThanOrEqual(50)
         })
 
         it('should include a timestamp in the filename', () => {

@@ -609,13 +609,15 @@ describe('ChatbotProvider.dispose', () => {
     })
 
     it('should dispose the file watcher when present', () => {
-        const mockDisposable = { dispose: vi.fn() }
-        ;(provider as any)._fileWatcher = mockDisposable
-        ;(provider as any)._cssWatcher = { dispose: vi.fn() }
+        const mockFileWatcher = { dispose: vi.fn() }
+        const mockCssWatcher = { dispose: vi.fn() }
+        ;(provider as any)._fileWatcher = mockFileWatcher
+        ;(provider as any)._cssWatcher = mockCssWatcher
 
         provider.dispose()
 
-        expect(mockDisposable.dispose).toHaveBeenCalled()
+        expect(mockFileWatcher.dispose).toHaveBeenCalled()
+        expect(mockCssWatcher.dispose).toHaveBeenCalled()
     })
 
     it('should not throw when no watchers are set', () => {
