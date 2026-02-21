@@ -31,8 +31,10 @@ import {
     type ImageGenerationCost,
 } from '@crater/core'
 
+export type AIProviderName = 'gemini' | 'openai'
+
 export interface ExtensionSettings {
-    aiProvider: string
+    aiProvider: AIProviderName
     aiModel: string
     geminiApiKey: string
     openaiApiKey: string
@@ -837,7 +839,11 @@ export class ChatbotProvider implements WebviewViewProvider {
 
     private getExtensionSettings(): ExtensionSettings {
         const config = workspace.getConfiguration('crater-ext')
-        const aiProvider = config.get<string>('aiProvider', 'gemini')
+        const rawProvider = config.get<string>('aiProvider', 'gemini')
+        const aiProvider: AIProviderName =
+            rawProvider === 'gemini' || rawProvider === 'openai'
+                ? rawProvider
+                : 'gemini'
         const aiModel = config.get<string>(
             'aiModel',
             aiProvider === 'gemini'
