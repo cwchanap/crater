@@ -952,7 +952,12 @@ export class ChatbotProvider implements WebviewViewProvider {
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(
             (message) => {
-                this._handleMessage(message)
+                this._handleMessage(message).catch((error: unknown) => {
+                    console.error(
+                        '[Crater] Unhandled error in message handler:',
+                        error
+                    )
+                })
             },
             undefined,
             []
