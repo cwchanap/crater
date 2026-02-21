@@ -4,18 +4,12 @@ import {
     createMockExtensionContext,
     createMockWebviewView,
     resetAllMocks,
+    fsMock,
+    pathMock,
 } from './test-utils'
 
 // Import after mocks are set up
 import { ImageEditorProvider } from '../imageEditorProvider'
-import {
-    existsSync,
-    statSync,
-    readFileSync,
-    mkdirSync,
-    writeFileSync,
-} from 'fs'
-import { basename, extname, join, parse } from 'path'
 
 describe('Extension-WebView Integration', () => {
     let provider: ImageEditorProvider
@@ -32,17 +26,17 @@ describe('Extension-WebView Integration', () => {
         )
 
         // Set up default mocks
-        vi.mocked(existsSync).mockReturnValue(true)
-        vi.mocked(statSync).mockReturnValue({
+        fsMock.existsSync.mockReturnValue(true)
+        fsMock.statSync.mockReturnValue({
             size: 1024,
             isFile: () => true,
             isDirectory: () => false,
         } as any)
-        vi.mocked(readFileSync).mockReturnValue(Buffer.from('test image data'))
-        vi.mocked(basename).mockReturnValue('test.png')
-        vi.mocked(extname).mockReturnValue('.png')
-        vi.mocked(join).mockReturnValue('/output/test_edited_timestamp.png')
-        vi.mocked(parse).mockReturnValue({ name: 'test' } as any)
+        fsMock.readFileSync.mockReturnValue(Buffer.from('test image data'))
+        pathMock.basename.mockReturnValue('test.png')
+        pathMock.extname.mockReturnValue('.png')
+        pathMock.join.mockReturnValue('/output/test_edited_timestamp.png')
+        pathMock.parse.mockReturnValue({ name: 'test' } as any)
     })
 
     afterEach(() => {
@@ -162,9 +156,9 @@ describe('Extension-WebView Integration', () => {
             }
 
             // Mock file system operations
-            vi.mocked(existsSync).mockReturnValue(false)
-            vi.mocked(mkdirSync).mockImplementation(() => undefined)
-            vi.mocked(writeFileSync).mockImplementation(() => undefined)
+            fsMock.existsSync.mockReturnValue(false)
+            fsMock.mkdirSync.mockImplementation(() => undefined)
+            fsMock.writeFileSync.mockImplementation(() => undefined)
 
             // Simulate save image message
             const saveMessage = {
@@ -176,8 +170,8 @@ describe('Extension-WebView Integration', () => {
             await (provider as any)._handleMessage(saveMessage)
 
             // Verify file operations
-            expect(vi.mocked(mkdirSync)).toHaveBeenCalled()
-            expect(vi.mocked(writeFileSync)).toHaveBeenCalled()
+            expect(fsMock.mkdirSync).toHaveBeenCalled()
+            expect(fsMock.writeFileSync).toHaveBeenCalled()
 
             // Verify success message sent to webview
             expect(mockWebviewView.webview.postMessage).toHaveBeenCalledWith(
@@ -201,8 +195,8 @@ describe('Extension-WebView Integration', () => {
             )
 
             // Mock file operations for the selected image
-            vi.mocked(basename).mockReturnValue('image.jpg')
-            vi.mocked(extname).mockReturnValue('.jpg')
+            pathMock.basename.mockReturnValue('image.jpg')
+            pathMock.extname.mockReturnValue('.jpg')
 
             // Simulate select image message
             const selectMessage = { type: 'select-image' }
@@ -218,7 +212,7 @@ describe('Extension-WebView Integration', () => {
             )
 
             // Verify image was loaded
-            expect(vi.mocked(existsSync)).toHaveBeenCalledWith(
+            expect(fsMock.existsSync).toHaveBeenCalledWith(
                 '/selected/image.jpg'
             )
         })
