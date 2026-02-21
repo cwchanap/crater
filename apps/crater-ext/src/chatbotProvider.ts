@@ -106,8 +106,11 @@ export class ChatbotProvider implements WebviewViewProvider {
         this.currentProvider = null
 
         // Load chat history from storage
-        this.loadChatHistory().catch(() => {
-            // Swallow chat history load errors to avoid noisy console output
+        this.loadChatHistory().catch((error: unknown) => {
+            console.error('[Crater] Failed to load chat history:', error)
+            window.showWarningMessage(
+                '[Crater] Failed to restore previous chat history. Starting fresh.'
+            )
         })
 
         // Initialize AI provider based on configuration
@@ -351,8 +354,14 @@ export class ChatbotProvider implements WebviewViewProvider {
                     this._extendedChatHistory = []
                 }
             }
-        } catch {
-            // Ignore chat history load errors to avoid noisy console
+        } catch (error: unknown) {
+            console.error(
+                '[Crater] Failed to parse/load chat history, starting fresh:',
+                error
+            )
+            this._extendedChatHistory = []
+            this._chatSessions = []
+            this._currentSessionId = null
         }
     }
 
@@ -389,8 +398,8 @@ export class ChatbotProvider implements WebviewViewProvider {
                     this.saveCurrentSessionInBackground()
                 }
             }
-        } catch {
-            // Ignore chat history save errors to keep console clean
+        } catch (error: unknown) {
+            console.error('[Crater] Failed to save chat history:', error)
         }
     }
 
@@ -406,8 +415,11 @@ export class ChatbotProvider implements WebviewViewProvider {
 
         // Set new timeout for 2 seconds to reduce save frequency and prevent lag
         this._saveTimeout = setTimeout(() => {
-            this.saveChatHistory().catch(() => {
-                // Ignore debounced save errors
+            this.saveChatHistory().catch((error: unknown) => {
+                console.error(
+                    '[Crater] Debounced chat history save failed:',
+                    error
+                )
             })
             this._saveTimeout = undefined
         }, 2000)
@@ -478,8 +490,8 @@ export class ChatbotProvider implements WebviewViewProvider {
                 'crater.currentSessionId',
                 this._currentSessionId
             )
-        } catch {
-            // Ignore chat sessions save errors
+        } catch (error: unknown) {
+            console.error('[Crater] Failed to save chat sessions:', error)
         }
     }
 
@@ -551,8 +563,8 @@ export class ChatbotProvider implements WebviewViewProvider {
                     Buffer.from(sessionJson, 'utf8')
                 )
             }
-        } catch {
-            // Ignore save current session errors
+        } catch (error: unknown) {
+            console.error('[Crater] Failed to save current session:', error)
         }
     }
 
@@ -786,8 +798,10 @@ export class ChatbotProvider implements WebviewViewProvider {
             if (provider && this.chatBotService) {
                 this.chatBotService.setAIProvider(provider)
             }
-        } catch {
+        } catch (error: unknown) {
+            console.error('[Crater] Failed to initialize AI provider:', error)
             this.currentProvider = null
+            throw error
         }
     }
 
@@ -993,8 +1007,11 @@ export class ChatbotProvider implements WebviewViewProvider {
                         currentSessionId: this._currentSessionId,
                     })
                 })
-                .catch(() => {
-                    // Ignore proactive load errors
+                .catch((error: unknown) => {
+                    console.error(
+                        '[Crater] Failed to proactively load chat history:',
+                        error
+                    )
                 })
         }, 200)
     }
@@ -1395,9 +1412,14 @@ export class ChatbotProvider implements WebviewViewProvider {
                             setImmediate(() => {
                                 const toDelete = [...this._pendingFileDeletions]
                                 this._pendingFileDeletions = []
-                                this.deleteImageFiles(toDelete).catch(() => {
-                                    // Ignore batch file deletion errors
-                                })
+                                this.deleteImageFiles(toDelete).catch(
+                                    (error: unknown) => {
+                                        console.error(
+                                            '[Crater] Unexpected error in batch file deletion:',
+                                            error
+                                        )
+                                    }
+                                )
                             })
                         }
 
@@ -1498,7 +1520,10 @@ export class ChatbotProvider implements WebviewViewProvider {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;')
-            // Fallback to empty HTML with error message, without logging to console
+            console.error(
+                '[Crater] Failed to load webview HTML template:',
+                error
+            )
             return `<!DOCTYPE html>
 <html lang="en">
 <head>
