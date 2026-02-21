@@ -96,8 +96,9 @@ describe('ImageEditorProvider', () => {
                 .localResourceRoots as { fsPath: string }[] | undefined
             expect(localRoots).toBeDefined()
             expect(Array.isArray(localRoots)).toBe(true)
-            expect(localRoots!.length).toBe(1)
+            expect(localRoots!.length).toBe(2)
             expect(localRoots![0].fsPath).toBe('/test/extension')
+            expect(localRoots![1].fsPath).toBe('/test/workspace')
         })
 
         it('should set HTML content on first resolution', () => {
