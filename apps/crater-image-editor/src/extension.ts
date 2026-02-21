@@ -124,8 +124,11 @@ export async function activate(context: ExtensionContext) {
                             await commands.executeCommand(
                                 'workbench.view.extension.crater-image-editor-container'
                             )
-                        } catch {
-                            // Silently handle focus errors
+                        } catch (focusError: unknown) {
+                            console.error(
+                                '[Crater Image Editor] All focus attempts failed:',
+                                focusError
+                            )
                         }
                     }
 
