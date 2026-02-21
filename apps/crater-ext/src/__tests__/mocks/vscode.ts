@@ -217,12 +217,8 @@ export const mockVSCode = {
         },
     },
     Uri: {
-        joinPath: vi.fn((base: VscodeUri, ...paths: (string | VscodeUri)[]) => {
-            const suffix = paths
-                .map((segment) =>
-                    typeof segment === 'string' ? segment : segment.fsPath
-                )
-                .join('/')
+        joinPath: vi.fn((base: VscodeUri, ...paths: string[]) => {
+            const suffix = paths.join('/')
             return createMockUri([base.fsPath, suffix].join('/'))
         }),
         file: vi.fn((filePath: string) => createMockUri(filePath)),

@@ -1288,10 +1288,23 @@ export class ChatbotProvider implements WebviewViewProvider {
             }
             case 'save-settings': {
                 try {
+                    const aiProvider = String(message['aiProvider'] || 'gemini')
+
+                    // Validate aiProvider against allowed values before proceeding
+                    if (aiProvider !== 'gemini' && aiProvider !== 'openai') {
+                        window.showErrorMessage(
+                            `[Crater] Invalid AI provider: "${aiProvider}". Must be "gemini" or "openai".`
+                        )
+                        this._view.webview.postMessage({
+                            type: 'settings-error',
+                            error: `Invalid AI provider: "${aiProvider}". Must be "gemini" or "openai".`,
+                        })
+                        break
+                    }
+
                     const config = workspace.getConfiguration('crater-ext')
                     const target = ConfigurationTarget.Global
 
-                    const aiProvider = String(message['aiProvider'] || 'gemini')
                     const aiModel = String(
                         message['aiModel'] ||
                             (aiProvider === 'gemini'
