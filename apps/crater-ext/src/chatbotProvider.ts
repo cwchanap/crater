@@ -1281,48 +1281,63 @@ export class ChatbotProvider implements WebviewViewProvider {
                 break
             }
             case 'save-settings': {
-                const config = workspace.getConfiguration('crater-ext')
-                const target = ConfigurationTarget.Global
+                try {
+                    const config = workspace.getConfiguration('crater-ext')
+                    const target = ConfigurationTarget.Global
 
-                const aiProvider = String(message['aiProvider'] || 'gemini')
-                const aiModel = String(
-                    message['aiModel'] ||
-                        (aiProvider === 'gemini'
-                            ? 'gemini-2.5-flash-image-preview'
-                            : 'gpt-image-1')
-                )
-                const apiKey = String(message['apiKey'] || '')
-                const imageSaveDirectory = String(
-                    message['imageSaveDirectory'] || '${workspaceFolder}/images'
-                )
-                const autoSaveImages = Boolean(
-                    message['autoSaveImages'] ?? true
-                )
-                const imageSize = String(message['imageSize'] || 'auto')
-                const imageQuality = String(message['imageQuality'] || 'auto')
+                    const aiProvider = String(message['aiProvider'] || 'gemini')
+                    const aiModel = String(
+                        message['aiModel'] ||
+                            (aiProvider === 'gemini'
+                                ? 'gemini-2.5-flash-image-preview'
+                                : 'gpt-image-1')
+                    )
+                    const apiKey = String(message['apiKey'] || '')
+                    const imageSaveDirectory = String(
+                        message['imageSaveDirectory'] ||
+                            '${workspaceFolder}/images'
+                    )
+                    const autoSaveImages = Boolean(
+                        message['autoSaveImages'] ?? true
+                    )
+                    const imageSize = String(message['imageSize'] || 'auto')
+                    const imageQuality = String(
+                        message['imageQuality'] || 'auto'
+                    )
 
-                await config.update('aiProvider', aiProvider, target)
-                await config.update('aiModel', aiModel, target)
-                await config.update(
-                    'imageSaveDirectory',
-                    imageSaveDirectory,
-                    target
-                )
-                await config.update('autoSaveImages', autoSaveImages, target)
-                await config.update('imageSize', imageSize, target)
-                await config.update('imageQuality', imageQuality, target)
+                    await config.update('aiProvider', aiProvider, target)
+                    await config.update('aiModel', aiModel, target)
+                    await config.update(
+                        'imageSaveDirectory',
+                        imageSaveDirectory,
+                        target
+                    )
+                    await config.update(
+                        'autoSaveImages',
+                        autoSaveImages,
+                        target
+                    )
+                    await config.update('imageSize', imageSize, target)
+                    await config.update('imageQuality', imageQuality, target)
 
-                if (aiProvider === 'gemini') {
-                    await config.update('geminiApiKey', apiKey, target)
-                } else if (aiProvider === 'openai') {
-                    await config.update('openaiApiKey', apiKey, target)
+                    if (aiProvider === 'gemini') {
+                        await config.update('geminiApiKey', apiKey, target)
+                    } else if (aiProvider === 'openai') {
+                        await config.update('openaiApiKey', apiKey, target)
+                    }
+
+                    // Prompt ChatbotProvider to refresh its provider
+                    await commands.executeCommand('crater-ext.updateAIProvider')
+
+                    this._view.webview.postMessage({ type: 'settings-saved' })
+                    window.showInformationMessage('[Crater] Settings saved')
+                } catch (error: unknown) {
+                    const msg =
+                        error instanceof Error ? error.message : String(error)
+                    window.showErrorMessage(
+                        `[Crater] Failed to save settings: ${msg}`
+                    )
                 }
-
-                // Prompt ChatbotProvider to refresh its provider
-                await commands.executeCommand('crater-ext.updateAIProvider')
-
-                this._view.webview.postMessage({ type: 'settings-saved' })
-                window.showInformationMessage('[Crater] Settings saved')
                 break
             }
             case 'browse-folder': {
