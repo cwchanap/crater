@@ -495,3 +495,320 @@ describe('GeminiImageProvider', () => {
         })
     })
 })
+
+// ---------------------------------------------------------------------------
+// Unconfigured provider
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – unconfigured', () => {
+    let unconfiguredProvider: GeminiImageProvider
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        unconfiguredProvider = new GeminiImageProvider({})
+    })
+
+    it('should report isConfigured() as false when no API key is set', () => {
+        expect(unconfiguredProvider.isConfigured()).toBe(false)
+    })
+
+    it('should throw when generateResponse is called without an API key', async () => {
+        await expect(
+            unconfiguredProvider.generateResponse({ prompt: 'test' })
+        ).rejects.toThrow(/not configured/i)
+    })
+
+    it('should throw when generateImage is called without an API key', async () => {
+        await expect(
+            unconfiguredProvider.generateImage!({ prompt: 'test' })
+        ).rejects.toThrow(/not configured/i)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// testConnection
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider.testConnection', () => {
+    let provider: GeminiImageProvider
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        provider = new GeminiImageProvider({ apiKey: 'AIza-test-key' })
+    })
+
+    it('should return true when the API responds successfully', async () => {
+        setupMockFetch(mockResponses.gemini)
+        const result = await provider.testConnection()
+        expect(result).toBe(true)
+    })
+
+    it('should return false when the API throws a network error', async () => {
+        mockFetch.mockRejectedValue(new Error('Network error'))
+        const result = await provider.testConnection()
+        expect(result).toBe(false)
+    })
+
+    it('should return false when the API returns an error response', async () => {
+        setupMockFetchError(500, {
+            error: { message: 'Internal server error' },
+        })
+        const result = await provider.testConnection()
+        expect(result).toBe(false)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// Static utility methods
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – static methods', () => {
+    it('getAvailableModels should return a non-empty array of model IDs', () => {
+        const models = GeminiImageProvider.getAvailableModels()
+        expect(Array.isArray(models)).toBe(true)
+        expect(models.length).toBeGreaterThan(0)
+        expect(models).toContain('gemini-2.0-flash-exp')
+    })
+
+    it('getAvailableImageModels should return objects with id, name, and description', () => {
+        const models = GeminiImageProvider.getAvailableImageModels()
+        expect(Array.isArray(models)).toBe(true)
+        expect(models.length).toBeGreaterThan(0)
+        for (const m of models) {
+            expect(typeof m.id).toBe('string')
+            expect(typeof m.name).toBe('string')
+            expect(typeof m.description).toBe('string')
+        }
+    })
+
+    it('getAvailableImageModels should include a gemini and an imagen entry', () => {
+        const models = GeminiImageProvider.getAvailableImageModels()
+        const ids = models.map((m) => m.id)
+        expect(ids).toContain('gemini')
+        expect(ids).toContain('imagen')
+    })
+})
+
+// ---------------------------------------------------------------------------
+// buildPrompt with system prompt
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – buildPrompt with systemPrompt', () => {
+    let provider: GeminiImageProvider
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        provider = new GeminiImageProvider({
+            apiKey: 'AIza-test-api-key',
+            model: 'gemini-2.0-flash-exp',
+        })
+        setupMockFetch(mockResponses.gemini)
+    })
+
+    it('should prepend "System:" when a systemPrompt is provided', async () => {
+        await provider.generateResponse({
+            prompt: 'user message',
+            systemPrompt: 'You are a game asset creator',
+        })
+        expect(mockFetch).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({
+                body: expect.stringContaining(
+                    'System: You are a game asset creator'
+                ),
+            })
+        )
+    })
+
+    it('should only include "User:" when no systemPrompt is provided', async () => {
+        await provider.generateResponse({ prompt: 'dragon sprite' })
+        const body = JSON.parse(
+            (mockFetch.mock.calls[0][1] as RequestInit).body as string
+        )
+        const promptText = body.contents[0].parts[0].text as string
+        expect(promptText).toContain('User: dragon sprite')
+        expect(promptText).not.toContain('System:')
+    })
+})
+
+// ---------------------------------------------------------------------------
+// callGeminiImageAPI with reference images
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – generateImage with reference images', () => {
+    let provider: GeminiImageProvider
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        provider = new GeminiImageProvider({
+            apiKey: 'AIza-test-api-key',
+            model: 'gemini-2.0-flash-exp',
+        })
+    })
+
+    it('should include reference images as inlineData parts in the request', async () => {
+        const mockImageResponse = {
+            candidates: [
+                {
+                    content: {
+                        parts: [
+                            {
+                                inlineData: {
+                                    mimeType: 'image/png',
+                                    data: 'result-data',
+                                },
+                            },
+                        ],
+                    },
+                    finishReason: 'STOP',
+                    safetyRatings: [],
+                },
+            ],
+        }
+        setupMockFetch(mockImageResponse)
+
+        await provider.generateImage!({
+            prompt: 'modify this character',
+            referenceImages: ['data:image/jpeg;base64,ref-data-here'],
+        })
+
+        const body = JSON.parse(
+            (mockFetch.mock.calls[0][1] as RequestInit).body as string
+        )
+        const parts = body.contents[0].parts as Array<{
+            text?: string
+            inlineData?: { mimeType: string; data: string }
+        }>
+        const inlineDataParts = parts.filter((p) => p.inlineData)
+        expect(inlineDataParts.length).toBeGreaterThan(0)
+    })
+
+    it('should not add extra parts when no referenceImages are provided', async () => {
+        const mockImageResponse = {
+            candidates: [
+                {
+                    content: {
+                        parts: [
+                            {
+                                inlineData: {
+                                    mimeType: 'image/png',
+                                    data: 'result-data',
+                                },
+                            },
+                        ],
+                    },
+                    finishReason: 'STOP',
+                    safetyRatings: [],
+                },
+            ],
+        }
+        setupMockFetch(mockImageResponse)
+
+        await provider.generateImage!({ prompt: 'create a shield' })
+
+        const body = JSON.parse(
+            (mockFetch.mock.calls[0][1] as RequestInit).body as string
+        )
+        // Only the text prompt part should be present, no extra inlineData
+        expect(body.contents[0].parts).toHaveLength(1)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// handleGeminiError – error variant branches
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – handleGeminiError variants', () => {
+    let provider: GeminiImageProvider
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        provider = new GeminiImageProvider({
+            apiKey: 'AIza-test-api-key',
+            model: 'gemini-2.0-flash-exp',
+        })
+    })
+
+    it('should return INVALID_API_KEY code when error message contains "API key"', async () => {
+        mockFetch.mockRejectedValue(new Error('API key is not valid'))
+        await expect(
+            provider.generateResponse({ prompt: 'test' })
+        ).rejects.toMatchObject({ code: 'INVALID_API_KEY' })
+    })
+
+    it('should return QUOTA_EXCEEDED code when error message contains "quota"', async () => {
+        mockFetch.mockRejectedValue(
+            new Error('quota limit reached for project')
+        )
+        await expect(
+            provider.generateResponse({ prompt: 'test' })
+        ).rejects.toMatchObject({ code: 'QUOTA_EXCEEDED' })
+    })
+
+    it('should return GEMINI_ERROR code for generic Error objects', async () => {
+        mockFetch.mockRejectedValue(new Error('Some random error occurred'))
+        await expect(
+            provider.generateResponse({ prompt: 'test' })
+        ).rejects.toMatchObject({
+            code: 'GEMINI_ERROR',
+            message: 'Some random error occurred',
+        })
+    })
+
+    it('should return UNKNOWN_ERROR code for non-Error thrown values', async () => {
+        mockFetch.mockRejectedValue({ customField: 'unexpected data' })
+        await expect(
+            provider.generateResponse({ prompt: 'test' })
+        ).rejects.toMatchObject({ code: 'UNKNOWN_ERROR' })
+    })
+})
+
+// ---------------------------------------------------------------------------
+// detectMimeType / extractBase64Data (via generateResponse with images)
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – detectMimeType and extractBase64Data', () => {
+    let provider: GeminiImageProvider
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        provider = new GeminiImageProvider({
+            apiKey: 'AIza-test-api-key',
+            model: 'gemini-2.0-flash-exp',
+        })
+        setupMockFetch(mockResponses.gemini)
+    })
+
+    it('should extract the mimeType from a data URL image', async () => {
+        await provider.generateResponse({
+            prompt: 'test',
+            images: ['data:image/webp;base64,abc123'],
+        })
+        const body = JSON.parse(
+            (mockFetch.mock.calls[0][1] as RequestInit).body as string
+        )
+        const inlinePart = (
+            body.contents[0].parts as Array<{
+                inlineData?: { mimeType: string; data: string }
+            }>
+        ).find((p) => p.inlineData)
+        expect(inlinePart?.inlineData?.mimeType).toBe('image/webp')
+        expect(inlinePart?.inlineData?.data).toBe('abc123')
+    })
+
+    it('should default to image/jpeg for raw base64 without a data URL prefix', async () => {
+        await provider.generateResponse({
+            prompt: 'test',
+            images: ['rawbase64datanocolo'],
+        })
+        const body = JSON.parse(
+            (mockFetch.mock.calls[0][1] as RequestInit).body as string
+        )
+        const inlinePart = (
+            body.contents[0].parts as Array<{
+                inlineData?: { mimeType: string; data: string }
+            }>
+        ).find((p) => p.inlineData)
+        expect(inlinePart?.inlineData?.mimeType).toBe('image/jpeg')
+        // Raw base64 is passed through unchanged
+        expect(inlinePart?.inlineData?.data).toBe('rawbase64datanocolo')
+    })
+})
