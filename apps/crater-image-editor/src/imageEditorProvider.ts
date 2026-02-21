@@ -495,7 +495,12 @@ export class ImageEditorProvider implements WebviewViewProvider {
 
         webviewView.webview.onDidReceiveMessage(
             (message) => {
-                this._handleMessage(message)
+                this._handleMessage(message).catch((error: unknown) => {
+                    console.error(
+                        '[Crater Image Editor] Unhandled error in message handler:',
+                        error
+                    )
+                })
             },
             undefined,
             []
