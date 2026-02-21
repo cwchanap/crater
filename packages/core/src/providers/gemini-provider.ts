@@ -533,7 +533,8 @@ export class GeminiImageProvider extends BaseImageModelProvider {
                 maxTokens: 10,
             })
             return !!response.text
-        } catch {
+        } catch (error: unknown) {
+            console.error('[Crater] Gemini connection test failed:', error)
             return false
         }
     }
