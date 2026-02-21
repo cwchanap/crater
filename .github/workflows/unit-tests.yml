@@ -91,6 +91,11 @@ jobs:
       - name: Build core package for extension
         run: bun run --filter @crater/core build
 
+      - name: Build extension and compile tests
+        run: |
+          bun run --filter crater-ext build
+          bun run --filter crater-ext compile-tests
+
       - name: Run VS Code tests
         run: xvfb-run -a bun run --filter crater-ext test:vscode
         env:
