@@ -186,8 +186,11 @@ export class ImageEditorProvider implements WebviewViewProvider {
             window.showInformationMessage(
                 '🔥 Crater Image Editor Dev Mode: Auto-reload on webview changes'
             )
-        } catch {
-            // Silent fail for development watcher setup
+        } catch (error: unknown) {
+            console.error(
+                '[Crater Image Editor] Failed to set up development watcher:',
+                error
+            )
         }
     }
 
@@ -429,8 +432,10 @@ export class ImageEditorProvider implements WebviewViewProvider {
             writeFileSync(filePath, imageBuffer)
 
             return filePath
-        } catch (error) {
-            window.showErrorMessage(`Failed to save image: ${error}`)
+        } catch (error: unknown) {
+            window.showErrorMessage(
+                `Failed to save image: ${error instanceof Error ? error.message : String(error)}`
+            )
             return null
         }
     }
