@@ -145,9 +145,25 @@ export async function activate(context: ExtensionContext) {
                     // If the extension isn't available, the command will fail and we'll catch the error
 
                     // Focus the image editor view first to ensure it's available
-                    await commands.executeCommand(
-                        'crater-image-editor.editorView.focus'
-                    )
+                    try {
+                        await commands.executeCommand(
+                            'crater-image-editor.editorView.focus'
+                        )
+                    } catch (focusError) {
+                        // Check if the image editor extension is not installed
+                        if (
+                            focusError instanceof Error &&
+                            focusError.message.includes(
+                                "command 'crater-image-editor.editorView.focus' not found"
+                            )
+                        ) {
+                            window.showErrorMessage(
+                                '[Crater] Image Editor extension not found or not active. Please install and activate the Crater Image Editor extension.'
+                            )
+                            return
+                        }
+                        throw focusError
+                    }
 
                     // Wait for the view to initialize
                     await new Promise((resolve) => setTimeout(resolve, 500))
