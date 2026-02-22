@@ -207,7 +207,36 @@ describe('Extension Activation', () => {
             )
         })
 
-        it('should handle openInImageEditor command when image editor not found', async () => {
+        it('should handle openInImageEditor command when focus fails (editor not installed)', async () => {
+            await activate(mockContext)
+
+            const openInImageEditorCall =
+                mockVSCode.commands.registerCommand.mock.calls.find(
+                    (call) => call[0] === 'crater-ext.openInImageEditor'
+                )
+            expect(openInImageEditorCall).toBeDefined()
+            const handler = openInImageEditorCall![1]
+
+            const mockUri = { fsPath: '/test/image.png' }
+            mockVSCode.commands.executeCommand.mockRejectedValueOnce(
+                new Error(
+                    "command 'crater-image-editor.editorView.focus' not found"
+                )
+            )
+
+            await handler(mockUri)
+
+            expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
+                expect.stringContaining('Image Editor extension not found')
+            )
+            // Should not attempt loadImage since focus failed
+            expect(mockVSCode.commands.executeCommand).not.toHaveBeenCalledWith(
+                'crater-image-editor.loadImage',
+                expect.anything()
+            )
+        })
+
+        it('should handle openInImageEditor command when loadImage fails (editor not active)', async () => {
             await activate(mockContext)
 
             const openInImageEditorCall =

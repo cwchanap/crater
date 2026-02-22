@@ -116,8 +116,11 @@ describe('S3Service', () => {
             // Extract the prompt slug: part after timestamp (4th dash-separated group onwards)
             const name = filename.split('/')[1]
             // The full name has: timestamp-slug-randomsuffix.png
+            // Timestamp format: 2025-02-21T23-28-35-550Z (includes Z for UTC)
             // Slug should be <= 50 chars
-            const slugMatch = name.match(/T[\d-]+-([a-z-]+)-[a-z0-9]+\.png$/)
+            const slugMatch = name.match(
+                /\d{4}-\d{2}-\d{2}T[\d-]+Z-([a-z-]+)-[a-z0-9]+\.png$/
+            )
             expect(slugMatch).not.toBeNull()
             expect(slugMatch![1].length).toBeLessThanOrEqual(50)
         })
