@@ -281,6 +281,19 @@ describe('S3Service', () => {
             )
             expect(url).toContain('us-east-1')
         })
+
+        it('should fall back to us-east-1 when region is an empty string', async () => {
+            MockS3Client.mockReturnValueOnce({
+                send: mockSend,
+                config: { region: '' } as never,
+            })
+            const service = await S3Service.create(validConfig)
+            const url = await service.uploadFile(
+                'test.png',
+                Buffer.from('data')
+            )
+            expect(url).toContain('us-east-1')
+        })
     })
 
     describe('uploadImageFromUrl', () => {
@@ -392,6 +405,22 @@ describe('S3Service', () => {
                     'test.png'
                 )
             ).rejects.toThrow('Image upload failed')
+        })
+    })
+
+    describe('dynamic import failure path', () => {
+        it('should throw a helpful error when @aws-sdk/client-s3 cannot be imported', async () => {
+            vi.resetModules()
+            vi.doMock('@aws-sdk/client-s3', () => {
+                throw new Error('module missing in runtime')
+            })
+
+            const { S3Service: FreshS3Service } =
+                await import('../services/s3-service')
+
+            await expect(FreshS3Service.create(validConfig)).rejects.toThrow(
+                '@aws-sdk/client-s3 is required for S3Service'
+            )
         })
     })
 })
