@@ -256,7 +256,7 @@ describe('S3Service', () => {
         it('should resolve region from an async function', async () => {
             MockS3Client.mockReturnValueOnce({
                 send: mockSend,
-                config: { region: async () => 'eu-central-1' },
+                config: { region: async () => 'eu-central-1' } as never,
             })
             const service = await S3Service.create(validConfig)
             const url = await service.uploadFile(
@@ -269,7 +269,7 @@ describe('S3Service', () => {
         it('should fall back to us-east-1 when region function returns undefined', async () => {
             MockS3Client.mockReturnValueOnce({
                 send: mockSend,
-                config: { region: async () => undefined },
+                config: { region: async () => undefined } as never,
             })
             const service = await S3Service.create(validConfig)
             const url = await service.uploadFile(

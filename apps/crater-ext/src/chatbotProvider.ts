@@ -282,7 +282,7 @@ export class ChatbotProvider implements WebviewViewProvider {
                                         ...msg.imageData,
                                         // Recreate image URLs from saved file paths
                                         images: msg.imageData.savedPaths.map(
-                                            (path) => `file://${path}`
+                                            (path: string) => `file://${path}`
                                         ),
                                     },
                                 }
@@ -667,7 +667,7 @@ export class ChatbotProvider implements WebviewViewProvider {
                 convertedMsg.imageData = {
                     ...msg.imageData,
                     images: msg.imageData.savedPaths
-                        .map((path) => {
+                        .map((path: string) => {
                             if (path) {
                                 const fileUri = Uri.file(path)
                                 return this._view!.webview.asWebviewUri(
@@ -1131,12 +1131,14 @@ export class ChatbotProvider implements WebviewViewProvider {
                             await this.saveChatHistory()
 
                             // Convert file paths to proper webview URIs for immediate display
-                            const webviewImageUris = savedPaths.map((path) => {
-                                const fileUri = Uri.file(path)
-                                return this._view!.webview.asWebviewUri(
-                                    fileUri
-                                ).toString()
-                            })
+                            const webviewImageUris = savedPaths.map(
+                                (path: string) => {
+                                    const fileUri = Uri.file(path)
+                                    return this._view!.webview.asWebviewUri(
+                                        fileUri
+                                    ).toString()
+                                }
+                            )
 
                             this._view.webview.postMessage({
                                 type: 'image-response',
