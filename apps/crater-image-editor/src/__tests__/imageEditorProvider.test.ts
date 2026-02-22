@@ -235,6 +235,7 @@ describe('ImageEditorProvider', () => {
     describe('Settings Management', () => {
         it('should notify settings changed', () => {
             provider.resolveWebviewView(mockWebviewView)
+            ;(providerInternals as any)._webviewReady = true
 
             mockVSCode.workspace.getConfiguration.mockReturnValue({
                 get: vi.fn((key: string) => {

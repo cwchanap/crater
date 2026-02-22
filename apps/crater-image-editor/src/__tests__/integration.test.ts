@@ -106,6 +106,9 @@ describe('Extension-WebView Integration', () => {
         it('should handle settings synchronization', async () => {
             provider.resolveWebviewView(mockWebviewView)
 
+            // Simulate webview ready so messages get sent immediately
+            ;(provider as any)._webviewReady = true
+
             // Mock configuration
             mockVSCode.workspace.getConfiguration.mockReturnValue({
                 get: vi.fn((key: string) => {
@@ -281,6 +284,9 @@ describe('Extension-WebView Integration', () => {
 
         it('should handle configuration changes', async () => {
             provider.resolveWebviewView(mockWebviewView)
+
+            // Simulate webview ready so messages get sent immediately
+            ;(provider as any)._webviewReady = true
 
             // Mock configuration change
             mockVSCode.workspace.getConfiguration.mockReturnValue({
