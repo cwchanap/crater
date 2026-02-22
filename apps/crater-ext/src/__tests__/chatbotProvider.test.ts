@@ -24,8 +24,8 @@ describe('ChatbotProvider._getHtmlForWebview', () => {
             }),
             html: '',
             options: {},
-            onDidReceiveMessage: mockVSCode.window.showInformationMessage,
-            postMessage: mockVSCode.window.showInformationMessage,
+            onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
+            postMessage: vi.fn(async () => true),
         }
     }
 

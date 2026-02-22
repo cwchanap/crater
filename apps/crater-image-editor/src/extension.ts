@@ -11,7 +11,36 @@ import { ImageEditorProvider } from './imageEditorProvider'
 const WEBVIEW_LOAD_DELAY = 500
 const WEBVIEW_READY_DELAY = 1500
 
-export async function activate(context: ExtensionContext) {
+/**
+ * Helper to load an image with proper webview initialization timing.
+ * Extracts duplicated timer logic from command handlers.
+ */
+function loadImageWithReady(
+    provider: ImageEditorProvider,
+    imagePath: string
+): void {
+    setTimeout(async () => {
+        try {
+            await provider.loadImageFromPath(imagePath)
+
+            setTimeout(() => {
+                try {
+                    provider.forceWebviewReady()
+                } catch (error) {
+                    console.error(
+                        `[Crater Image Editor] Error in forceWebviewReady: ${error instanceof Error ? error.message : String(error)}`
+                    )
+                }
+            }, WEBVIEW_READY_DELAY)
+        } catch (error) {
+            window.showErrorMessage(
+                `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
+            )
+        }
+    }, WEBVIEW_LOAD_DELAY)
+}
+
+export async function activate(context: ExtensionContext): Promise<void> {
     try {
         const imageEditorProvider = new ImageEditorProvider(
             context.extensionUri,
@@ -60,30 +89,7 @@ export async function activate(context: ExtensionContext) {
                     await commands.executeCommand(
                         'crater-image-editor.editorView.focus'
                     )
-
-                    // Use consistent timing: load after delay, then force ready
-                    setTimeout(async () => {
-                        try {
-                            await imageEditorProvider.loadImageFromPath(
-                                uri.fsPath
-                            )
-
-                            // Force webview ready state after delay to ensure proper initialization
-                            setTimeout(() => {
-                                try {
-                                    imageEditorProvider.forceWebviewReady()
-                                } catch (error) {
-                                    console.error(
-                                        `[Crater Image Editor] Error in forceWebviewReady: ${error instanceof Error ? error.message : String(error)}`
-                                    )
-                                }
-                            }, WEBVIEW_READY_DELAY)
-                        } catch (error) {
-                            window.showErrorMessage(
-                                `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
-                            )
-                        }
-                    }, WEBVIEW_LOAD_DELAY)
+                    loadImageWithReady(imageEditorProvider, uri.fsPath)
                 } catch (error) {
                     window.showErrorMessage(
                         `Failed to open image: ${error instanceof Error ? error.message : String(error)}`
@@ -132,30 +138,7 @@ export async function activate(context: ExtensionContext) {
                         }
                     }
 
-                    // Wait a bit for the view to become available, then load the image
-                    setTimeout(async () => {
-                        try {
-                            // Load the image directly - the provider will handle queueing if needed
-                            await imageEditorProvider.loadImageFromPath(
-                                imagePath
-                            )
-
-                            // Force webview ready state after delay to ensure proper initialization
-                            setTimeout(() => {
-                                try {
-                                    imageEditorProvider.forceWebviewReady()
-                                } catch (error) {
-                                    console.error(
-                                        `[Crater Image Editor] Error in forceWebviewReady: ${error instanceof Error ? error.message : String(error)}`
-                                    )
-                                }
-                            }, WEBVIEW_READY_DELAY)
-                        } catch (error) {
-                            window.showErrorMessage(
-                                `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
-                            )
-                        }
-                    }, WEBVIEW_LOAD_DELAY)
+                    loadImageWithReady(imageEditorProvider, imagePath)
                 } catch (error) {
                     window.showErrorMessage(
                         `Failed to load image: ${error instanceof Error ? error.message : String(error)}`
