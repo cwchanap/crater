@@ -82,7 +82,6 @@ const createMockWebview = (): MockWebview => {
             retainContextWhenHidden: true,
             localResourceRoots,
         },
-        localResourceRoots,
         asWebviewUri: vi.fn((uri: VscodeUri) => uri),
         postMessage: vi.fn(async () => true),
         onDidReceiveMessage: vi.fn(() => createDisposable()),
@@ -191,7 +190,9 @@ export const mockVSCode = {
         getConfiguration: vi.fn((section?: string) => {
             void section
             return {
-                get: vi.fn(),
+                get: vi.fn(
+                    (key: string, defaultValue?: unknown) => defaultValue
+                ),
                 update: vi.fn(),
                 has: vi.fn(),
                 inspect: vi.fn(),
@@ -214,6 +215,15 @@ export const mockVSCode = {
                     index: 0,
                 },
             ]
+        },
+        fs: {
+            readFile: vi.fn(async () => new Uint8Array()),
+            writeFile: vi.fn(async () => undefined),
+            createDirectory: vi.fn(async () => undefined),
+            delete: vi.fn(async () => undefined),
+            rename: vi.fn(async () => undefined),
+            copy: vi.fn(async () => undefined),
+            stat: vi.fn(async () => ({ type: 1, ctime: 0, mtime: 0, size: 0 })),
         },
     },
     Uri: {

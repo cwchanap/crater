@@ -956,7 +956,7 @@ export class ChatbotProvider implements WebviewViewProvider {
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview)
 
         // Handle messages from the webview
-        webviewView.webview.onDidReceiveMessage(
+        const messageDisposable = webviewView.webview.onDidReceiveMessage(
             (message) => {
                 this._handleMessage(message).catch((error: unknown) => {
                     console.error(
@@ -968,6 +968,9 @@ export class ChatbotProvider implements WebviewViewProvider {
             undefined,
             []
         )
+
+        // Track the disposable for proper cleanup
+        this._extensionContext?.subscriptions.push(messageDisposable)
 
         // Proactively send all initial data to the webview after a short delay
         // This helps with cases where the webview loads before the initial request is made

@@ -23,6 +23,8 @@ interface GeminiContent {
     parts: GeminiPart[]
 }
 
+type ResponseModality = 'TEXT' | 'IMAGE'
+
 interface GeminiRequest {
     contents: GeminiContent[]
     generationConfig: {
@@ -30,7 +32,7 @@ interface GeminiRequest {
         maxOutputTokens: number
         topP: number
         topK: number
-        responseModalities?: string[]
+        responseModalities?: ResponseModality[]
     }
 }
 

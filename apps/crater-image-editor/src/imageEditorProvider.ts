@@ -491,10 +491,6 @@ export class ImageEditorProvider implements WebviewViewProvider {
             []
         )
 
-        if (!this._view) {
-            return
-        }
-
         const config = workspace.getConfiguration('crater-image-editor')
         const outputDirectory = config.get<string>(
             'outputDirectory',
@@ -709,8 +705,12 @@ export class ImageEditorProvider implements WebviewViewProvider {
             const ts = Date.now()
             const rand = Math.random().toString(36).substring(2)
             const cacheKey = `${ts}-${rand}`
-            const scriptUri = `${scriptUriWebview.toString()}?v=${cacheKey}`
-            const cssUri = `${cssUriWebview.toString()}?v=${cacheKey}`
+            const scriptUri = scriptUriWebview
+                .with({ query: `v=${cacheKey}` })
+                .toString()
+            const cssUri = cssUriWebview
+                .with({ query: `v=${cacheKey}` })
+                .toString()
 
             const nonce = randomBytes(16).toString('base64')
 
