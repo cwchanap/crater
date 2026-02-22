@@ -812,3 +812,60 @@ describe('GeminiImageProvider – detectMimeType and extractBase64Data', () => {
         expect(inlinePart?.inlineData?.data).toBe('rawbase64datanocolo')
     })
 })
+
+// ---------------------------------------------------------------------------
+// uncovered branch guards
+// ---------------------------------------------------------------------------
+describe('GeminiImageProvider – missing key and usage fallback branches', () => {
+    const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
+    it('generateResponse should leave usage undefined when usageMetadata is absent', async () => {
+        const provider = new GeminiImageProvider({
+            apiKey: 'AIza-test-api-key',
+            model: 'gemini-2.0-flash-exp',
+        })
+        setupMockFetch({
+            candidates: [
+                {
+                    content: { parts: [{ text: 'plain response' }] },
+                    finishReason: 'STOP',
+                    safetyRatings: [],
+                },
+            ],
+        })
+
+        const response = await provider.generateResponse({ prompt: 'hello' })
+
+        expect(response.text).toBe('plain response')
+        expect(response.usage).toBeUndefined()
+        expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('callGeminiAPI should throw a clear error when apiKey is missing', async () => {
+        const provider = new GeminiImageProvider()
+
+        await expect(
+            (provider as any).callGeminiAPI(
+                'https://example.test/models',
+                'gemini-2.0-flash-exp',
+                { prompt: 'test' }
+            )
+        ).rejects.toThrow('Gemini API key is not configured')
+    })
+
+    it('callGeminiImageAPI should throw a clear error when apiKey is missing', async () => {
+        const provider = new GeminiImageProvider()
+
+        await expect(
+            (provider as any).callGeminiImageAPI(
+                'https://example.test/models',
+                'gemini-2.5-flash-image-preview',
+                { prompt: 'test image' }
+            )
+        ).rejects.toThrow('Gemini API key is not configured')
+    })
+})

@@ -8,6 +8,9 @@ const fsMock = {
     writeFileSync: vi.fn(),
     statSync: vi.fn(),
     mkdirSync: vi.fn(),
+    promises: {
+        unlink: vi.fn(),
+    },
 }
 
 vi.mock('fs', () => ({

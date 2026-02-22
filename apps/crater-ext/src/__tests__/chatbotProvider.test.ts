@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { ExtensionContext } from 'vscode'
+import type {
+    CancellationToken,
+    ExtensionContext,
+    WebviewViewResolveContext,
+} from 'vscode'
 import {
     mockVSCode,
     createMockExtensionContext,
@@ -883,5 +887,469 @@ describe('ChatbotProvider.initializeAIProvider', () => {
         await (provider as any).initializeAIProvider()
         expect((provider as any).currentProvider?.type).toBe('gemini')
         provider.dispose?.()
+    })
+})
+
+// ---------------------------------------------------------------------------
+// saveImageToFile
+// ---------------------------------------------------------------------------
+describe('ChatbotProvider.saveImageToFile', () => {
+    let provider: ChatbotProvider
+
+    beforeEach(() => {
+        ;({ provider } = makeProviderWithConfig())
+        pathMock.join.mockImplementation((...parts: string[]) =>
+            parts.join('/')
+        )
+        fsMock.existsSync.mockReturnValue(true)
+        fsMock.writeFileSync.mockReturnValue(undefined as unknown as never)
+    })
+
+    afterEach(() => {
+        provider.dispose?.()
+    })
+
+    it('should return null when auto save is disabled', async () => {
+        const { provider: autoSaveOffProvider } = makeProviderWithConfig({
+            autoSaveImages: false,
+        })
+        const result = await (autoSaveOffProvider as any).saveImageToFile(
+            'ZmFrZS1iYXNlNjQ=',
+            'dragon'
+        )
+        expect(result).toBeNull()
+        expect(fsMock.writeFileSync).not.toHaveBeenCalled()
+        autoSaveOffProvider.dispose?.()
+    })
+
+    it('should save image data to disk and return a path', async () => {
+        fsMock.existsSync.mockReturnValue(false)
+
+        const result = await (provider as any).saveImageToFile(
+            'ZmFrZS1iYXNlNjQ=',
+            'Dragon Knight'
+        )
+
+        expect(fsMock.mkdirSync).toHaveBeenCalled()
+        expect(fsMock.writeFileSync).toHaveBeenCalled()
+        expect(result).toContain('/test/workspace/images/')
+        expect(result).toMatch(/\.png$/)
+    })
+
+    it('should surface save failures and return null', async () => {
+        fsMock.writeFileSync.mockImplementation(() => {
+            throw new Error('Disk full')
+        })
+
+        const result = await (provider as any).saveImageToFile(
+            'ZmFrZS1iYXNlNjQ=',
+            'dragon'
+        )
+
+        expect(result).toBeNull()
+        expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to save image')
+        )
+    })
+})
+
+// ---------------------------------------------------------------------------
+// session helper methods
+// ---------------------------------------------------------------------------
+describe('ChatbotProvider session helper methods', () => {
+    let provider: ChatbotProvider
+
+    beforeEach(() => {
+        ;({ provider } = makeProviderWithConfig())
+    })
+
+    afterEach(() => {
+        provider.dispose?.()
+    })
+
+    it('createNewChat should persist current chat and create a fresh active session', async () => {
+        ;(provider as any)._extendedChatHistory = [
+            {
+                id: 'msg-1',
+                text: 'old chat',
+                sender: 'user',
+                timestamp: new Date().toISOString(),
+                messageType: 'text',
+            },
+        ]
+
+        const saveHistorySpy = vi
+            .spyOn(provider as any, 'saveChatHistory')
+            .mockResolvedValue(undefined)
+        const saveSessionsSpy = vi
+            .spyOn(provider as any, 'saveChatSessions')
+            .mockResolvedValue(undefined)
+
+        await (provider as any).createNewChat()
+
+        expect(saveHistorySpy).toHaveBeenCalled()
+        expect(saveSessionsSpy).toHaveBeenCalled()
+        expect((provider as any)._extendedChatHistory).toHaveLength(0)
+        expect((provider as any)._currentSessionId).toBeTruthy()
+        expect((provider as any)._chatSessions[0].id).toBe(
+            (provider as any)._currentSessionId
+        )
+    })
+
+    it('loadChatSession should switch session and persist updated activity', async () => {
+        const now = new Date().toISOString()
+        ;(provider as any)._chatSessions = [
+            {
+                id: 's1',
+                title: 'Session One',
+                messages: [],
+                createdAt: now,
+                lastActivity: now,
+            },
+            {
+                id: 's2',
+                title: 'Session Two',
+                messages: [
+                    {
+                        id: 'm2',
+                        text: 'hello',
+                        sender: 'assistant',
+                        timestamp: now,
+                        messageType: 'text',
+                    },
+                ],
+                createdAt: now,
+                lastActivity: now,
+            },
+        ]
+        ;(provider as any)._currentSessionId = 's1'
+        ;(provider as any)._extendedChatHistory = [
+            {
+                id: 'old',
+                text: 'old message',
+                sender: 'user',
+                timestamp: now,
+                messageType: 'text',
+            },
+        ]
+
+        const saveHistorySpy = vi
+            .spyOn(provider as any, 'saveChatHistory')
+            .mockResolvedValue(undefined)
+        const saveSessionsSpy = vi
+            .spyOn(provider as any, 'saveChatSessions')
+            .mockResolvedValue(undefined)
+
+        await (provider as any).loadChatSession('s2')
+
+        expect(saveHistorySpy).toHaveBeenCalled()
+        expect(saveSessionsSpy).toHaveBeenCalled()
+        expect((provider as any)._currentSessionId).toBe('s2')
+        expect((provider as any)._extendedChatHistory).toHaveLength(1)
+        expect((provider as any)._extendedChatHistory[0].text).toBe('hello')
+    })
+})
+
+// ---------------------------------------------------------------------------
+// resolveWebviewView
+// ---------------------------------------------------------------------------
+describe('ChatbotProvider.resolveWebviewView', () => {
+    let provider: ChatbotProvider
+    let mockContext: ExtensionContext
+
+    beforeEach(() => {
+        vi.useFakeTimers()
+        fsMock.readFileSync.mockReturnValue(
+            '{{NONCE}} {{CSP_SOURCE}} {{SCRIPT_URI}} {{CSS_URI}}'
+        )
+        ;({ provider, mockContext } = makeProviderWithConfig())
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+        provider.dispose?.()
+    })
+
+    it('should configure the webview and post initial payloads', async () => {
+        const mockView = createMockWebviewView()
+        const now = new Date().toISOString()
+        ;(provider as any)._extendedChatHistory = [
+            {
+                id: 'm1',
+                text: 'hello',
+                sender: 'user',
+                timestamp: now,
+                messageType: 'text',
+            },
+        ]
+        ;(provider as any)._chatSessions = [
+            {
+                id: 's1',
+                title: 'Session',
+                messages: [...(provider as any)._extendedChatHistory],
+                createdAt: now,
+                lastActivity: now,
+            },
+        ]
+        ;(provider as any)._currentSessionId = 's1'
+        vi.spyOn(provider as any, 'loadChatHistory').mockResolvedValue(
+            undefined
+        )
+
+        provider.resolveWebviewView(
+            mockView,
+            {} as WebviewViewResolveContext,
+            {} as CancellationToken
+        )
+
+        expect(mockView.webview.options.enableScripts).toBe(true)
+        expect(mockContext.subscriptions).toHaveLength(1)
+
+        await vi.advanceTimersByTimeAsync(250)
+
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'chat-history' })
+        )
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'provider-info' })
+        )
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'settings' })
+        )
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'chat-sessions' })
+        )
+    })
+})
+
+// ---------------------------------------------------------------------------
+// _handleMessage additional branches
+// ---------------------------------------------------------------------------
+describe('ChatbotProvider._handleMessage additional branches', () => {
+    let provider: ChatbotProvider
+
+    beforeEach(() => {
+        ;({ provider } = makeProviderWithConfig())
+    })
+
+    afterEach(() => {
+        provider.dispose?.()
+    })
+
+    it('should reload and return chat history for "get-chat-history"', async () => {
+        const mockView = createMockWebviewView()
+        const now = new Date().toISOString()
+        ;(provider as any)._view = mockView
+        ;(provider as any)._extendedChatHistory = [
+            {
+                id: 'm1',
+                text: 'hello',
+                sender: 'user',
+                timestamp: now,
+                messageType: 'text',
+            },
+        ]
+        const loadSpy = vi
+            .spyOn(provider as any, 'loadChatHistory')
+            .mockResolvedValue(undefined)
+
+        await (provider as any)._handleMessage({ type: 'get-chat-history' })
+
+        expect(loadSpy).toHaveBeenCalled()
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'chat-history' })
+        )
+    })
+
+    it('should update settings and notify when "switch-provider" is valid', async () => {
+        const mockView = createMockWebviewView()
+        const updateMock = vi.fn().mockResolvedValue(undefined)
+        ;(provider as any)._view = mockView
+        mockVSCode.workspace.getConfiguration.mockReturnValue({
+            get: vi.fn((_: string, defaultValue?: unknown) => defaultValue),
+            update: updateMock,
+            has: vi.fn(),
+            inspect: vi.fn(),
+        })
+        vi.spyOn(provider, 'updateAIProvider').mockResolvedValue(undefined)
+
+        await (provider as any)._handleMessage({
+            type: 'switch-provider',
+            provider: 'openai',
+        })
+
+        expect(updateMock).toHaveBeenCalledWith(
+            'aiProvider',
+            'openai',
+            mockVSCode.ConfigurationTarget.Global
+        )
+        expect(provider.updateAIProvider).toHaveBeenCalled()
+        expect(mockVSCode.window.showInformationMessage).toHaveBeenCalledWith(
+            expect.stringContaining('OpenAI')
+        )
+    })
+
+    it('should reject invalid provider values for "save-settings"', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+
+        await (provider as any)._handleMessage({
+            type: 'save-settings',
+            aiProvider: 'invalid-provider',
+        })
+
+        expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining('Invalid AI provider')
+        )
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'settings-error' })
+        )
+    })
+
+    it('should persist settings and post success for "save-settings"', async () => {
+        const mockView = createMockWebviewView()
+        const updateMock = vi.fn().mockResolvedValue(undefined)
+        ;(provider as any)._view = mockView
+        mockVSCode.workspace.getConfiguration.mockReturnValue({
+            get: vi.fn((_: string, defaultValue?: unknown) => defaultValue),
+            update: updateMock,
+            has: vi.fn(),
+            inspect: vi.fn(),
+        })
+        mockVSCode.commands.executeCommand.mockResolvedValue(undefined)
+
+        await (provider as any)._handleMessage({
+            type: 'save-settings',
+            aiProvider: 'gemini',
+            aiModel: 'gemini-2.5-flash-image-preview',
+            apiKey: 'AIza' + 'x'.repeat(20),
+            imageSaveDirectory: '/tmp/images',
+            autoSaveImages: true,
+            imageSize: '1024x1024',
+            imageQuality: 'auto',
+        })
+
+        expect(updateMock).toHaveBeenCalledWith(
+            'geminiApiKey',
+            expect.stringContaining('AIza'),
+            mockVSCode.ConfigurationTarget.Global
+        )
+        expect(mockVSCode.commands.executeCommand).toHaveBeenCalledWith(
+            'crater-ext.updateAIProvider'
+        )
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith({
+            type: 'settings-saved',
+        })
+    })
+
+    it('should return selected folder path for "browse-folder"', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+        mockVSCode.commands.executeCommand.mockResolvedValue(
+            '/tmp/output' as unknown as undefined
+        )
+
+        await (provider as any)._handleMessage({ type: 'browse-folder' })
+
+        expect(mockView.webview.postMessage).toHaveBeenCalledWith({
+            type: 'folder-selected',
+            path: '/tmp/output',
+        })
+    })
+
+    it('should process image-state updates and delete newly removed files', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+        ;(provider as any)._extendedChatHistory = [
+            {
+                id: 'img-msg',
+                text: 'image',
+                sender: 'assistant',
+                timestamp: new Date().toISOString(),
+                messageType: 'image',
+                imageData: {
+                    images: [],
+                    prompt: 'dragon',
+                    savedPaths: ['/tmp/dragon.png'],
+                    imageStates: { deleted: [false], hidden: [false] },
+                },
+            },
+        ]
+
+        const deleteSpy = vi
+            .spyOn(provider as any, 'deleteImageFiles')
+            .mockResolvedValue(undefined)
+        const saveSpy = vi
+            .spyOn(provider as any, 'debouncedSaveChatHistory')
+            .mockImplementation(() => {})
+
+        await (provider as any)._handleMessage({
+            type: 'update-image-states',
+            messageIndex: 0,
+            imageStates: { deleted: [true], hidden: [false] },
+        })
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        await (provider as any)._handleMessage({
+            type: 'update-image-states',
+            messageIndex: 0,
+            imageStates: { deleted: [true], hidden: [false] },
+        })
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        expect(saveSpy).toHaveBeenCalledTimes(1)
+        expect(deleteSpy).toHaveBeenCalledTimes(1)
+        expect(deleteSpy).toHaveBeenCalledWith(['/tmp/dragon.png'])
+    })
+
+    it('should surface errors when opening images fails', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+        mockVSCode.commands.executeCommand.mockRejectedValue(
+            new Error('open failed')
+        )
+
+        await (provider as any)._handleMessage({
+            type: 'open-image',
+            path: '/tmp/test.png',
+        })
+
+        expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining('Failed to open image')
+        )
+    })
+
+    it('should open image in crater image editor when requested', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+
+        await (provider as any)._handleMessage({
+            type: 'open-in-image-editor',
+            path: '/tmp/editor.png',
+        })
+
+        expect(mockVSCode.commands.executeCommand).toHaveBeenCalledWith(
+            'crater-ext.openInImageEditor',
+            expect.anything()
+        )
+    })
+
+    it('should show an error when open-in-image-editor fails', async () => {
+        const mockView = createMockWebviewView()
+        ;(provider as any)._view = mockView
+        mockVSCode.commands.executeCommand.mockRejectedValue(
+            new Error('editor unavailable')
+        )
+
+        await (provider as any)._handleMessage({
+            type: 'open-in-image-editor',
+            path: '/tmp/editor.png',
+        })
+
+        expect(mockVSCode.window.showErrorMessage).toHaveBeenCalledWith(
+            expect.stringContaining(
+                'Failed to open image in Crater Image Editor'
+            )
+        )
     })
 })
