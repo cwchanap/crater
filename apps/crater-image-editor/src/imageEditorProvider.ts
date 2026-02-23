@@ -135,6 +135,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
         try {
             const handleFileChange = async (uri?: Uri) => {
                 const fileName = uri ? basename(uri.fsPath) : 'unknown'
+                this._webviewReady = false
 
                 try {
                     await commands.executeCommand(

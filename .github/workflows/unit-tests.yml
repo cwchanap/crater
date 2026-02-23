@@ -50,11 +50,12 @@ jobs:
           CI: true
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: apps/crater-web/coverage/lcov.info
           flags: crater-web
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
   crater-ext-tests:
@@ -107,11 +108,12 @@ jobs:
           CI: true
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: apps/crater-ext/coverage/lcov.info
           flags: crater-ext
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
   crater-image-editor-tests:
@@ -151,11 +153,12 @@ jobs:
           CI: true
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: apps/crater-image-editor/coverage/lcov.info
           flags: crater-image-editor
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
   core-tests:
@@ -195,9 +198,10 @@ jobs:
           CI: true
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         with:
           files: packages/core/coverage/lcov.info
           flags: core
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
