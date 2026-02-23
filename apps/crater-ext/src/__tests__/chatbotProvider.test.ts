@@ -888,6 +888,21 @@ describe('ChatbotProvider.initializeAIProvider', () => {
         expect((provider as any).currentProvider?.type).toBe('gemini')
         provider.dispose?.()
     })
+
+    it('should NOT use OpenAI when aiProvider is invalid but only OpenAI key is configured', async () => {
+        // This test verifies the fix for the settings/model mismatch issue.
+        // Previously, if aiProvider was corrupted/invalid and only OpenAI key was set,
+        // the extension would use OpenAI while getExtensionSettings() reported gemini.
+        const { provider } = makeProviderWithConfig({
+            aiProvider: 'corrupted-value',
+            openaiApiKey: 'sk-' + 'x'.repeat(20),
+            geminiApiKey: '',
+        })
+        await (provider as any).initializeAIProvider()
+        // Should normalize to gemini and not use OpenAI, keeping behavior aligned with getExtensionSettings()
+        expect((provider as any).currentProvider).toBeNull()
+        provider.dispose?.()
+    })
 })
 
 // ---------------------------------------------------------------------------

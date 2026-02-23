@@ -725,74 +725,39 @@ export class ChatbotProvider implements WebviewViewProvider {
     private async initializeAIProvider(): Promise<void> {
         try {
             const config = workspace.getConfiguration('crater-ext')
-            const aiProvider = config.get<string>('aiProvider', 'gemini') // Default to gemini
+            const rawProvider = config.get<string>('aiProvider', 'gemini')
+            // Normalize provider to valid value - align with getExtensionSettings()
+            const aiProvider: AIProviderName =
+                rawProvider === 'gemini' || rawProvider === 'openai'
+                    ? rawProvider
+                    : 'gemini'
 
             let provider: GeminiImageProvider | OpenAIImageProvider | null =
                 null
 
-            switch (aiProvider) {
-                case 'gemini': {
-                    const geminiApiKey = config.get<string>('geminiApiKey')
-                    if (
-                        geminiApiKey &&
-                        this.isValidApiKey(geminiApiKey, 'gemini')
-                    ) {
-                        provider = new GeminiImageProvider({
-                            apiKey: geminiApiKey,
-                        })
-                    }
-                    break
+            if (aiProvider === 'gemini') {
+                const geminiApiKey = config.get<string>('geminiApiKey')
+                if (
+                    geminiApiKey &&
+                    this.isValidApiKey(geminiApiKey, 'gemini')
+                ) {
+                    provider = new GeminiImageProvider({
+                        apiKey: geminiApiKey,
+                    })
                 }
-                case 'openai': {
-                    const openaiApiKey = config.get<string>('openaiApiKey')
-                    const imageSize = config.get<string>('imageSize', 'auto')
-                    const imageQuality = config.get<string>(
-                        'imageQuality',
-                        'auto'
-                    )
-                    if (
-                        openaiApiKey &&
-                        this.isValidApiKey(openaiApiKey, 'openai')
-                    ) {
-                        provider = new OpenAIImageProvider({
-                            apiKey: openaiApiKey,
-                            defaultImageSize: imageSize,
-                            defaultImageQuality: imageQuality,
-                        })
-                    }
-                    break
-                }
-                default: {
-                    // Check if any provider has a valid API key
-                    const geminiApiKey = config.get<string>('geminiApiKey')
-                    const openaiApiKey = config.get<string>('openaiApiKey')
-
-                    if (
-                        geminiApiKey &&
-                        this.isValidApiKey(geminiApiKey, 'gemini')
-                    ) {
-                        provider = new GeminiImageProvider({
-                            apiKey: geminiApiKey,
-                        })
-                    } else if (
-                        openaiApiKey &&
-                        this.isValidApiKey(openaiApiKey, 'openai')
-                    ) {
-                        const imageSize = config.get<string>(
-                            'imageSize',
-                            'auto'
-                        )
-                        const imageQuality = config.get<string>(
-                            'imageQuality',
-                            'auto'
-                        )
-                        provider = new OpenAIImageProvider({
-                            apiKey: openaiApiKey,
-                            defaultImageSize: imageSize,
-                            defaultImageQuality: imageQuality,
-                        })
-                    }
-                    break
+            } else if (aiProvider === 'openai') {
+                const openaiApiKey = config.get<string>('openaiApiKey')
+                const imageSize = config.get<string>('imageSize', 'auto')
+                const imageQuality = config.get<string>('imageQuality', 'auto')
+                if (
+                    openaiApiKey &&
+                    this.isValidApiKey(openaiApiKey, 'openai')
+                ) {
+                    provider = new OpenAIImageProvider({
+                        apiKey: openaiApiKey,
+                        defaultImageSize: imageSize,
+                        defaultImageQuality: imageQuality,
+                    })
                 }
             }
 
