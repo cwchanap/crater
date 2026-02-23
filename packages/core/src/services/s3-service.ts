@@ -38,6 +38,11 @@ export class S3Service {
     private bucketName: string
 
     private constructor(client: S3ClientInstance, bucketName: string) {
+        if (!client || typeof client.send !== 'function') {
+            throw new Error(
+                'S3Service must be created via S3Service.create(). Do not call the constructor directly.'
+            )
+        }
         this.client = client
         this.bucketName = bucketName
     }
