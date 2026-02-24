@@ -22,8 +22,6 @@ describe('/+page.svelte', () => {
         await input.fill('Generate a pixel art hero')
         await page.getByRole('button', { name: 'Send' }).click()
 
-        await new Promise((resolve) => setTimeout(resolve, 1800))
-
         await expect
             .element(page.getByText(/Generated 1 image\(s\) for:/))
             .toBeInTheDocument()
