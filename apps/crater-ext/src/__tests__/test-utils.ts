@@ -11,7 +11,7 @@ const fsMock = {
     promises: {
         unlink: vi.fn(),
     },
-}
+} as const
 
 vi.mock('fs', () => ({
     ...fsMock,
@@ -24,7 +24,7 @@ const pathMock = {
     extname: vi.fn(),
     parse: vi.fn(),
     dirname: vi.fn(),
-}
+} as const
 
 vi.mock('path', () => ({
     ...pathMock,

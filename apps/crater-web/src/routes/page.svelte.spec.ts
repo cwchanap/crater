@@ -1,4 +1,4 @@
-import { page } from '@vitest/browser/context'
+import { page, type Locator } from '@vitest/browser/context'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render } from 'vitest-browser-svelte'
 import Page from './+page.svelte'
@@ -11,14 +11,14 @@ describe('/+page.svelte', () => {
     it('should render h1', async () => {
         render(Page)
 
-        const heading = page.getByRole('heading', { level: 1 })
+        const heading: Locator = page.getByRole('heading', { level: 1 })
         await expect.element(heading).toBeInTheDocument()
     })
 
     it('should generate an image response in default image mode', async () => {
         render(Page)
 
-        const input = page.getByRole('textbox')
+        const input: Locator = page.getByRole('textbox')
         await input.fill('Generate a pixel art hero')
         await page.getByRole('button', { name: 'Send' }).click()
 
@@ -33,7 +33,7 @@ describe('/+page.svelte', () => {
         await page.getByRole('button', { name: /New Chat/i }).click()
         await page.getByRole('button', { name: 'Chat Mode' }).click()
 
-        const input = page.getByRole('textbox')
+        const input: Locator = page.getByRole('textbox')
         await input.fill('Create an image of a dragon')
         await page.getByRole('button', { name: 'Send' }).click()
 

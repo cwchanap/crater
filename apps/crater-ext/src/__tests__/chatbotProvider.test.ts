@@ -3,6 +3,7 @@ import type {
     CancellationToken,
     ExtensionContext,
     WebviewViewResolveContext,
+    Webview,
 } from 'vscode'
 import {
     mockVSCode,
@@ -20,17 +21,18 @@ describe('ChatbotProvider._getHtmlForWebview', () => {
     let mockContext: ExtensionContext
     let mockWebview: ReturnType<typeof createMockWebview>
 
-    function createMockWebview() {
+    function createMockWebview(): Webview {
         return {
             cspSource: 'vscode-webview-resource:',
-            asWebviewUri: (uri: { fsPath: string }) => ({
-                toString: () => `vscode-webview://resource${uri.fsPath}`,
-            }),
+            asWebviewUri: (uri: { fsPath: string }) =>
+                ({
+                    toString: () => `vscode-webview://resource${uri.fsPath}`,
+                }) as unknown as import('vscode').Uri,
             html: '',
             options: {},
             onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })),
             postMessage: vi.fn(async () => true),
-        }
+        } as Webview
     }
 
     beforeEach(() => {

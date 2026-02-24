@@ -107,7 +107,11 @@ describe('Extension-WebView Integration', () => {
             provider.resolveWebviewView(mockWebviewView)
 
             // Simulate webview ready so messages get sent immediately
-            ;(provider as any)._webviewReady = true
+            await (provider as any)._handleMessage({
+                type: 'webview-ready',
+                attempt: 1,
+                hasCurrentImage: false,
+            })
 
             // Mock configuration
             mockVSCode.workspace.getConfiguration.mockReturnValue({
@@ -286,7 +290,11 @@ describe('Extension-WebView Integration', () => {
             provider.resolveWebviewView(mockWebviewView)
 
             // Simulate webview ready so messages get sent immediately
-            ;(provider as any)._webviewReady = true
+            await (provider as any)._handleMessage({
+                type: 'webview-ready',
+                attempt: 1,
+                hasCurrentImage: false,
+            })
 
             // Mock configuration change
             mockVSCode.workspace.getConfiguration.mockReturnValue({

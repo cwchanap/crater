@@ -536,6 +536,8 @@ export class GeminiImageProvider extends BaseImageModelProvider {
             })
             return !!response.text
         } catch (error: unknown) {
+            // Diagnostic logging for connection test failures
+            // eslint-disable-next-line no-console
             console.error('[Crater] Gemini connection test failed:', error)
             return false
         }

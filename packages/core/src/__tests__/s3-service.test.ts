@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Mock AWS SDK before importing s3-service (handles dynamic import caching)
 const mockSend = vi.fn()
@@ -299,10 +299,16 @@ describe('S3Service', () => {
     describe('uploadImageFromUrl', () => {
         let service: S3Service
         const mockFetch = vi.fn()
+        let originalFetch: typeof global.fetch
 
         beforeEach(async () => {
+            originalFetch = global.fetch
             global.fetch = mockFetch
             service = await S3Service.create(validConfig)
+        })
+
+        afterEach(() => {
+            global.fetch = originalFetch
         })
 
         it('should fetch the image and return its S3 URL', async () => {

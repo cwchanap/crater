@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { GeminiImageProvider } from '../providers/gemini-provider'
 import { AIGenerationRequest, ImageGenerationRequest } from '../base-provider'
 import {
@@ -64,6 +64,7 @@ describe('GeminiImageProvider', () => {
                     method: 'POST',
                     headers: expect.objectContaining({
                         'Content-Type': 'application/json',
+                        'x-goog-api-key': expect.any(String),
                     }),
                     body: expect.stringContaining('inlineData'),
                 })
@@ -530,10 +531,18 @@ describe('GeminiImageProvider – unconfigured', () => {
 describe('GeminiImageProvider.testConnection', () => {
     let provider: GeminiImageProvider
     const mockFetch = global.fetch as ReturnType<typeof vi.fn>
+    let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
     beforeEach(() => {
         vi.clearAllMocks()
+        consoleErrorSpy = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {})
         provider = new GeminiImageProvider({ apiKey: 'AIza-test-key' })
+    })
+
+    afterEach(() => {
+        consoleErrorSpy.mockRestore()
     })
 
     it('should return true when the API responds successfully', async () => {

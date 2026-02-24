@@ -427,12 +427,14 @@ export class ImageEditorProvider implements WebviewViewProvider {
     }
 
     resolveWebviewView(webviewView: WebviewView): void | Thenable<void> {
+        const isNewInstance = this._view !== webviewView
+
         this._view = webviewView
 
-        // Don't reset webview ready state if this is just a visibility change
-        const isFirstTime = !this._webviewReady
-        if (isFirstTime) {
+        // Reset webview ready state for new instances or HTML reset
+        if (isNewInstance) {
             this._webviewReady = false
+            this._pendingMessages = []
         }
 
         webviewView.webview.options = {
@@ -444,7 +446,7 @@ export class ImageEditorProvider implements WebviewViewProvider {
         }
 
         // Only set HTML for the first time or if webview was actually disposed
-        if (isFirstTime || !webviewView.webview.html) {
+        if (isNewInstance || !webviewView.webview.html) {
             console.log(
                 '[Crater Image Editor] Setting webview HTML (first time or after disposal)'
             )
