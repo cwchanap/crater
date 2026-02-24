@@ -38,6 +38,8 @@
         settingsReceived = true
       } else if (event.data.type === 'settings-saved') {
         isLoadingSettings.set(false)
+      } else if (event.data.type === 'settings-error') {
+        isLoadingSettings.set(false)
       } else if (event.data.type === 'folder-selected') {
         // Update the directory path when user selects a folder via browse dialog
         imageSaveDirectory = event.data.path || imageSaveDirectory
