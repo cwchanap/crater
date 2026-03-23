@@ -274,4 +274,185 @@ describe('ChatBotService', () => {
             expect(endTime - startTime).toBeLessThan(20) // Should be very fast
         })
     })
+
+    describe('hardcoded response branches', () => {
+        let noAIBot: ChatBotService
+
+        beforeEach(() => {
+            noAIBot = new ChatBotService({ thinkingTime: 0 })
+        })
+
+        it('should generate sound-specific response for "sound"', async () => {
+            const response = await noAIBot.generateResponse(
+                'I need sound effects'
+            )
+            expect(response.toLowerCase()).toContain('audio')
+        })
+
+        it('should generate sound-specific response for "audio"', async () => {
+            const response = await noAIBot.generateResponse(
+                'help with audio assets'
+            )
+            expect(response.toLowerCase()).toContain('audio')
+        })
+
+        it('should generate sound-specific response for "music"', async () => {
+            const response = await noAIBot.generateResponse(
+                'I need music tracks'
+            )
+            expect(response.toLowerCase()).toContain('audio')
+        })
+
+        it('should generate animation-specific response for "animation"', async () => {
+            const response = await noAIBot.generateResponse(
+                'I need animation assets'
+            )
+            expect(response.toLowerCase()).toContain('animation')
+        })
+
+        it('should generate animation-specific response for "animate"', async () => {
+            const response = await noAIBot.generateResponse(
+                'how to animate characters'
+            )
+            expect(response.toLowerCase()).toContain('animation')
+        })
+
+        it('should generate vfx-specific response for "effect"', async () => {
+            const response = await noAIBot.generateResponse(
+                'visual effect ideas'
+            )
+            expect(response.toLowerCase()).toContain('effect')
+        })
+
+        it('should generate vfx-specific response for "vfx"', async () => {
+            const response =
+                await noAIBot.generateResponse('VFX for explosions')
+            expect(response.toLowerCase()).toContain('effect')
+        })
+
+        it('should generate vfx-specific response for "particle"', async () => {
+            const response = await noAIBot.generateResponse('particle systems')
+            expect(response.toLowerCase()).toContain('effect')
+        })
+
+        it('should generate welcome response when no keywords match', async () => {
+            const response = await noAIBot.generateResponse('hello there')
+            expect(response).toContain('game asset assistant')
+        })
+
+        it('should generate warrior character response for "warrior"', async () => {
+            const response = await noAIBot.generateResponse(
+                'warrior character sprite'
+            )
+            expect(response.toLowerCase()).toContain('warrior')
+        })
+
+        it('should generate warrior character response for "knight"', async () => {
+            const response = await noAIBot.generateResponse(
+                'knight character design'
+            )
+            expect(response.toLowerCase()).toContain('warrior')
+        })
+
+        it('should generate mage character response for "mage"', async () => {
+            const response = await noAIBot.generateResponse(
+                'mage character sprite'
+            )
+            expect(response.toLowerCase()).toContain('mage')
+        })
+
+        it('should generate mage character response for "wizard"', async () => {
+            const response = await noAIBot.generateResponse(
+                'wizard sprite design'
+            )
+            expect(response.toLowerCase()).toContain('mage')
+        })
+
+        it('should generate forest background response for "forest"', async () => {
+            const response = await noAIBot.generateResponse(
+                'forest background scene'
+            )
+            expect(response.toLowerCase()).toContain('forest')
+        })
+
+        it('should generate nature background response for "nature"', async () => {
+            const response = await noAIBot.generateResponse(
+                'nature environment design'
+            )
+            expect(response.toLowerCase()).toContain('forest')
+        })
+
+        it('should generate city background response for "city"', async () => {
+            const response = await noAIBot.generateResponse(
+                'city background art'
+            )
+            expect(response.toLowerCase()).toContain('urban')
+        })
+
+        it('should generate urban background response for "urban"', async () => {
+            const response = await noAIBot.generateResponse('urban environment')
+            expect(response.toLowerCase()).toContain('urban')
+        })
+    })
+
+    describe('message management', () => {
+        it('should add a user message and return it', () => {
+            const msg = chatBot.addMessage('Hello!', 'user')
+            expect(msg.text).toBe('Hello!')
+            expect(msg.sender).toBe('user')
+            expect(msg.id).toBeDefined()
+            expect(msg.timestamp).toBeInstanceOf(Date)
+        })
+
+        it('should add an assistant message and return it', () => {
+            const msg = chatBot.addMessage('Response', 'assistant')
+            expect(msg.sender).toBe('assistant')
+        })
+
+        it('should accumulate messages in getMessages', () => {
+            chatBot.addMessage('First', 'user')
+            chatBot.addMessage('Second', 'assistant')
+            expect(chatBot.getMessages()).toHaveLength(2)
+        })
+
+        it('should return a copy of messages from getMessages', () => {
+            chatBot.addMessage('Test', 'user')
+            const messages = chatBot.getMessages()
+            messages.pop()
+            expect(chatBot.getMessages()).toHaveLength(1)
+        })
+
+        it('should clear all messages', () => {
+            chatBot.addMessage('First', 'user')
+            chatBot.addMessage('Second', 'assistant')
+            chatBot.clearMessages()
+            expect(chatBot.getMessages()).toHaveLength(0)
+        })
+
+        it('should return formatted chat history', () => {
+            chatBot.addMessage('Hello', 'user')
+            chatBot.addMessage('Hi there', 'assistant')
+            const history = chatBot.getChatHistory()
+            expect(history).toContain('user: Hello')
+            expect(history).toContain('assistant: Hi there')
+        })
+
+        it('should return empty string for chat history when no messages', () => {
+            expect(chatBot.getChatHistory()).toBe('')
+        })
+
+        it('should update configuration via updateConfig', async () => {
+            const noAIBot = new ChatBotService({ thinkingTime: 0 })
+            noAIBot.updateConfig({ systemPrompt: 'Updated prompt' })
+            // Config is private; verify behavior still works
+            const response = await noAIBot.generateResponse('hello there')
+            expect(response).toBeDefined()
+        })
+
+        it('should generate unique message ids', () => {
+            const msg1 = chatBot.addMessage('A', 'user')
+            const msg2 = chatBot.addMessage('B', 'user')
+            expect(msg1.id).not.toBe(msg2.id)
+        })
+    })
 })
