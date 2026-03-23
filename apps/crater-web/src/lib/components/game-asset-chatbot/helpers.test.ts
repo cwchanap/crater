@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
     wantsImage,
     createAssistantTextMessage,
@@ -46,9 +46,20 @@ describe('createAssistantTextMessage', () => {
     })
 
     it('generates a unique id each time', () => {
-        const a = createAssistantTextMessage('A')
-        const b = createAssistantTextMessage('B')
-        expect(a.id).not.toBe(b.id)
+        let callCount = 0
+        const randomSpy = vi.spyOn(Math, 'random').mockImplementation(() => {
+            callCount += 1
+            return callCount / 1000
+        })
+        try {
+            const a = createAssistantTextMessage('A')
+            const b = createAssistantTextMessage('B')
+            expect(a.id).not.toBe(b.id)
+            expect(a.id).toMatch(/^\d+-[a-z0-9]+$/)
+            expect(b.id).toMatch(/^\d+-[a-z0-9]+$/)
+        } finally {
+            randomSpy.mockRestore()
+        }
     })
 
     it('sets a timestamp', () => {

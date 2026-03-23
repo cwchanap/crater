@@ -13,8 +13,24 @@ describe('createSessionId', () => {
     })
 
     it('returns unique ids on each call', () => {
-        const ids = new Set(Array.from({ length: 20 }, () => createSessionId()))
-        expect(ids.size).toBe(20)
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'))
+        let callCount = 0
+        const randomSpy = vi.spyOn(Math, 'random').mockImplementation(() => {
+            callCount += 1
+            return callCount / 1000
+        })
+        try {
+            const ids = Array.from({ length: 20 }, () => createSessionId())
+            const uniqueIds = new Set(ids)
+            expect(uniqueIds.size).toBe(20)
+            ids.forEach((id) => {
+                expect(id).toMatch(/^session-\d+-[a-z0-9]+$/)
+            })
+        } finally {
+            randomSpy.mockRestore()
+            vi.useRealTimers()
+        }
     })
 
     it('includes a timestamp segment', () => {
