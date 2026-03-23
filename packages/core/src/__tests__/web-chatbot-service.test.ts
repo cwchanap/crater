@@ -228,5 +228,31 @@ describe('WebChatBotService - Web-specific features', () => {
             expect(typeof webChatBot.setAIProvider).toBe('function')
             expect(typeof webChatBot.getAIProvider).toBe('function')
         })
+
+        it('should delegate getChatHistory to the underlying chatbot service', () => {
+            vi.mocked(
+                webChatBot['chatbotService'].getChatHistory
+            ).mockReturnValue('user: Hello\nassistant: Hi')
+
+            const history = webChatBot.getChatHistory()
+
+            expect(
+                webChatBot['chatbotService'].getChatHistory
+            ).toHaveBeenCalled()
+            expect(history).toBe('user: Hello\nassistant: Hi')
+        })
+
+        it('should delegate updateConfig to the underlying chatbot service', () => {
+            const newConfig = {
+                systemPrompt: 'Updated prompt',
+                thinkingTime: 200,
+            }
+
+            webChatBot.updateConfig(newConfig)
+
+            expect(
+                webChatBot['chatbotService'].updateConfig
+            ).toHaveBeenCalledWith(newConfig)
+        })
     })
 })
