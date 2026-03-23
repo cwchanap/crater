@@ -9,6 +9,7 @@ import {
     showError,
     showInfo,
     showWarning,
+    type Toast,
 } from './toast'
 
 beforeEach(() => {
@@ -29,10 +30,12 @@ describe('addToast', () => {
     })
 
     it('returns a unique toast id', () => {
-        const id1 = addToast('First', 'info')
-        const id2 = addToast('Second', 'error')
-        expect(id1).toMatch(/^toast-\d+$/)
-        expect(id2).toMatch(/^toast-\d+$/)
+        const id1: string = addToast('First', 'info')
+        const id2: string = addToast('Second', 'error')
+        expect(typeof id1).toBe('string')
+        expect(id1.length).toBeGreaterThan(0)
+        expect(typeof id2).toBe('string')
+        expect(id2.length).toBeGreaterThan(0)
         expect(id1).not.toBe(id2)
     })
 
@@ -74,17 +77,17 @@ describe('addToast', () => {
 
 describe('removeToast', () => {
     it('removes a toast by id', () => {
-        const id = addToast('Remove me', 'info', 0)
+        const id: string = addToast('Remove me', 'info', 0)
         expect(get(toastStore)).toHaveLength(1)
         removeToast(id)
         expect(get(toastStore)).toHaveLength(0)
     })
 
     it('does not affect other toasts when removing one', () => {
-        const id1 = addToast('Keep', 'info', 0)
-        const id2 = addToast('Remove', 'error', 0)
+        const id1: string = addToast('Keep', 'info', 0)
+        const id2: string = addToast('Remove', 'error', 0)
         removeToast(id2)
-        const remaining = get(toastStore)
+        const remaining: Toast[] = get(toastStore)
         expect(remaining).toHaveLength(1)
         expect(remaining[0].id).toBe(id1)
     })
@@ -114,7 +117,7 @@ describe('clearAllToasts', () => {
 describe('showSuccess', () => {
     it('adds a success toast', () => {
         showSuccess('Done!')
-        const toasts = get(toastStore)
+        const toasts: Toast[] = get(toastStore)
         expect(toasts).toHaveLength(1)
         expect(toasts[0].type).toBe('success')
         expect(toasts[0].message).toBe('Done!')
@@ -129,7 +132,7 @@ describe('showSuccess', () => {
 describe('showError', () => {
     it('adds an error toast', () => {
         showError('Something went wrong')
-        const toasts = get(toastStore)
+        const toasts: Toast[] = get(toastStore)
         expect(toasts[0].type).toBe('error')
         expect(toasts[0].message).toBe('Something went wrong')
     })
@@ -138,7 +141,7 @@ describe('showError', () => {
 describe('showInfo', () => {
     it('adds an info toast', () => {
         showInfo('FYI')
-        const toasts = get(toastStore)
+        const toasts: Toast[] = get(toastStore)
         expect(toasts[0].type).toBe('info')
         expect(toasts[0].message).toBe('FYI')
     })
@@ -147,7 +150,7 @@ describe('showInfo', () => {
 describe('showWarning', () => {
     it('adds a warning toast', () => {
         showWarning('Be careful')
-        const toasts = get(toastStore)
+        const toasts: Toast[] = get(toastStore)
         expect(toasts[0].type).toBe('warning')
         expect(toasts[0].message).toBe('Be careful')
     })

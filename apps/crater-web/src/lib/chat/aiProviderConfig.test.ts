@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
     GeminiImageProvider,
     OpenAIImageProvider,
@@ -127,6 +127,10 @@ describe('normalizeModel', () => {
 })
 
 describe('createProviderForMode', () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+    })
+
     it('returns a DebugImageProvider for debug provider', () => {
         const provider = createProviderForMode('debug', 'chat', {})
         expect(provider).not.toBeNull()
@@ -144,7 +148,6 @@ describe('createProviderForMode', () => {
     })
 
     it('creates a GeminiImageProvider with a valid api key', () => {
-        vi.mocked(GeminiImageProvider).mockClear()
         createProviderForMode('gemini', 'chat', { apiKey: 'AIzaTestKey' })
         expect(GeminiImageProvider).toHaveBeenCalledWith(
             expect.objectContaining({ apiKey: 'AIzaTestKey' })
@@ -152,7 +155,6 @@ describe('createProviderForMode', () => {
     })
 
     it('creates an OpenAIImageProvider with a valid api key', () => {
-        vi.mocked(OpenAIImageProvider).mockClear()
         createProviderForMode('openai', 'image', { apiKey: 'sk-test123' })
         expect(OpenAIImageProvider).toHaveBeenCalledWith(
             expect.objectContaining({ apiKey: 'sk-test123' })
@@ -160,7 +162,6 @@ describe('createProviderForMode', () => {
     })
 
     it('uses the provided model instead of the default', () => {
-        vi.mocked(GeminiImageProvider).mockClear()
         createProviderForMode('gemini', 'chat', {
             apiKey: 'AIzaKey',
             model: 'custom-model',
@@ -171,7 +172,6 @@ describe('createProviderForMode', () => {
     })
 
     it('uses the default model when none provided', () => {
-        vi.mocked(GeminiImageProvider).mockClear()
         createProviderForMode('gemini', 'image', { apiKey: 'AIzaKey' })
         expect(GeminiImageProvider).toHaveBeenCalledWith(
             expect.objectContaining({ model: DEFAULT_MODELS.gemini.image })
@@ -179,7 +179,6 @@ describe('createProviderForMode', () => {
     })
 
     it('passes imageQuality and imageSize to OpenAIImageProvider', () => {
-        vi.mocked(OpenAIImageProvider).mockClear()
         createProviderForMode('openai', 'image', {
             apiKey: 'sk-key',
             imageQuality: 'hd',
