@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
     createSessionId,
     createSession,
@@ -31,6 +31,10 @@ describe('createSession', () => {
     beforeEach(() => {
         vi.useFakeTimers()
         vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'))
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
     })
 
     it('creates a chat session with default title', () => {

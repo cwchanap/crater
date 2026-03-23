@@ -109,9 +109,11 @@ describe('createErrorMessage', () => {
         expect(msg.text).toContain('Unknown error occurred')
     })
 
-    it('handles null/undefined gracefully', () => {
+    it('handles null and undefined gracefully', () => {
         const msg = createErrorMessage(null)
         expect(msg.text).toContain('Unknown error occurred')
+        const msg2 = createErrorMessage(undefined)
+        expect(msg2.text).toContain('Unknown error occurred')
     })
 
     it('returns an assistant text message', () => {
