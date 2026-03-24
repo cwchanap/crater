@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { DebugImageProvider } from '../providers/debug-provider'
 
 describe('DebugImageProvider', () => {
@@ -29,6 +29,13 @@ describe('DebugImageProvider', () => {
         it('accepts custom simulateDelay', () => {
             const custom = new DebugImageProvider({ simulateDelay: 500 })
             expect(custom.getDebugConfig().simulateDelay).toBe(500)
+        })
+
+        it('treats simulateDelay: 0 as falsy and falls back to the 2000ms default', () => {
+            // The constructor uses `config.simulateDelay || 2000`, so passing 0
+            // (falsy) results in the default 2000ms delay being applied.
+            const p = new DebugImageProvider({ simulateDelay: 0 })
+            expect(p.getDebugConfig().simulateDelay).toBe(2000)
         })
 
         it('accepts custom simulateError flag', () => {
@@ -236,16 +243,31 @@ describe('DebugImageProvider', () => {
         })
 
         it('simulates delay when simulateDelay > 0', async () => {
-            // Create a provider with a longer delay and verify it takes time
-            // We test this behaviorally: use a tiny delay and confirm it resolves
-            const delayedProvider = new DebugImageProvider({
-                simulateDelay: 10,
-            })
-            const response = await delayedProvider.generateImage({
-                prompt: 'test',
-            })
-            // If delay worked and resolved, we get the images
-            expect(response.images).toHaveLength(1)
+            vi.useFakeTimers()
+            try {
+                const delayedProvider = new DebugImageProvider({
+                    simulateDelay: 10,
+                })
+                let resolved = false
+                const imagePromise = delayedProvider.generateImage({
+                    prompt: 'test',
+                })
+                imagePromise.then(() => {
+                    resolved = true
+                })
+
+                // Advance less than the delay — promise must still be pending
+                vi.advanceTimersByTime(5)
+                expect(resolved).toBe(false)
+
+                // Advance past the delay — promise should now resolve
+                vi.advanceTimersByTime(5)
+                const response = await imagePromise
+                expect(resolved).toBe(true)
+                expect(response.images).toHaveLength(1)
+            } finally {
+                vi.useRealTimers()
+            }
         })
     })
 

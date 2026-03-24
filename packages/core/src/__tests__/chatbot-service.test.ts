@@ -442,11 +442,21 @@ describe('ChatBotService', () => {
         })
 
         it('should update configuration via updateConfig', async () => {
-            const noAIBot = new ChatBotService({ thinkingTime: 0 })
-            noAIBot.updateConfig({ systemPrompt: 'Updated prompt' })
-            // Config is private; verify behavior still works
-            const response = await noAIBot.generateResponse('hello there')
-            expect(response).toBeDefined()
+            // Start with a non-zero thinkingTime, then update it to 0
+            const timedBot = new ChatBotService({ thinkingTime: 50 })
+
+            // Before update: response should take at least ~50ms
+            const startBefore = Date.now()
+            await timedBot.generateResponse('hello there')
+            const durationBefore = Date.now() - startBefore
+            expect(durationBefore).toBeGreaterThanOrEqual(40)
+
+            // After updateConfig to thinkingTime: 0, response should be fast
+            timedBot.updateConfig({ thinkingTime: 0 })
+            const startAfter = Date.now()
+            await timedBot.generateResponse('hello there')
+            const durationAfter = Date.now() - startAfter
+            expect(durationAfter).toBeLessThan(20)
         })
 
         it('should generate unique message ids', () => {
