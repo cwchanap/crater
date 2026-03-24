@@ -282,116 +282,56 @@ describe('ChatBotService', () => {
             noAIBot = new ChatBotService({ thinkingTime: 0 })
         })
 
-        it('should generate sound-specific response for "sound"', async () => {
-            const response = await noAIBot.generateResponse(
-                'I need sound effects'
-            )
-            expect(response.toLowerCase()).toContain('audio')
-        })
-
-        it('should generate sound-specific response for "audio"', async () => {
-            const response = await noAIBot.generateResponse(
-                'help with audio assets'
-            )
-            expect(response.toLowerCase()).toContain('audio')
-        })
-
-        it('should generate sound-specific response for "music"', async () => {
-            const response = await noAIBot.generateResponse(
-                'I need music tracks'
-            )
-            expect(response.toLowerCase()).toContain('audio')
-        })
-
-        it('should generate animation-specific response for "animation"', async () => {
-            const response = await noAIBot.generateResponse(
-                'I need animation assets'
-            )
-            expect(response.toLowerCase()).toContain('animation')
-        })
-
-        it('should generate animation-specific response for "animate"', async () => {
-            const response = await noAIBot.generateResponse(
-                'how to animate characters'
-            )
-            expect(response.toLowerCase()).toContain('animation')
-        })
-
-        it('should generate vfx-specific response for "effect"', async () => {
-            const response = await noAIBot.generateResponse(
-                'visual effect ideas'
-            )
-            expect(response.toLowerCase()).toContain('effect')
-        })
-
-        it('should generate vfx-specific response for "vfx"', async () => {
-            const response =
-                await noAIBot.generateResponse('VFX for explosions')
-            expect(response.toLowerCase()).toContain('effect')
-        })
-
-        it('should generate vfx-specific response for "particle"', async () => {
-            const response = await noAIBot.generateResponse('particle systems')
-            expect(response.toLowerCase()).toContain('effect')
-        })
-
-        it('should generate welcome response when no keywords match', async () => {
-            const response = await noAIBot.generateResponse('hello there')
-            expect(response).toContain('game asset assistant')
-        })
-
-        it('should generate warrior character response for "warrior"', async () => {
-            const response = await noAIBot.generateResponse(
-                'warrior character sprite'
-            )
-            expect(response.toLowerCase()).toContain('warrior')
-        })
-
-        it('should generate warrior character response for "knight"', async () => {
-            const response = await noAIBot.generateResponse(
-                'knight character design'
-            )
-            expect(response.toLowerCase()).toContain('warrior')
-        })
-
-        it('should generate mage character response for "mage"', async () => {
-            const response = await noAIBot.generateResponse(
-                'mage character sprite'
-            )
-            expect(response.toLowerCase()).toContain('mage')
-        })
-
-        it('should generate mage character response for "wizard"', async () => {
-            const response = await noAIBot.generateResponse(
-                'wizard sprite design'
-            )
-            expect(response.toLowerCase()).toContain('mage')
-        })
-
-        it('should generate forest background response for "forest"', async () => {
-            const response = await noAIBot.generateResponse(
-                'forest background scene'
-            )
-            expect(response.toLowerCase()).toContain('forest')
-        })
-
-        it('should generate nature background response for "nature"', async () => {
-            const response = await noAIBot.generateResponse(
-                'nature environment design'
-            )
-            expect(response.toLowerCase()).toContain('forest')
-        })
-
-        it('should generate city background response for "city"', async () => {
-            const response = await noAIBot.generateResponse(
-                'city background art'
-            )
-            expect(response.toLowerCase()).toContain('urban')
-        })
-
-        it('should generate urban background response for "urban"', async () => {
-            const response = await noAIBot.generateResponse('urban environment')
-            expect(response.toLowerCase()).toContain('urban')
+        it.each([
+            // [description, input message, expected substring in response]
+            ['sound keyword "sound"', 'I need sound effects', 'audio'],
+            ['sound keyword "audio"', 'help with audio assets', 'audio'],
+            ['sound keyword "music"', 'I need music tracks', 'audio'],
+            [
+                'animation keyword "animation"',
+                'I need animation assets',
+                'animation',
+            ],
+            [
+                'animation keyword "animate"',
+                'how to animate characters',
+                'animation',
+            ],
+            ['vfx keyword "effect"', 'visual effect ideas', 'effect'],
+            ['vfx keyword "vfx"', 'VFX for explosions', 'effect'],
+            ['vfx keyword "particle"', 'particle systems', 'effect'],
+            [
+                'welcome response when no keywords match',
+                'hello there',
+                'game asset assistant',
+            ],
+            [
+                'warrior character for "warrior"',
+                'warrior character sprite',
+                'warrior',
+            ],
+            [
+                'warrior character for "knight"',
+                'knight character design',
+                'warrior',
+            ],
+            ['mage character for "mage"', 'mage character sprite', 'mage'],
+            ['mage character for "wizard"', 'wizard sprite design', 'mage'],
+            [
+                'forest background for "forest"',
+                'forest background scene',
+                'forest',
+            ],
+            [
+                'forest background for "nature"',
+                'nature environment design',
+                'forest',
+            ],
+            ['city background for "city"', 'city background art', 'urban'],
+            ['city background for "urban"', 'urban environment', 'urban'],
+        ])('should generate %s', async (_label, message, expectedSubstring) => {
+            const response = await noAIBot.generateResponse(message)
+            expect(response.toLowerCase()).toContain(expectedSubstring)
         })
     })
 

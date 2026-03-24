@@ -5,9 +5,7 @@ describe('DebugImageProvider', () => {
     let provider: DebugImageProvider
 
     beforeEach(() => {
-        // Use delay: 1 (not 0) because constructor uses `config.simulateDelay || 2000`
-        // which treats 0 as falsy and falls back to the 2000ms default
-        provider = new DebugImageProvider({ simulateDelay: 1 })
+        provider = new DebugImageProvider({ simulateDelay: 0 })
     })
 
     describe('constructor', () => {
@@ -31,11 +29,9 @@ describe('DebugImageProvider', () => {
             expect(custom.getDebugConfig().simulateDelay).toBe(500)
         })
 
-        it('treats simulateDelay: 0 as falsy and falls back to the 2000ms default', () => {
-            // The constructor uses `config.simulateDelay || 2000`, so passing 0
-            // (falsy) results in the default 2000ms delay being applied.
+        it('accepts simulateDelay: 0 to disable the delay', () => {
             const p = new DebugImageProvider({ simulateDelay: 0 })
-            expect(p.getDebugConfig().simulateDelay).toBe(2000)
+            expect(p.getDebugConfig().simulateDelay).toBe(0)
         })
 
         it('accepts custom simulateError flag', () => {
@@ -223,7 +219,7 @@ describe('DebugImageProvider', () => {
 
         it('throws a simulated error when simulateError is true', async () => {
             provider = new DebugImageProvider({
-                simulateDelay: 1,
+                simulateDelay: 0,
                 simulateError: true,
             })
             await expect(
@@ -233,7 +229,7 @@ describe('DebugImageProvider', () => {
 
         it('respects a custom testImageUrl when generating images', async () => {
             const customProvider = new DebugImageProvider({
-                simulateDelay: 1,
+                simulateDelay: 0,
                 testImageUrl: '/my-custom-image.png',
             })
             const response = await customProvider.generateImage({
