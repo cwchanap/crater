@@ -27,7 +27,7 @@ export class DebugImageProvider extends BaseImageModelProvider {
     constructor(config: DebugProviderConfig = {}) {
         super('mock', 'debug-image-provider', config)
         this.testImageUrl = config.testImageUrl || '/test_image.png'
-        this.simulateDelay = config.simulateDelay || 2000 // 2 seconds default
+        this.simulateDelay = config.simulateDelay ?? 2000 // 2 seconds default
         this.simulateError = config.simulateError || false
     }
 
